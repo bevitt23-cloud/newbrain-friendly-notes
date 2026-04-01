@@ -5,7 +5,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 const FONT_MAP: Record<string, string> = {
   "font-opendyslexic": "'OpenDyslexic', sans-serif",
-  "font-lexend": "'Lexend', system-ui, sans-serif",
+  "font-lexend": "'Times New Roman', 'Times', serif",
   "font-garamond": "'EB Garamond', 'Georgia', serif",
 };
 

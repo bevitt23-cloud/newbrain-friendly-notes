@@ -11,7 +11,7 @@ const FONT_OPTIONS = [
   {
     mode: "adhd",
     label: "abc",
-    font: "'Lexend', sans-serif",
+    font: "'Times New Roman', 'Times', serif",
     activeClass: "bg-sage-100 text-sage-700 shadow-sm ring-1 ring-sage-300/50 dark:bg-sage-500/20 dark:text-sage-300 dark:ring-sage-400/30",
   },
   {
@@ -43,7 +43,7 @@ const LearningModeSelector = ({ selectedMode, onModeChange, bionicEnabled, onBio
                 : "text-muted-foreground hover:text-foreground"
             }`}
             style={{ fontFamily: opt.font }}
-            title={opt.mode === "adhd" ? "Lexend" : opt.mode === "dyslexia" ? "OpenDyslexic" : "EB Garamond"}
+            title={opt.mode === "adhd" ? "Times New Roman" : opt.mode === "dyslexia" ? "OpenDyslexic" : "EB Garamond"}
           >
             {opt.label}
           </button>

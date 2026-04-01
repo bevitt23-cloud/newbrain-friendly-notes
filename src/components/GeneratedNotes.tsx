@@ -218,7 +218,7 @@ const GeneratedNotes = ({
   const fontFamily = resolvedDyslexia
     ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
     : resolvedAdhd
-      ? "'Lexend', sans-serif"
+      ? "'Times New Roman', 'Times', serif"
       : "'EB Garamond', 'Georgia', serif";
 
   const dyslexiaStyles: React.CSSProperties = resolvedDyslexia
@@ -304,7 +304,7 @@ const GeneratedNotes = ({
             }).
             join("\n");
             printWindow.document.write(`<!DOCTYPE html><html><head><title>${autoTitle}</title>
-              <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+              <!-- Times New Roman is a web-safe font, no external import needed -->
               <link href="https://fonts.cdnfonts.com/css/open-dyslexic" rel="stylesheet">
               <style>${styles}</style>
               <style>

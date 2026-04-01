@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, StickyNote, Star, Volume2, GripHorizontal, X, Minus, Maximize2, Youtube } from "lucide-react";
 import ExplainPanel from "@/components/ExplainPanel";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 export interface StickyNoteData {
   id: string;
@@ -29,6 +30,13 @@ const STICKY_COLORS = [
 ];
 
 const TextSelectionMenu = ({ containerRef, notesContext, stickyNotes: externalStickyNotes, onStickyNotesChange, onVideoQuery }: TextSelectionMenuProps) => {
+  const { preferences } = useUserPreferences();
+  const stickyFont = preferences.dyslexia_font
+    ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
+    : preferences.adhd_font
+      ? "'Times New Roman', 'Times', serif"
+      : "'EB Garamond', 'Georgia', serif";
+
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [selectedText, setSelectedText] = useState("");
   const [internalStickyNotes, setInternalStickyNotes] = useState<StickyNoteData[]>([]);
@@ -254,7 +262,7 @@ const TextSelectionMenu = ({ containerRef, notesContext, stickyNotes: externalSt
               left: note.position.x,
               top: note.position.y,
               transform: `rotate(${(Number(note.id) % 7) - 3}deg)`,
-              fontFamily: "'Caveat', 'Comic Sans MS', cursive",
+              fontFamily: stickyFont,
             }}
           >
             {/* Tape effect */}

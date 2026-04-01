@@ -395,7 +395,7 @@ export default function MindMap({ html }: { html: string }) {
   const fontFamily = preferences.dyslexia_font
     ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
     : preferences.adhd_font
-      ? "'Lexend', sans-serif"
+      ? "'Times New Roman', 'Times', serif"
       : "'EB Garamond', 'Georgia', serif";
   const letterSpacing = preferences.dyslexia_font ? preferences.letter_spacing : 0;
   const lineSpacing = preferences.dyslexia_font ? preferences.line_spacing : 1.4;
