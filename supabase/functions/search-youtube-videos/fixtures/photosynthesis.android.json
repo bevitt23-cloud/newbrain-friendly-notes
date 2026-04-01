@@ -1,0 +1,193 @@
+{
+  "source": "youtube-android-search",
+  "query": "photosynthesis",
+  "capturedAt": "2026-04-01",
+  "renderers": [
+    {
+      "compactVideoRenderer": {
+        "videoId": "sQK3Yr4Sc_k",
+        "title": {
+          "runs": [
+            {
+              "text": "Photosynthesis: Crash Course Biology #8"
+            }
+          ]
+        },
+        "longBylineText": {
+          "runs": [
+            {
+              "text": "CrashCourse",
+              "navigationEndpoint": {
+                "clickTrackingParams": "CHgQpDAYASITCPq-7ov7y5MDFUThzgAdEVQAdMoBBBMaFD8=",
+                "browseEndpoint": {
+                  "browseId": "UCX6b17PVsYBQ0ip5gyeme-Q",
+                  "canonicalBaseUrl": "/@crashcourse"
+                }
+              }
+            }
+          ]
+        },
+        "lengthText": {
+          "runs": [
+            {
+              "text": "13:15"
+            }
+          ],
+          "accessibility": {
+            "accessibilityData": {
+              "label": "13 minutes, 15 seconds"
+            }
+          }
+        },
+        "thumbnail": {
+          "thumbnails": [
+            {
+              "url": "https://i.ytimg.com/vi/sQK3Yr4Sc_k/default.jpg",
+              "width": 120,
+              "height": 90
+            },
+            {
+              "url": "https://i.ytimg.com/vi/sQK3Yr4Sc_k/mqdefault.jpg",
+              "width": 320,
+              "height": 180
+            },
+            {
+              "url": "https://i.ytimg.com/vi/sQK3Yr4Sc_k/hqdefault.jpg",
+              "width": 480,
+              "height": 360
+            },
+            {
+              "url": "https://i.ytimg.com/vi/sQK3Yr4Sc_k/sddefault.jpg",
+              "width": 640,
+              "height": 480
+            }
+          ]
+        }
+      }
+    },
+    {
+      "compactVideoRenderer": {
+        "videoId": "D2Y_eEaxrYo",
+        "title": {
+          "runs": [
+            {
+              "text": "Photosynthesis - Light Dependent Reactions and the Calvin Cycle"
+            }
+          ]
+        },
+        "longBylineText": {
+          "runs": [
+            {
+              "text": "The Organic Chemistry Tutor",
+              "navigationEndpoint": {
+                "clickTrackingParams": "CHIQpDAYAiITCPq-7ov7y5MDFUThzgAdEVQAdMoBBBMaFD8=",
+                "browseEndpoint": {
+                  "browseId": "UCEWpbFLzoYGPfuWUMFPSaoA",
+                  "canonicalBaseUrl": "/@TheOrganicChemistryTutor"
+                }
+              }
+            }
+          ]
+        },
+        "lengthText": {
+          "runs": [
+            {
+              "text": "17:46"
+            }
+          ],
+          "accessibility": {
+            "accessibilityData": {
+              "label": "17 minutes, 46 seconds"
+            }
+          }
+        },
+        "thumbnail": {
+          "thumbnails": [
+            {
+              "url": "https://i.ytimg.com/vi/D2Y_eEaxrYo/default.jpg",
+              "width": 120,
+              "height": 90
+            },
+            {
+              "url": "https://i.ytimg.com/vi/D2Y_eEaxrYo/mqdefault.jpg",
+              "width": 320,
+              "height": 180
+            },
+            {
+              "url": "https://i.ytimg.com/vi/D2Y_eEaxrYo/hqdefault.jpg",
+              "width": 480,
+              "height": 360
+            },
+            {
+              "url": "https://i.ytimg.com/vi/D2Y_eEaxrYo/sddefault.jpg",
+              "width": 640,
+              "height": 480
+            }
+          ]
+        }
+      }
+    },
+    {
+      "compactVideoRenderer": {
+        "videoId": "CMiPYHNNg28",
+        "title": {
+          "runs": [
+            {
+              "text": "Photosynthesis (UPDATED)"
+            }
+          ]
+        },
+        "longBylineText": {
+          "runs": [
+            {
+              "text": "Amoeba Sisters",
+              "navigationEndpoint": {
+                "clickTrackingParams": "CGwQpDAYAyITCPq-7ov7y5MDFUThzgAdEVQAdMoBBBMaFD8=",
+                "browseEndpoint": {
+                  "browseId": "UCb2GCoLSBXjmI_Qj1vk-44g",
+                  "canonicalBaseUrl": "/@AmoebaSisters"
+                }
+              }
+            }
+          ]
+        },
+        "lengthText": {
+          "runs": [
+            {
+              "text": "7:59"
+            }
+          ],
+          "accessibility": {
+            "accessibilityData": {
+              "label": "7 minutes, 59 seconds"
+            }
+          }
+        },
+        "thumbnail": {
+          "thumbnails": [
+            {
+              "url": "https://i.ytimg.com/vi/CMiPYHNNg28/default.jpg",
+              "width": 120,
+              "height": 90
+            },
+            {
+              "url": "https://i.ytimg.com/vi/CMiPYHNNg28/mqdefault.jpg",
+              "width": 320,
+              "height": 180
+            },
+            {
+              "url": "https://i.ytimg.com/vi/CMiPYHNNg28/hqdefault.jpg",
+              "width": 480,
+              "height": 360
+            },
+            {
+              "url": "https://i.ytimg.com/vi/CMiPYHNNg28/sddefault.jpg",
+              "width": 640,
+              "height": 480
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

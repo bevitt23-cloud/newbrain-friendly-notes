@@ -5,6 +5,23 @@ import {
   getRunText,
   parseVideoResults,
 } from "../_shared/youtubeSearchParser";
+import realAndroidFixture from "./fixtures/photosynthesis.android.json";
+
+interface AndroidFixture {
+  query: string;
+  renderers: Array<{
+    compactVideoRenderer: {
+      videoId: string;
+      title: unknown;
+      longBylineText?: unknown;
+      ownerText?: unknown;
+      lengthText?: unknown;
+      thumbnail?: unknown;
+    };
+  }>;
+}
+
+const REAL_ANDROID_FIXTURE = realAndroidFixture as AndroidFixture;
 
 // ---------------------------------------------------------------------------
 // Minimal InnerTube response shapes for testing
@@ -132,8 +149,7 @@ describe("parseVideoResults (WEB client — videoRenderer)", () => {
 
   it("falls back to ytimg default thumbnail when thumbnails list is empty", () => {
     const response = makeWebResponse([{ id: "xyz999", title: "No thumbs", channel: "Ch", duration: "1:00" }]);
-    // remove thumbnails
-    (response as any).contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0]
+    response.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0]
       .itemSectionRenderer.contents[0].videoRenderer.thumbnail.thumbnails = [];
     const videos = parseVideoResults(response);
     expect(videos[0].thumbnailUrl).toBe("https://i.ytimg.com/vi/xyz999/hqdefault.jpg");
@@ -168,6 +184,33 @@ describe("parseVideoResults (ANDROID client — compactVideoRenderer)", () => {
     const videos = parseVideoResults(makeAndroidResponse([SAMPLE_VIDEOS[0]]));
     // ANDROID response uses longBylineText, not ownerText
     expect(videos[0].channelTitle).toBe("ScienceChannel");
+  });
+
+  it("parses a real trimmed ANDROID payload fixture", () => {
+    const videos = parseVideoResults({
+      contents: {
+        sectionListRenderer: {
+          contents: [
+            {
+              itemSectionRenderer: {
+                contents: REAL_ANDROID_FIXTURE.renderers,
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(videos).toHaveLength(3);
+    expect(videos.map((video) => video.videoId)).toEqual(["sQK3Yr4Sc_k", "D2Y_eEaxrYo", "CMiPYHNNg28"]);
+    expect(videos.map((video) => video.channelTitle)).toEqual([
+      "CrashCourse",
+      "The Organic Chemistry Tutor",
+      "Amoeba Sisters",
+    ]);
+    expect(videos[0].title).toBe("Photosynthesis: Crash Course Biology #8");
+    expect(videos[1].thumbnailUrl).toBe("https://i.ytimg.com/vi/D2Y_eEaxrYo/sddefault.jpg");
+    expect(buildRationale(REAL_ANDROID_FIXTURE.query, videos[2].title, videos[2].duration, 2)).toContain("runtime");
   });
 });
 
