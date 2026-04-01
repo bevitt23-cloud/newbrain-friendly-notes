@@ -4,6 +4,7 @@ import {
   Clock, ChevronRight, ChevronLeft, Check, RotateCcw, Star,
   Flag, Send, Loader2, AlertTriangle,
 } from "lucide-react";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 interface MCQuestion {
   type: "mc";
@@ -44,6 +45,7 @@ interface FinalExamProps {
 }
 
 export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalExamProps) {
+  const { track } = useTelemetry();
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -92,7 +94,11 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
     setAnswers((p) => ({ ...p, [current]: val }));
   };
 
-  const handleReveal = () => setRevealed((p) => new Set(p).add(current));
+  const handleReveal = () => {
+    const correct = isCorrect(current);
+    track("final_exam_answer", { questionIndex: current, correct, topic: q.question });
+    setRevealed((p) => new Set(p).add(current));
+  };
 
   const handleTryAgain = () => {
     setAnswers((p) => { const n = { ...p }; delete n[current]; return n; });
@@ -109,7 +115,13 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
     setStarred(next);
   };
 
-  const handleSubmitExam = () => setSubmitted(true);
+  const handleSubmitExam = () => {
+    setSubmitted(true);
+    const total = questions.filter((q) => q.type !== "essay").length;
+    const finalScore = questions.reduce((acc, _, i) => acc + (isCorrect(i) === true ? 1 : 0), 0);
+    const percent = total ? Math.round((finalScore / total) * 100) : 0;
+    track("final_exam_complete", { score: finalScore, total, percent });
+  };
 
   const isCorrect = (idx: number): boolean | null => {
     const qq = questions[idx];

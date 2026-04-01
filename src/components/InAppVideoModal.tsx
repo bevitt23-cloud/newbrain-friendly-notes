@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Check, Loader2, PlayCircle, Plus, X, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 export type VideoTier = "short" | "medium" | "long";
 
@@ -43,6 +44,7 @@ interface InAppVideoModalProps {
 }
 
 const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }: InAppVideoModalProps) => {
+  const { track } = useTelemetry();
   const overlayRef = useRef<HTMLDivElement>(null);
   const [videos, setVideos] = useState<VideoChoice[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<VideoChoice | null>(null);
@@ -109,6 +111,7 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
   const handleSelectVideo = (video: VideoChoice) => {
     setSelectedVideo(video);
     localStorage.setItem(selectionKey, video.videoId);
+    track("video_tier_selected", { tier: video.tier, videoId: video.videoId, title: video.title });
   };
 
   const handleSaveVideo = () => {
@@ -170,6 +173,7 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
                     title={selectedVideo.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    onLoad={() => track("video_watched", { videoId: selectedVideo.videoId, title: selectedVideo.title, tier: selectedVideo.tier, query: searchQuery })}
                   />
                 </div>
                 <div className="border-t border-white/10 px-5 py-4 text-white">

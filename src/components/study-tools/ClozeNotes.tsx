@@ -57,8 +57,14 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
     const isCorrect = userAnswers[blankId]?.toLowerCase().trim() === blank.answer?.toLowerCase().trim();
     track("cloze_answer", { blankId, correct: isCorrect, answer: blank.answer });
     if (isCorrect) {
-      setChecked((p) => ({ ...p, [blankId]: true }));
+      const newChecked = { ...checked, [blankId]: true };
+      setChecked(newChecked);
       setIncorrect((p) => { const n = { ...p }; delete n[blankId]; return n; });
+      const allDone = blanks.length > 0 && blanks.every((b) => newChecked[b.id!] === true);
+      if (allDone) {
+        const correctCount = blanks.length;
+        track("cloze_session_complete", { totalBlanks: blanks.length, correctCount });
+      }
     } else {
       setIncorrect((p) => ({ ...p, [blankId]: true }));
       setShaking(blankId);

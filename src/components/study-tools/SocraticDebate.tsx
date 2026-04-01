@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Send, Loader2, Flag, MessageCircle } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 const DEBATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-study-tool`;
 
@@ -11,6 +12,7 @@ interface Message {
 }
 
 export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
+  const { track } = useTelemetry();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +31,11 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
       ? [...messages, { role: "user", content: text }]
       : [];
 
-    if (started) setMessages(newMessages);
+    if (started) {
+      setMessages(newMessages);
+      const userTurns = newMessages.filter((m) => m.role === "user").length;
+      track("socratic_turn", { turnNumber: userTurns, topic: notesHtml.slice(0, 100) });
+    }
     setInput("");
     setLoading(true);
 
@@ -59,6 +65,8 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
   };
 
   const handleYield = () => {
+    const totalTurns = messages.filter((m) => m.role === "user").length;
+    track("socratic_session_end", { totalTurns, topic: notesHtml.slice(0, 100) });
     sendMessage("I yield! Please reveal the key answer and summarize what we discussed.");
   };
 

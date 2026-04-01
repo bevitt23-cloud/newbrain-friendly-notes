@@ -420,6 +420,7 @@ export default function MindMap({ html }: { html: string }) {
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setFocusedId((prev) => (prev === node.id ? null : node.id));
     track("mindmap_node_click", { nodeId: node.id, label: (node.data as any)?.label });
+    track("mindmap_branch_expand", { nodeId: node.id, label: (node.data as any)?.label });
   }, [track]);
 
   const onPaneClick = useCallback(() => setFocusedId(null), []);

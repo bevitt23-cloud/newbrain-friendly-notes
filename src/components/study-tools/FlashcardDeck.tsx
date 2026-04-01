@@ -42,13 +42,20 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
   };
 
   const handleGotIt = () => {
-    setMastered((prev) => new Set(prev).add(card.id));
+    const newMastered = new Set(mastered).add(card.id);
+    setMastered(newMastered);
     track("flashcard_rated", { cardId: card.id, rating: "mastered", cardIndex: current, totalCards: cards.length });
+    if (newMastered.size === cards.length) {
+      track("flashcard_session_complete", { totalCards: cards.length, mastered: newMastered.size });
+    }
     goNext();
   };
 
   const handleReviewAgain = () => {
     track("flashcard_rated", { cardId: card.id, rating: "review_again", cardIndex: current, totalCards: cards.length });
+    if (current === cards.length - 1) {
+      track("flashcard_session_complete", { totalCards: cards.length, mastered: mastered.size });
+    }
     goNext();
   };
 
@@ -126,7 +133,10 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
         /* ─── Flip Mode ─── */
         <div
           className="cursor-pointer"
-          onClick={() => setFlipped(!flipped)}
+          onClick={() => {
+            if (!flipped) track("flashcard_flip", { cardIndex: current, totalCards: cards.length });
+            setFlipped(!flipped);
+          }}
           style={{ perspective: "1000px" }}
         >
           <motion.div
