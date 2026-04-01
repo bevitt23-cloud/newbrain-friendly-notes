@@ -225,7 +225,7 @@ export default function LibraryStudySession() {
                       <button
                         key={tool.id}
                         onClick={() => toggleTool(tool.id)}
-                        className={`group rounded-2xl border bg-card p-5 text-left transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
+                        className={`group rounded-2xl border bg-card p-5 text-left transition-all duration-200 hover:shadow-md ${
                           isSelected ? "ring-2 ring-primary/30 shadow-md border-primary/20" : "border-border"
                         }`}
                       >

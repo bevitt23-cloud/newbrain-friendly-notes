@@ -225,7 +225,7 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
                     <button
                       key={tool.id}
                       onClick={() => toggleTool(tool.id)}
-                      className={`group rounded-2xl border ${tool.border} bg-gradient-to-br ${tool.bg} p-4 text-left transition-all duration-200 hover:shadow-md hover:scale-[1.02] ${
+                      className={`group rounded-2xl border ${tool.border} bg-gradient-to-br ${tool.bg} p-4 text-left transition-all duration-200 hover:shadow-md ${
                         isSelected ? "ring-2 ring-primary/30 shadow-md" : ""
                       }`}
                     >

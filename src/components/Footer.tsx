@@ -15,8 +15,8 @@ const Footer = () => {
   }, [user]);
 
   return (
-    <footer className="border-t border-border/60 bg-background">
-      <div className="container flex flex-col items-center gap-4 py-8 text-sm text-muted-foreground md:flex-row md:justify-between">
+    <footer className="border-t border-border/40 bg-muted/30">
+      <div className="container flex flex-col items-center gap-4 py-6 text-sm text-muted-foreground md:flex-row md:justify-between">
         <p className="flex items-center gap-1.5">
           Made with <Heart className="h-3.5 w-3.5 text-primary" /> for neurodiverse learners
         </p>

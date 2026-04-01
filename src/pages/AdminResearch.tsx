@@ -108,7 +108,7 @@ const AdminResearch = () => {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(5000);
-    if (data) setEvents(data as TelemetryEvent[]);
+    if (data) setEvents(data as unknown as TelemetryEvent[]);
     setLoading(false);
   }, []);
 
@@ -430,7 +430,7 @@ const AdminResearch = () => {
                   <span className="text-sm text-foreground">{formatEventType(e.event_type)}</span>
                   {e.event_data?.tool && (
                     <span className="rounded-full bg-lavender-100 dark:bg-lavender-500/15 px-2 py-0.5 text-[10px] font-medium text-lavender-600 dark:text-lavender-300">
-                      {TOOL_META[e.event_data.tool as string]?.label || e.event_data.tool}
+                      {TOOL_META[e.event_data.tool as string]?.label || String(e.event_data.tool)}
                     </span>
                   )}
                   {typeof e.event_data?.correct === "boolean" && (

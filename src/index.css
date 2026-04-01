@@ -13,38 +13,38 @@
   :root {
     color-scheme: light;
 
-    /* Warm cream base — soft, never harsh */
-    --background: 40 22% 94%;
-    --foreground: 35 20% 14%;
+    /* Warm cream base — softer, more breathable */
+    --background: 40 14% 96%;
+    --foreground: 230 12% 16%;
 
-    --card: 40 20% 96%;
-    --card-foreground: 35 20% 14%;
+    --card: 40 12% 98%;
+    --card-foreground: 230 12% 16%;
 
-    --popover: 40 20% 96%;
-    --popover-foreground: 35 20% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 12% 16%;
 
-    /* Calming blue primary — slightly desaturated for comfort */
+    /* Calming blue primary */
     --primary: 199 72% 48%;
-    --primary-foreground: 40 20% 97%;
+    --primary-foreground: 0 0% 100%;
 
     /* Sage green secondary */
     --secondary: 152 28% 52%;
-    --secondary-foreground: 40 20% 97%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 38 14% 90%;
-    --muted-foreground: 35 12% 42%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 220 8% 46%;
 
-    --accent: 38 14% 91%;
-    --accent-foreground: 35 20% 12%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 230 12% 14%;
 
     --destructive: 0 50% 48%;
-    --destructive-foreground: 40 20% 97%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Soft borders */
-    --border: 214 20% 88%;
-    --input: 214 20% 88%;
+    /* Soft borders — cooler, cleaner */
+    --border: 220 14% 90%;
+    --input: 220 14% 90%;
     /* Sage green focus ring */
-    --ring: 152 28% 52%;
+    --ring: 199 72% 48%;
 
     --radius: 0.75rem;
 
@@ -133,37 +133,37 @@
   .dark {
     color-scheme: dark;
 
-    /* Deep navy base */
-    --background: 225 40% 4%;
-    --foreground: 38 16% 88%;
+    /* Deep navy base — warmer, slightly lifted */
+    --background: 228 28% 7%;
+    --foreground: 220 14% 90%;
 
-    --card: 220 30% 8%;
-    --card-foreground: 38 16% 88%;
+    --card: 224 24% 10%;
+    --card-foreground: 220 14% 90%;
 
-    --popover: 220 30% 8%;
-    --popover-foreground: 38 16% 88%;
+    --popover: 224 24% 10%;
+    --popover-foreground: 220 14% 90%;
 
     /* Calming blue primary (brighter for dark) */
     --primary: 199 68% 56%;
-    --primary-foreground: 225 40% 4%;
+    --primary-foreground: 228 28% 7%;
 
     /* Sage green secondary */
     --secondary: 152 24% 36%;
     --secondary-foreground: 152 16% 92%;
 
-    --muted: 220 24% 12%;
-    --muted-foreground: 215 12% 50%;
+    --muted: 224 20% 14%;
+    --muted-foreground: 220 10% 52%;
 
-    --accent: 220 20% 12%;
-    --accent-foreground: 38 14% 82%;
+    --accent: 224 18% 14%;
+    --accent-foreground: 220 12% 84%;
 
     --destructive: 0 42% 42%;
     --destructive-foreground: 0 0% 96%;
 
     /* Soft borders */
-    --border: 220 18% 16%;
-    --input: 220 18% 16%;
-    --ring: 152 28% 44%;
+    --border: 224 16% 18%;
+    --input: 224 16% 18%;
+    --ring: 199 68% 56%;
 
     --sidebar-background: 220 30% 8%;
     --sidebar-foreground: 38 16% 88%;
@@ -231,6 +231,26 @@
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* ─── Elevation system ─── */
+.shadow-soft {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+}
+.shadow-elevated {
+  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+}
+.shadow-elevated-hover {
+  box-shadow: 0 8px 24px -4px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.04);
+}
+.dark .shadow-soft {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+}
+.dark .shadow-elevated {
+  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+}
+.dark .shadow-elevated-hover {
+  box-shadow: 0 8px 24px -4px rgb(0 0 0 / 0.4), 0 4px 8px -4px rgb(0 0 0 / 0.25);
 }
 
 /* ═══════════════════════════════════════════

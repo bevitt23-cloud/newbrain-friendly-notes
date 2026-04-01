@@ -222,7 +222,7 @@ const FloatingStudyBar = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             onClick={() => { setBreakMinimized(false); setShowBreakModal(true); }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99] flex items-center gap-2.5 rounded-full border border-border/60 bg-card/95 px-5 py-2.5 shadow-xl backdrop-blur-xl hover:scale-105 transition-transform"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[99] flex items-center gap-2.5 rounded-full border border-border/60 bg-card/95 px-5 py-2.5 shadow-xl backdrop-blur-xl transition-transform"
           >
             <span className="text-lg">{breakMessage.emoji}</span>
             <span className="text-sm font-bold tabular-nums text-foreground">{formatTime(timeLeft)}</span>
@@ -369,7 +369,7 @@ const FloatingStudyBar = () => {
                       className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 ${
                         (activeTool === tool.id || (tool.id === "read" && isReading))
                           ? tool.activeBg
-                          : `${tool.bg} hover:scale-105`
+                          : `${tool.bg}`
                       }`}
                     >
                       <tool.icon className={`h-4 w-4 ${tool.color}`} />
@@ -527,7 +527,7 @@ const FloatingStudyBar = () => {
                               className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
                                 ytPlayer.isPlaying
                                   ? "bg-peach-200 ring-2 ring-peach-300 dark:bg-peach-500/20"
-                                  : "bg-peach-100 dark:bg-peach-500/10 hover:scale-105"
+                                  : "bg-peach-100 dark:bg-peach-500/10"
                               }`}
                             >
                               <Youtube className="h-3.5 w-3.5 text-peach-500" />
@@ -568,7 +568,7 @@ const FloatingStudyBar = () => {
                                 <button
                                   onClick={() => toggleChannel(i)}
                                   className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all ${
-                                    ch.playing ? `${colors.active} ring-2` : `${colors.inactive} hover:scale-105`
+                                    ch.playing ? `${colors.active} ring-2` : `${colors.inactive}`
                                   }`}
                                 >
                                   <Icon className={`h-3.5 w-3.5 ${colors.text}`} />

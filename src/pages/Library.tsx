@@ -464,7 +464,7 @@ const Library = () => {
                     <button
                       key={tool.id}
                       onClick={() => toggleToolSelect(tool.id)}
-                      className={`group rounded-xl border p-3 text-left transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
+                      className={`group rounded-xl border p-3 text-left transition-all duration-200 hover:shadow-md ${
                         isSelected
                           ? "border-primary/30 bg-primary/5 ring-2 ring-primary/20 shadow-sm"
                           : "border-border bg-card hover:bg-muted/50"

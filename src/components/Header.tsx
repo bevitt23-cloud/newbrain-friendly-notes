@@ -59,16 +59,13 @@ const Header = () => {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-card/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border/40 bg-background/70 backdrop-blur-2xl backdrop-saturate-150">
       <div className="container flex h-14 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="relative">
-            <img src={logo} alt="Brain-Friendly Notes" className="h-11 w-11 rounded-xl shadow-lg ring-2 ring-primary/40 group-hover:ring-primary/70 transition-all duration-200 group-hover:scale-105" />
-            <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-br from-sage-400/25 via-lavender-400/25 to-peach-400/25 opacity-0 group-hover:opacity-100 transition-opacity blur-md -z-10" />
-          </div>
-          <span className="text-lg font-extrabold tracking-tight text-foreground">
-            Brain-Friendly <span className="bg-gradient-to-r from-sage-600 via-lavender-500 to-peach-500 bg-clip-text text-transparent">Notes</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <img src={logo} alt="Brain-Friendly Notes" className="h-9 w-9 rounded-xl shadow-sm ring-1 ring-border/60 transition-shadow duration-200 group-hover:shadow-md" />
+          <span className="text-base font-bold tracking-tight text-foreground">
+            Brain-Friendly <span className="text-primary">Notes</span>
           </span>
         </Link>
 
@@ -129,7 +126,7 @@ const Header = () => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50"
+                  className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-border/60 bg-popover shadow-elevated overflow-hidden z-50"
                 >
                   {user ? (
                     <>

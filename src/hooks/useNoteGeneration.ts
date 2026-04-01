@@ -3,6 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
 
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+}
+
 export interface GenerateOptions {
   textContent?: string;
   files?: File[];

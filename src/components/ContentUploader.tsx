@@ -451,7 +451,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         disabled={!hasContent || isGenerating}
         size="lg"
         onClick={handleSubmit}
-        className="mt-6 w-full gap-2 rounded-2xl bg-gradient-to-r from-sage-600 via-sage-500 to-sage-400 py-6 text-base font-semibold shadow-lg shadow-sage-300/40 dark:shadow-none transition-all duration-300 hover:shadow-xl hover:shadow-sage-300/50 dark:hover:shadow-none hover:scale-[1.01] disabled:opacity-40 disabled:shadow-none disabled:hover:scale-100"
+        className="mt-6 w-full gap-2 rounded-2xl py-6 text-base font-semibold shadow-md transition-all duration-200 hover:shadow-lg disabled:opacity-40 disabled:shadow-none"
       >
         {isGenerating ? (
           <>

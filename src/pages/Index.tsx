@@ -119,8 +119,8 @@ const Index = () => {
         learning_mode: learningMode,
         folder: meta.folder,
         tags: meta.tags,
-        sticky_notes: [],
-        saved_videos: [],
+        sticky_notes: [] as unknown as import("@/integrations/supabase/types").Json,
+        saved_videos: [] as unknown as import("@/integrations/supabase/types").Json,
       }).select("id").single();
 
       if (saveErr) {
@@ -139,8 +139,8 @@ const Index = () => {
       await supabase
         .from("saved_notes")
         .update({
-          sticky_notes: stickyNotes,
-          saved_videos: savedVideos,
+          sticky_notes: stickyNotes as unknown as import("@/integrations/supabase/types").Json,
+          saved_videos: savedVideos as unknown as import("@/integrations/supabase/types").Json,
         })
         .eq("id", savedNoteId);
     }, 800);
@@ -157,41 +157,27 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-sage-100/70 via-sky-100/50 to-lavender-100/30 dark:from-sage-500/10 dark:via-sky-500/10 dark:to-lavender-500/10" />
-        <div className="absolute inset-0 dark:hidden">
-          <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-gradient-to-br from-sky-200/30 to-sage-200/20 blur-3xl" />
-          <div className="absolute -bottom-16 -left-16 h-60 w-60 rounded-full bg-gradient-to-tr from-sage-200/30 to-sky-200/20 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-96 rounded-full bg-gradient-to-r from-sage-300/15 via-sky-200/15 to-lavender-300/10 blur-3xl" />
-        </div>
-        {/* Watermark logo */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <img src={logo} alt="" className="h-64 w-64 md:h-80 md:w-80 rounded-[2rem] opacity-[0.10] dark:opacity-[0.07] select-none" />
-        </div>
-        <div className="container relative max-w-3xl py-6 md:py-10">
+      <div className="relative overflow-hidden bg-gradient-to-b from-muted/40 to-transparent dark:from-muted/20">
+        <div className="container relative max-w-3xl py-8 md:py-12">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <motion.div
               className="mx-auto mb-5 relative w-fit"
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 20 }}
+              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 24 }}
             >
               <img
                 src={logo}
                 alt="Brain-Friendly Notes"
-                className="h-28 w-28 md:h-36 md:w-36 rounded-[1.5rem] shadow-[0_12px_50px_-8px_hsl(var(--primary)/0.45),0_4px_16px_-4px_hsl(var(--primary)/0.25)] ring-[3px] ring-primary/30 relative z-10"
+                className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-elevated ring-1 ring-border/40 relative z-10"
               />
-              {/* Layered depth auras */}
-              <div className="absolute -inset-2 rounded-[1.8rem] bg-gradient-to-br from-sage-500/25 via-lavender-400/20 to-peach-400/15 blur-lg -z-10" />
-              <div className="absolute -inset-5 rounded-[2.5rem] bg-gradient-to-br from-sage-400/15 via-sky-300/10 to-lavender-400/10 blur-2xl -z-20" />
-              <div className="absolute -inset-8 rounded-[3rem] bg-gradient-to-tr from-primary/10 via-transparent to-lavender-500/8 blur-3xl -z-30" />
             </motion.div>
-            <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-sage-500/10 px-4 py-1.5 text-xs font-semibold text-sage-700 dark:text-sage-300 ring-1 ring-sage-500/20 backdrop-blur-sm">
-              🧠 Built for every kind of mind
+            <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-primary/8 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
+              Built for every kind of mind
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground/90 dark:text-foreground/75 md:text-3xl lg:text-4xl">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl lg:text-4xl">
               Study notes that work{" "}
-              <span className="bg-gradient-to-r from-sage-600 via-lavender-500 to-peach-500 bg-clip-text text-transparent">
+              <span className="text-primary">
                 with your brain
               </span>
             </h1>
@@ -205,9 +191,9 @@ const Index = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
                 onClick={() => navigate("/setup")}
-                className="mt-3 inline-flex items-center gap-2 rounded-xl border border-lavender-200 dark:border-lavender-400/20 bg-gradient-to-r from-lavender-50 to-peach-50 dark:from-lavender-500/10 dark:to-peach-500/10 px-5 py-2 text-sm font-semibold text-foreground shadow-sm transition-all hover:shadow-md hover:scale-[1.02]"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-soft transition-all hover:shadow-elevated"
               >
-                <Brain className="h-4 w-4 text-lavender-500" />
+                <Brain className="h-4 w-4 text-primary" />
                 Set up your learning profile
                 <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
               </motion.button>
@@ -229,10 +215,10 @@ const Index = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="overflow-hidden rounded-2xl border border-border bg-card shadow-xl shadow-sage-200/20 dark:shadow-none"
+              className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-elevated"
             >
-              <div className="h-1.5 bg-gradient-to-r from-sage-400 via-lavender-400 to-peach-400" />
-              <div className="p-5 md:p-8 bg-teal-50 dark:bg-muted/30">
+              <div className="h-1 bg-gradient-to-r from-primary/60 via-primary/40 to-primary/20" />
+              <div className="p-5 md:p-8">
                 <ContentUploader onGenerate={handleGenerate} isGenerating={isGenerating} uploadProgress={uploadProgress} />
               </div>
             </motion.div>
@@ -241,7 +227,7 @@ const Index = () => {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="rounded-2xl border border-border bg-card/60 backdrop-blur-sm p-4 md:p-5"
+              className="rounded-2xl border border-border/60 bg-card p-4 md:p-5 shadow-soft"
             >
               <NoteExtras activeExtras={activeExtras} onExtrasChange={setActiveExtras} />
             </motion.div>

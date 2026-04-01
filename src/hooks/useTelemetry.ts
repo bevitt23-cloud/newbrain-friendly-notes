@@ -43,7 +43,7 @@ export function useTelemetry() {
         await supabase.from("telemetry_events").insert({
           user_id: user.id,
           event_type: eventType,
-          event_data: eventData,
+          event_data: eventData as unknown as import("@/integrations/supabase/types").Json,
         });
       } catch (e) {
         console.error("Telemetry error:", e);

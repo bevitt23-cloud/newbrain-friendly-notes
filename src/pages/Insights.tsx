@@ -374,7 +374,7 @@ const Insights = () => {
               onClick={() => navigate("/setup")}
               className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 text-left hover:shadow-md transition-shadow group"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-lavender-200 to-peach-200 dark:from-lavender-500/20 dark:to-peach-500/20 group-hover:scale-105 transition-transform">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-lavender-200 to-peach-200 dark:from-lavender-500/20 dark:to-peach-500/20">
                 <RotateCcw className="h-6 w-6 text-lavender-600 dark:text-lavender-300" />
               </div>
               <div>
@@ -388,7 +388,7 @@ const Insights = () => {
               onClick={() => navigate("/settings")}
               className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 text-left hover:shadow-md transition-shadow group"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-200 to-sky-200 dark:from-sage-500/20 dark:to-sky-300/20 group-hover:scale-105 transition-transform">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-sage-200 to-sky-200 dark:from-sage-500/20 dark:to-sky-300/20">
                 <Settings2 className="h-6 w-6 text-sage-600 dark:text-sage-300" />
               </div>
               <div>

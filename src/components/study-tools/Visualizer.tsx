@@ -196,7 +196,7 @@ function MindMapView({ node, depth = 0, parentColor, notesContext }: { node: Min
       <InteractiveNode label={node.label} notesContext={notesContext}>
         <button
           onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-          className={`rounded-2xl border-2 ${c.border} ${c.bg} px-4 py-2 text-sm font-semibold ${c.text} shadow-sm transition-all hover:shadow-md hover:scale-[1.03] cursor-pointer`}
+          className={`rounded-2xl border-2 ${c.border} ${c.bg} px-4 py-2 text-sm font-semibold ${c.text} shadow-sm transition-all hover:shadow-md cursor-pointer`}
         >
           {node.label}
           {node.children && node.children.length > 0 && (

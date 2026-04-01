@@ -194,7 +194,7 @@ async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string):
     const textRegex = /<text[^>]*>([\s\S]*?)<\/text>/g;
     let match;
     while ((match = textRegex.exec(captionXml)) !== null) {
-      let text = match[1]
+      const text = match[1]
         .replace(/&amp;/g, "&")
         .replace(/&lt;/g, "<")
         .replace(/&gt;/g, ">")

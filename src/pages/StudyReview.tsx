@@ -85,7 +85,7 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
         setStickyNotes(data.sticky_notes as any[]);
       }
       if (data?.saved_videos && Array.isArray(data.saved_videos)) {
-        setSavedVideos(data.saved_videos as SavedExplainerVideo[]);
+        setSavedVideos(data.saved_videos as unknown as SavedExplainerVideo[]);
       }
     })();
   }, [noteId]);

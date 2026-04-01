@@ -30,19 +30,13 @@ const features = [
 
 const About = () => (
   <Layout>
-    {/* Mesmerizing hero with layered gradients */}
-    <div className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-lavender-100 via-sage-50 to-peach-100 dark:from-lavender-500/10 dark:via-sage-500/10 dark:to-peach-500/10" />
-      <div className="absolute inset-0">
-        <div className="absolute -top-24 right-10 h-72 w-72 rounded-full bg-gradient-to-br from-sage-300/40 to-sage-200/20 dark:from-sage-500/10 dark:to-sage-400/5 blur-3xl" />
-        <div className="absolute bottom-0 left-10 h-56 w-56 rounded-full bg-gradient-to-tr from-peach-300/40 to-peach-200/20 dark:from-peach-500/10 dark:to-peach-400/5 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-48 w-48 rounded-full bg-gradient-to-r from-lavender-300/30 to-sky-200/20 dark:from-lavender-500/8 dark:to-sky-300/5 blur-3xl" />
-      </div>
-      <div className="container relative max-w-4xl py-16 md:py-24 text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-          <img src={logo} alt="Brain-Friendly Notes" className="mx-auto mb-6 h-20 w-20 rounded-2xl shadow-xl shadow-sage-400/20 ring-2 ring-white/60 dark:ring-white/10" />
+    {/* Clean hero */}
+    <div className="relative overflow-hidden bg-gradient-to-b from-muted/40 to-transparent dark:from-muted/20">
+      <div className="container relative max-w-4xl py-14 md:py-20 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <img src={logo} alt="Brain-Friendly Notes" className="mx-auto mb-6 h-16 w-16 rounded-2xl shadow-elevated ring-1 ring-border/40" />
           <h1 className="text-3xl font-extrabold text-foreground md:text-4xl lg:text-5xl">
-            Notes that work <span className="bg-gradient-to-r from-sage-600 via-lavender-500 to-peach-500 bg-clip-text text-transparent italic">with your brain</span>
+            Notes that work <span className="text-primary italic">with your brain</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
             Built by one person who understands that for brains wired differently — like those seen in ADHD or dyslexia — studying just looks different. And that's okay.
@@ -62,7 +56,7 @@ const About = () => (
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 + i * 0.1 }}
-              className={`group relative overflow-hidden rounded-2xl border ${step.border} bg-gradient-to-br ${step.color} p-6 transition-all duration-300 hover:shadow-lg hover:scale-[1.02]`}
+              className={`group relative overflow-hidden rounded-2xl border ${step.border} bg-gradient-to-br ${step.color} p-6 shadow-soft transition-shadow duration-200 hover:shadow-elevated`}
             >
               <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${step.gradient}`} />
               <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${step.accent} text-sm font-bold ${step.numColor}`}>
@@ -88,9 +82,9 @@ const About = () => (
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + i * 0.04 }}
-              className={`group rounded-2xl border ${feature.border} bg-gradient-to-br ${feature.color} p-5 transition-all duration-300 hover:shadow-md hover:scale-[1.02]`}
+              className={`group rounded-2xl border ${feature.border} bg-gradient-to-br ${feature.color} p-5 shadow-soft transition-shadow duration-200 hover:shadow-elevated`}
             >
-              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${feature.iconBg} transition-transform duration-300 group-hover:scale-110`}>
+              <div className={`mb-3 flex h-9 w-9 items-center justify-center rounded-xl ${feature.iconBg}`}>
                 <feature.icon className={`h-4.5 w-4.5 ${feature.iconColor}`} />
               </div>
               <h3 className="text-sm font-bold text-foreground">{feature.title}</h3>
@@ -107,9 +101,8 @@ const About = () => (
         transition={{ delay: 0.3 }}
         className="mb-20 relative overflow-hidden rounded-2xl"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-peach-100 via-lavender-50 to-sage-50 dark:from-peach-500/10 dark:via-lavender-500/5 dark:to-sage-500/5" />
-        <div className="absolute inset-0 bg-gradient-to-r from-peach-200/20 via-transparent to-lavender-200/20 dark:from-peach-500/5 dark:to-lavender-500/5" />
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-peach-400 via-sage-400 to-lavender-400 dark:from-peach-400/60 dark:via-sage-400/60 dark:to-lavender-400/60" />
+        <div className="absolute inset-0 bg-card border border-border/60 rounded-2xl" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/50 via-primary/30 to-primary/10 rounded-t-2xl" />
         <div className="relative p-8 md:p-12">
           <h2 className="mb-5 text-xl font-bold text-foreground">Hi! I'm B. 👋</h2>
           <div className="space-y-4 text-sm leading-relaxed text-muted-foreground">
@@ -128,13 +121,13 @@ const About = () => (
         transition={{ delay: 0.35 }}
         className="relative overflow-hidden rounded-2xl"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-sky-50 via-sage-50 to-lavender-50 dark:from-sky-300/10 dark:via-sage-500/5 dark:to-lavender-500/5" />
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-sky-300 via-sage-400 to-lavender-400 dark:from-sky-300/60 dark:via-sage-400/60 dark:to-lavender-400/60" />
+        <div className="absolute inset-0 bg-card border border-border/60 rounded-2xl" />
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/40 via-primary/20 to-transparent rounded-t-2xl" />
         <div className="relative p-8 md:p-12 text-center">
           <h2 className="text-xl font-bold text-foreground">Want the app? 📱</h2>
           <p className="mt-2 text-sm text-muted-foreground">No download required — add it to your home screen.</p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-xl border border-sky-200 dark:border-sky-200/30 bg-card/80 backdrop-blur-sm p-5 text-left transition-all hover:shadow-md hover:scale-[1.01]">
+            <div className="rounded-xl border border-sky-200 dark:border-sky-200/30 bg-card/80 backdrop-blur-sm p-5 text-left transition-all hover:shadow-md hover:shadow-elevated">
               <p className="mb-3 text-sm font-bold text-foreground">🍎 iPhone / iPad</p>
               <ol className="space-y-1.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-sky-300 shrink-0" /> Open in <strong>Safari</strong></li>
@@ -143,7 +136,7 @@ const About = () => (
                 <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-sage-500 shrink-0" /> Done! 🎉</li>
               </ol>
             </div>
-            <div className="rounded-xl border border-sky-200 dark:border-sky-200/30 bg-card/80 backdrop-blur-sm p-5 text-left transition-all hover:shadow-md hover:scale-[1.01]">
+            <div className="rounded-xl border border-sky-200 dark:border-sky-200/30 bg-card/80 backdrop-blur-sm p-5 text-left transition-all hover:shadow-md hover:shadow-elevated">
               <p className="mb-3 text-sm font-bold text-foreground">🤖 Android</p>
               <ol className="space-y-1.5 text-xs text-muted-foreground">
                 <li className="flex items-center gap-2"><ArrowRight className="h-3 w-3 text-sky-300 shrink-0" /> Open in <strong>Chrome</strong></li>

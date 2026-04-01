@@ -130,7 +130,7 @@ const CognitiveWizard = () => {
                 </div>
                 <button
                   onClick={() => setStep(1)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sage-500 to-lavender-500 px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:shadow-xl dark:shadow-none transition-all hover:scale-[1.02]"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sage-500 to-lavender-500 px-6 py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:shadow-xl dark:shadow-none transition-all"
                 >
                   Let's go <ArrowRight className="h-4 w-4" />
                 </button>
@@ -442,7 +442,7 @@ const CognitiveWizard = () => {
                 <button
                   onClick={handleFinish}
                   disabled={saving}
-                  className="w-full rounded-xl bg-gradient-to-r from-sage-500 via-lavender-500 to-peach-500 py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:shadow-xl dark:shadow-none transition-all hover:scale-[1.01] disabled:opacity-50"
+                  className="w-full rounded-xl bg-gradient-to-r from-sage-500 via-lavender-500 to-peach-500 py-3 text-sm font-semibold text-primary-foreground shadow-lg hover:shadow-xl dark:shadow-none transition-all disabled:opacity-50"
                 >
                   {saving ? "Saving…" : "Save & Start Learning"}
                 </button>
