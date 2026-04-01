@@ -7,15 +7,21 @@ import DOMPurify from "dompurify";
  */
 export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
-    ADD_TAGS: ["section", "details", "summary"],
+    ADD_TAGS: ["section", "details", "summary", "button", "textarea"],
     ADD_ATTR: [
       "data-definition",
       "data-query",
       "data-mindmap",
       "data-flowchart",
+      "data-section-color",
+      "data-section",
+      "data-section-index",
+      "data-concept",
       "tabindex",
       "role",
       "aria-label",
+      "rows",
+      "placeholder",
     ],
     FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "form", "input"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],

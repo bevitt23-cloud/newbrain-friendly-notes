@@ -279,9 +279,15 @@
   border-style: solid;
 }
 
-/* Generating state — smooth content appearance */
-.generated-notes.generating > section,
-.generated-notes.generating > div > section {
+/* Generating state — neutral bg prevents nth-of-type color shifting as sections stream in */
+.generated-notes.generating > section:not([data-section-color]),
+.generated-notes.generating > div > section:not([data-section-color]) {
+  animation: section-fade-in 0.3s ease-out;
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+.generated-notes.generating > section[data-section-color],
+.generated-notes.generating > div > section[data-section-color] {
   animation: section-fade-in 0.3s ease-out;
 }
 @keyframes section-fade-in {
