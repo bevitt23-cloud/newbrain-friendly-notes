@@ -1,19 +1,12 @@
 import { useEffect, useCallback } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
-
-const AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`;
+import { supabase } from "@/integrations/supabase/client";
 
 async function getAIFeedback(prompt: string): Promise<string> {
-  const resp = await fetch(AI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-    },
-    body: JSON.stringify({ text: prompt, mode: "feedback" }),
+  const { data, error } = await supabase.functions.invoke("explain-text", {
+    body: { text: prompt, mode: "feedback" },
   });
-  if (!resp.ok) throw new Error("AI feedback failed");
-  const data = await resp.json();
+  if (error) throw error;
   return data.explanation || data.result || "Unable to process feedback.";
 }
 

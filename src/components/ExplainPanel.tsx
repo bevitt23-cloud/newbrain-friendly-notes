@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Loader2, X, Send, ChevronDown, ChevronUp, Sparkles, MessageCircleQuestion, Quote } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -103,19 +104,10 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
   const handleExplain = async () => {
     setIsExplaining(true);
     try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ text: selectedText, context: notesContext?.slice(0, 2000) }),
-        }
-      );
-      if (!resp.ok) throw new Error("Failed");
-      const data = await resp.json();
+      const { data, error } = await supabase.functions.invoke("explain-text", {
+        body: { text: selectedText, context: notesContext?.slice(0, 2000) },
+      });
+      if (error) throw error;
       setChatMessages([{ role: "assistant", content: data.explanation }]);
     } catch {
       setChatMessages([{ role: "assistant", content: "Could not explain this text. Please try again." }]);
@@ -133,24 +125,15 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
     setIsChatLoading(true);
 
     try {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            text: selectedText,
-            followUp: question,
-            chatHistory: newMessages,
-            context: notesContext?.slice(0, 2000),
-          }),
-        }
-      );
-      if (!resp.ok) throw new Error("Failed");
-      const data = await resp.json();
+      const { data, error } = await supabase.functions.invoke("explain-text", {
+        body: {
+          text: selectedText,
+          followUp: question,
+          chatHistory: newMessages,
+          context: notesContext?.slice(0, 2000),
+        },
+      });
+      if (error) throw error;
       setChatMessages((prev) => [...prev, { role: "assistant", content: data.explanation }]);
     } catch {
       setChatMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I couldn't process that. Try again." }]);

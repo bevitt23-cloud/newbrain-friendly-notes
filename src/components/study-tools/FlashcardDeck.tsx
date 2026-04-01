@@ -12,6 +12,7 @@ interface Card {
 export default function FlashcardDeck({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
   const { track } = useTelemetry();
   const [cards, setCards] = useState<Card[]>([]);
+  const [parseError, setParseError] = useState(false);
   const [current, setCurrent] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [mastered, setMastered] = useState<Set<string>>(new Set());
@@ -26,8 +27,24 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
       const cleaned = data.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
       setCards(parsed.map((c: any, i: number) => ({ id: c.id || String(i), front: c.front, back: c.back })));
-    } catch { setCards([]); }
+      setParseError(false);
+    } catch {
+      setCards([]);
+      setParseError(true);
+    }
   }, [data]);
+
+  if (parseError) {
+    return (
+      <div className="rounded-2xl border border-amber-200 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-4 space-y-2">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Flashcard data couldn't be read. Try generating again.</p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer hover:text-foreground">Show raw output</summary>
+          <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 max-h-40 overflow-auto">{data}</pre>
+        </details>
+      </div>
+    );
+  }
 
   if (!cards.length) return <p className="text-sm text-muted-foreground">No flashcards generated.</p>;
 

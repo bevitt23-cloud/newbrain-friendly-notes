@@ -47,6 +47,47 @@ async function extractDocxText(file: File): Promise<string> {
   return result.value;
 }
 
+async function extractPptxText(file: File): Promise<string> {
+  console.log(`[PPTX Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+  const JSZip = (await import("jszip")).default;
+  const arrayBuffer = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(arrayBuffer);
+
+  // PPTX is a ZIP containing ppt/slides/slide1.xml, slide2.xml, etc.
+  const slideFiles = Object.keys(zip.files)
+    .filter((name) => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+    .sort((a, b) => {
+      const numA = parseInt(a.match(/slide(\d+)/)?.[1] || "0", 10);
+      const numB = parseInt(b.match(/slide(\d+)/)?.[1] || "0", 10);
+      return numA - numB;
+    });
+
+  if (slideFiles.length === 0) {
+    console.warn(`[PPTX Extract] No slide XML files found in "${file.name}"`);
+    return "";
+  }
+
+  const slideTexts: string[] = [];
+  for (const slidePath of slideFiles) {
+    const xml = await zip.files[slidePath].async("text");
+    // Extract text from <a:t> tags (DrawingML text runs)
+    const texts: string[] = [];
+    const regex = /<a:t>([\s\S]*?)<\/a:t>/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(xml)) !== null) {
+      const text = match[1].trim();
+      if (text) texts.push(text);
+    }
+    if (texts.length > 0) {
+      slideTexts.push(texts.join(" "));
+    }
+  }
+
+  const fullText = slideTexts.join("\n\n");
+  console.log(`[PPTX Extract] Extraction complete: ${fullText.length} characters from ${slideFiles.length} slides`);
+  return fullText;
+}
+
 async function extractPlainText(file: File): Promise<string> {
   console.log(`[Text Extract] Reading "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
   const text = await file.text();
@@ -61,7 +102,7 @@ export type ExtractionResult = {
 
 /**
  * Extracts text from a file client-side.
- * Supports: PDF, DOCX, DOC, TXT, MD, CSV
+ * Supports: PDF, DOCX, DOC, PPTX, PPT, TXT, MD, CSV
  * Returns null for unsupported types (images, video, etc.)
  */
 export async function extractTextFromFile(
@@ -76,6 +117,8 @@ export async function extractTextFromFile(
       text = await extractPdfText(file);
     } else if (ext === "docx" || ext === "doc") {
       text = await extractDocxText(file);
+    } else if (ext === "pptx" || ext === "ppt") {
+      text = await extractPptxText(file);
     } else if (["txt", "md", "csv"].includes(ext)) {
       text = await extractPlainText(file);
     } else {
@@ -115,7 +158,7 @@ export async function extractTextFromFile(
 
 /** File extensions that can be extracted client-side */
 export const CLIENT_EXTRACTABLE_EXTENSIONS = new Set([
-  "pdf", "docx", "doc", "txt", "md", "csv",
+  "pdf", "docx", "doc", "pptx", "ppt", "txt", "md", "csv",
 ]);
 
 export function isClientExtractable(fileName: string): boolean {

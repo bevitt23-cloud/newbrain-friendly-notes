@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
+import { DEFAULT_FOLDER } from "@/lib/constants";
 
 interface ContentUploaderProps {
   onGenerate: (data: {
@@ -31,14 +32,14 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [instructions, setInstructions] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [folder, setFolder] = useState("Unsorted");
+  const [folder, setFolder] = useState(DEFAULT_FOLDER);
   const [tagsInput, setTagsInput] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [shouldSaveToLibrary, setShouldSaveToLibrary] = useState(true);
   const [libraryFolders, setLibraryFolders] = useState<string[]>([]);
 
-  const DEFAULT_FOLDERS = ["Unsorted"] as const;
+  const DEFAULT_FOLDERS = [DEFAULT_FOLDER] as const;
 
   // Fetch existing folders from user's library
   useEffect(() => {
@@ -145,7 +146,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const parsedTags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
 
   const handleSubmit = () => {
-    const common = { instructions, folder: shouldSaveToLibrary ? folder : "Unsorted", tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary };
+    const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary };
     if (activeTab === "text" && text.trim()) {
       onGenerate({ textContent: text.trim(), ...common });
     } else if (activeTab === "url" && url.trim()) {

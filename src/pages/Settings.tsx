@@ -36,7 +36,7 @@ function shallowEqual(a: Record<string, unknown>, b: Record<string, unknown>) {
 const APPEARANCE_KEYS: (keyof UserPreferences)[] = ["default_dark_mode"];
 
 const FONT_KEYS: (keyof UserPreferences)[] = [
-  "dyslexia_font", "bionic_reading", "font_size", "line_spacing", "letter_spacing", "word_spacing",
+  "dyslexia_font", "adhd_font", "bionic_reading", "font_size", "line_spacing", "letter_spacing", "word_spacing",
 ];
 
 const STUDY_KEYS: (keyof UserPreferences)[] = [
@@ -180,12 +180,42 @@ const Settings = () => {
 
         {/* Font & Reading */}
         <Section icon={Type} title="Font & Reading" color="text-sage-500">
-          <Toggle
-            value={font.staged.dyslexia_font}
-            onChange={(v) => font.update({ dyslexia_font: v })}
-            label="Readable Font"
-            desc="Use the OpenDyslexic typeface for improved readability"
-          />
+          {/* Font Style Picker */}
+          <div className="space-y-2">
+            <div className="text-xs font-semibold text-foreground">Font Style</div>
+            {([
+              { value: "lexend" as const, label: "Lexend", desc: "Clean, expanded spacing — optimized for ADHD focus", font: "'Lexend', sans-serif", color: "border-sage-300 bg-sage-50 dark:border-sage-400/30 dark:bg-sage-500/10" },
+              { value: "opendyslexic" as const, label: "OpenDyslexic", desc: "Bottom-weighted letters — optimized for dyslexia readability", font: "'OpenDyslexic', sans-serif", color: "border-lavender-300 bg-lavender-50 dark:border-lavender-400/30 dark:bg-lavender-500/10" },
+              { value: "garamond" as const, label: "EB Garamond", desc: "Classic serif — comfortable traditional reading", font: "'EB Garamond', Georgia, serif", color: "border-sky-300 bg-sky-50 dark:border-sky-400/30 dark:bg-sky-500/10" },
+            ]).map((opt) => {
+              const isActive =
+                opt.value === "opendyslexic" ? !!font.staged.dyslexia_font :
+                opt.value === "lexend" ? (!font.staged.dyslexia_font && !!font.staged.adhd_font) :
+                (!font.staged.dyslexia_font && !font.staged.adhd_font);
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    if (opt.value === "opendyslexic") font.update({ dyslexia_font: true, adhd_font: false });
+                    else if (opt.value === "lexend") font.update({ dyslexia_font: false, adhd_font: true });
+                    else font.update({ dyslexia_font: false, adhd_font: false });
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    isActive ? `${opt.color} ring-1 ring-primary/20` : "border-border bg-card hover:bg-muted/40"
+                  }`}
+                >
+                  <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${isActive ? "border-primary" : "border-muted-foreground/30"}`}>
+                    {isActive && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-foreground" style={{ fontFamily: opt.font }}>{opt.label}</div>
+                    <div className="text-xs text-muted-foreground">{opt.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
           <Toggle
             value={font.staged.bionic_reading}
             onChange={(v) => font.update({ bionic_reading: v })}
@@ -204,7 +234,11 @@ const Settings = () => {
           <div
             className="rounded-xl border border-border bg-background p-4 text-foreground"
             style={{
-              fontFamily: font.staged.dyslexia_font ? "'OpenDyslexic', sans-serif" : "'Lexend', sans-serif",
+              fontFamily: font.staged.dyslexia_font
+                ? "'OpenDyslexic', sans-serif"
+                : font.staged.adhd_font
+                  ? "'Lexend', sans-serif"
+                  : "'EB Garamond', Georgia, serif",
               fontSize: `${font.staged.font_size}rem`,
               lineHeight: font.staged.line_spacing,
               letterSpacing: `${font.staged.letter_spacing}em`,

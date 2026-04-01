@@ -6,19 +6,19 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 const FONT_MAP: Record<string, string> = {
   "font-opendyslexic": "'OpenDyslexic', sans-serif",
   "font-lexend": "'Lexend', system-ui, sans-serif",
-  "font-sans": "'Inter', system-ui, sans-serif",
+  "font-garamond": "'EB Garamond', 'Georgia', serif",
 };
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { preferences } = useUserPreferences();
 
-  // Establish the Font Hierarchy
-  let fontClass = "font-sans"; // The fallback default
+  // Three-way font selection: OpenDyslexic > Lexend > EB Garamond (default)
+  let fontClass = "font-garamond";
 
   if (preferences.dyslexia_font) {
-    fontClass = "font-opendyslexic"; // Highest priority
+    fontClass = "font-opendyslexic";
   } else if (preferences.adhd_font) {
-    fontClass = "font-lexend"; // Second priority
+    fontClass = "font-lexend";
   }
 
   // Apply font and dyslexia body class

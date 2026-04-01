@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { callAIStream } from "../_shared/callAI.ts";
+import { callAI } from "../_shared/callAI.ts";
 import { getAuthUser, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -16,7 +17,14 @@ serve(async (req) => {
     const user = await getAuthUser(req);
     if (!user) return unauthorizedResponse(corsHeaders);
 
-    const { text, context } = await req.json();
+    const { text, context, followUp, chatHistory } = await req.json();
+
+    if (!text) {
+      return new Response(
+        JSON.stringify({ error: "No text provided to explain" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const systemPrompt = `You are an expert, highly factual academic tutor. The user has highlighted a specific concept from their notes and requested a deeper explanation ("Dive Deeper").
 
@@ -26,21 +34,35 @@ CRITICAL RULES:
 3. Explain the concept clearly, providing an analogy or an example if helpful.
 4. Output your response using basic HTML formatting (<p>, <strong>, <ul>, <li>) for maximum readability. DO NOT use markdown code fences.`;
 
-    const userPrompt = `Here is the surrounding context:\n"${context}"\n\nPlease deeply explain this specific highlighted text:\n"${text}"`;
+    const messages: Array<{ role: string; content: string }> = [];
 
-    const streamResult = await callAIStream({
+    if (chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0) {
+      for (const msg of chatHistory) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+      if (followUp) {
+        messages.push({ role: "user", content: followUp });
+      }
+    } else {
+      const userPrompt = `Here is the surrounding context:\n"${context || ""}"\n\nPlease deeply explain this specific highlighted text:\n"${text}"`;
+      messages.push({ role: "user", content: userPrompt });
+    }
+
+    const result = await callAI({
       systemPrompt,
-      messages: [{ role: "user", content: [{ type: "text", text: userPrompt }] }],
-      stream: true,
+      messages,
+      maxTokens: 2048,
     });
 
-    return new Response(streamResult.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-    });
+    return new Response(
+      JSON.stringify({ explanation: result.content }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("explain-text error:", e);
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

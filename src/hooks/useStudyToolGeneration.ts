@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const TOOL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-study-tool`;
 
@@ -15,11 +16,14 @@ export function useStudyToolGeneration() {
     setResult(null);
 
     try {
+      const session = await supabase.auth.getSession();
+      const token = session.data?.session?.access_token;
       const resp = await fetch(TOOL_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ tool, notesHtml, profilePrompt }),
       });

@@ -18,6 +18,7 @@ export default {
         sans: ["'Inter'", "system-ui", "sans-serif"],
         opendyslexic: ["'OpenDyslexic'", "sans-serif"],
         lexend: ["'Lexend'", "system-ui", "sans-serif"],
+        garamond: ["'EB Garamond'", "'Georgia'", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, SlidersHorizontal, Youtube } from "lucide-react";
+import { ChevronDown, SlidersHorizontal, Youtube, Network, GitBranch } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface NoteInclude {
@@ -21,6 +21,20 @@ const noteIncludes: NoteInclude[] = [
   { id: "recall", label: "Recall Prompts", emoji: "💭", color: "border-sky-400 bg-sky-200 text-sky-700 dark:border-sky-200/40 dark:bg-sky-300/25 dark:text-sky-200" },
   { id: "simplify", label: "Write This Down", emoji: "✏️", color: "border-sage-500 bg-sage-200 text-sage-700 dark:border-sage-300/40 dark:bg-sage-500/25 dark:text-sage-200" },
   { id: "why_care", label: "Why Should I Care?", emoji: "🔥", color: "border-amber-400 bg-amber-200 text-amber-700 dark:border-amber-400/40 dark:bg-amber-400/25 dark:text-amber-200" },
+  {
+    id: "mindmap",
+    label: "Mind Map",
+    description: "Generates an interactive mind map visualization of key concepts and their relationships.",
+    icon: Network,
+    color: "border-emerald-300 bg-emerald-100 text-emerald-700 dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-200",
+  },
+  {
+    id: "flowchart",
+    label: "Process Flow",
+    description: "Generates a step-by-step flowchart showing how concepts connect in sequence.",
+    icon: GitBranch,
+    color: "border-violet-300 bg-violet-100 text-violet-700 dark:border-violet-400/40 dark:bg-violet-500/20 dark:text-violet-200",
+  },
   {
     id: "visual_learner",
     label: "Visual Learner (In-App Videos)",

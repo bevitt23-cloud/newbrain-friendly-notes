@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import LearningModeSelector from "@/components/LearningModeSelector";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { LEARNING_MODE } from "@/lib/constants";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,12 +25,14 @@ const Header = () => {
     void updatePreferences({ default_dark_mode: nextIsDark });
   };
 
-  const learningMode = preferences.dyslexia_font ? "dyslexia" : "adhd";
+  const learningMode = preferences.dyslexia_font ? LEARNING_MODE.DYSLEXIA : preferences.adhd_font ? LEARNING_MODE.ADHD : LEARNING_MODE.NEUROTYPICAL;
   const handleModeChange = (mode: string) => {
-    if (mode === "dyslexia") {
+    if (mode === LEARNING_MODE.DYSLEXIA) {
       updatePreferences({ dyslexia_font: true, adhd_font: false });
-    } else {
+    } else if (mode === LEARNING_MODE.ADHD) {
       updatePreferences({ dyslexia_font: false, adhd_font: true });
+    } else {
+      updatePreferences({ dyslexia_font: false, adhd_font: false });
     }
   };
   const handleBionicChange = (enabled: boolean) => {

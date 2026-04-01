@@ -19,6 +19,7 @@ import { motion } from "framer-motion";
 import { Brain, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpeg";
+import { LEARNING_MODE, DEFAULT_FOLDER } from "@/lib/constants";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -31,10 +32,10 @@ const Index = () => {
     savedNoteId, savedNoteTitle, setSavedNoteId, setSavedNoteTitle, autoSavedRef,
   } = useNotesContext();
 
-  const learningMode = preferences.dyslexia_font ? "dyslexia" : "adhd";
+  const learningMode = preferences.dyslexia_font ? LEARNING_MODE.DYSLEXIA : preferences.adhd_font ? LEARNING_MODE.ADHD : LEARNING_MODE.NEUROTYPICAL;
   const bionicEnabled = preferences.bionic_reading;
-  const pendingMetaRef = useRef<{ folder: string; tags: string[]; shouldSaveToLibrary: boolean }>({ folder: "Unsorted", tags: [], shouldSaveToLibrary: true });
-  const [activeExtras, setActiveExtras] = useState<string[]>([]);
+  const pendingMetaRef = useRef<{ folder: string; tags: string[]; shouldSaveToLibrary: boolean }>({ folder: DEFAULT_FOLDER, tags: [], shouldSaveToLibrary: true });
+  const [activeExtras, setActiveExtras] = useState<string[]>(["visual_learner"]);
   const [stickyNotes, setStickyNotes] = useState<StickyNoteData[]>([]);
   const [savedVideos, setSavedVideos] = useState<SavedExplainerVideo[]>([]);
   const [dyslexiaSettings, setDyslexiaSettings] = useState({
@@ -204,7 +205,7 @@ const Index = () => {
             )}
 
             <div className="mt-4 flex items-center justify-center gap-3">
-              {learningMode === "dyslexia" && (
+              {learningMode === LEARNING_MODE.DYSLEXIA && (
                 <DyslexiaSettings settings={dyslexiaSettings} onChange={setDyslexiaSettings} />
               )}
             </div>
@@ -243,7 +244,7 @@ const Index = () => {
             html={generatedHtml}
             isGenerating={isGenerating}
             bionicEnabled={bionicEnabled}
-            dyslexiaMode={learningMode === "dyslexia"}
+            dyslexiaMode={learningMode === LEARNING_MODE.DYSLEXIA}
             dyslexiaSettings={dyslexiaSettings}
             onReset={reset}
             quizQuestions={quizQuestions}

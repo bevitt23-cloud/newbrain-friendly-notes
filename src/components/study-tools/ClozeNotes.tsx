@@ -13,6 +13,7 @@ interface ClozeData {
 export default function ClozeNotes({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
   const { track } = useTelemetry();
   const [cloze, setCloze] = useState<ClozeData | null>(null);
+  const [parseError, setParseError] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [incorrect, setIncorrect] = useState<Record<string, boolean>>({});
@@ -24,13 +25,29 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
       const cleaned = data.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
       setCloze(parsed);
+      setParseError(false);
       // Reset all state on new data
       setUserAnswers({});
       setChecked({});
       setIncorrect({});
       setStarred(new Set());
-    } catch { setCloze(null); }
+    } catch {
+      setCloze(null);
+      setParseError(true);
+    }
   }, [data]);
+
+  if (parseError) {
+    return (
+      <div className="rounded-2xl border border-amber-200 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-4 space-y-2">
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Fill-in-the-blank data couldn't be read. Try generating again.</p>
+        <details className="text-xs text-muted-foreground">
+          <summary className="cursor-pointer hover:text-foreground">Show raw output</summary>
+          <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-muted/50 p-3 max-h-40 overflow-auto">{data}</pre>
+        </details>
+      </div>
+    );
+  }
 
   if (!cloze) return <p className="text-sm text-muted-foreground">Could not parse cloze data.</p>;
 

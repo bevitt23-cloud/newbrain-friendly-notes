@@ -117,6 +117,8 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
     );
   }, [selected, notesHtml, generate, profile.promptAppend, autoSave]);
 
+  const isAnyGenerating = tabs.some((t) => t.generating);
+
   const closeTab = (tabId: string) => {
     setTabs((prev) => {
       const remaining = prev.filter((t) => t.id !== tabId);
@@ -236,11 +238,18 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
                 })}
               </div>
               <button
-                disabled={selected.size === 0 || (!notesHtml && !selected.has("socratic"))}
+                disabled={selected.size === 0 || (!notesHtml && !selected.has("socratic")) || isAnyGenerating}
                 onClick={handleGenerate}
                 className="w-full rounded-2xl bg-gradient-to-r from-sage-600 to-sage-500 py-3 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-40"
               >
-                Generate {selected.size > 0 ? `${selected.size} Tool${selected.size > 1 ? "s" : ""}` : "Tools"}
+                {isAnyGenerating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating...
+                  </span>
+                ) : (
+                  <>Generate {selected.size > 0 ? `${selected.size} Tool${selected.size > 1 ? "s" : ""}` : "Tools"}</>
+                )}
               </button>
             </div>
           </TabsContent>

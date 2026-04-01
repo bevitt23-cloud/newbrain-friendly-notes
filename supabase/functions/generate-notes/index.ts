@@ -123,20 +123,22 @@ function normalizeWebsiteUrl(input: string): string | null {
   }
 }
 
-async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string): Promise<string | null> {
+async function callInnerTubePlayer(
+  videoId: string,
+  clientName: string,
+  clientVersion: string,
+  apiKey: string,
+  scrapingBeeKey?: string,
+): Promise<any | null> {
+  const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`;
+  const playerBody = JSON.stringify({
+    context: { client: { clientName, clientVersion } },
+    videoId,
+  });
+
   try {
-    const INNERTUBE_API_KEY = Deno.env.get("INNERTUBE_API_KEY");
-    if (!INNERTUBE_API_KEY) return null;
-    const playerUrl = `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_API_KEY}`;
-    const playerBody = JSON.stringify({
-      context: { client: { clientName: "ANDROID", clientVersion: "20.10.38" } },
-      videoId: videoId,
-    });
-
-    let playerData: any;
-
     if (scrapingBeeKey) {
-      console.log("Calling InnerTube API via ScrapingBee for video:", videoId);
+      console.log(`Calling InnerTube (${clientName}) via ScrapingBee for video: ${videoId}`);
       const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${scrapingBeeKey}&url=${encodeURIComponent(playerUrl)}&render_js=false&premium_proxy=true&forward_headers=true`;
       const resp = await fetch(proxyUrl, {
         method: "POST",
@@ -144,80 +146,185 @@ async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string):
         body: playerBody,
       });
       if (!resp.ok) {
-        console.error("ScrapingBee InnerTube call failed:", resp.status);
+        console.error(`ScrapingBee InnerTube (${clientName}) failed: ${resp.status}`);
         return null;
       }
-      playerData = await resp.json();
+      return await resp.json();
     } else {
-      console.log("Calling InnerTube player API directly for video:", videoId);
+      console.log(`Calling InnerTube (${clientName}) directly for video: ${videoId}`);
       const resp = await fetch(playerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: playerBody,
       });
       if (!resp.ok) {
-        console.error("InnerTube player API failed:", resp.status);
+        console.error(`InnerTube (${clientName}) failed: ${resp.status}`);
         return null;
       }
-      playerData = await resp.json();
+      return await resp.json();
     }
-
-    const videoTitle = playerData?.videoDetails?.title || "";
-    const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-
-    if (!captionTracks || captionTracks.length === 0) {
-      console.log("No captions available for video:", videoId);
-      return "NO_CAPTIONS";
-    }
-
-    console.log(`Found ${captionTracks.length} caption tracks for "${videoTitle}"`);
-
-    const englishTrack = captionTracks.find(
-      (t: any) => t.languageCode === "en" || t.languageCode?.startsWith("en")
-    );
-    const track = englishTrack || captionTracks[0];
-    if (!track?.baseUrl) return null;
-
-    const captionResp = await fetch(track.baseUrl);
-    if (!captionResp.ok) {
-      console.error("Caption fetch failed:", captionResp.status);
-      return null;
-    }
-
-    const captionXml = await captionResp.text();
-    if (!captionXml || captionXml.length === 0) {
-      console.error("Caption XML is empty");
-      return null;
-    }
-
-    const textSegments: string[] = [];
-    const textRegex = /<text[^>]*>([\s\S]*?)<\/text>/g;
-    let match;
-    while ((match = textRegex.exec(captionXml)) !== null) {
-      const text = match[1]
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\n/g, " ")
-        .trim();
-      if (text) textSegments.push(text);
-    }
-
-    if (textSegments.length === 0) {
-      console.error("No text segments found in caption XML");
-      return null;
-    }
-
-    const transcript = textSegments.join(" ");
-    console.log(`Fetched transcript for "${videoTitle}" (${transcript.length} chars, ${textSegments.length} segments)`);
-
-    return `Video Title: ${videoTitle}\n\nTranscript:\n${transcript}`;
   } catch (err) {
-    console.error("Error fetching YouTube transcript:", err);
+    console.error(`InnerTube (${clientName}) error:`, err);
     return null;
   }
+}
+
+function extractCaptionsFromPlayer(playerData: any): string | null {
+  if (!playerData) return null;
+  const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!captionTracks || captionTracks.length === 0) return null;
+  const englishTrack = captionTracks.find(
+    (t: any) => t.languageCode === "en" || t.languageCode?.startsWith("en")
+  );
+  return (englishTrack || captionTracks[0])?.baseUrl || null;
+}
+
+async function fetchCaptionText(captionUrl: string): Promise<string[]> {
+  const captionResp = await fetch(captionUrl);
+  if (!captionResp.ok) {
+    console.error("Caption fetch failed:", captionResp.status);
+    return [];
+  }
+  const captionXml = await captionResp.text();
+  if (!captionXml || captionXml.length === 0) return [];
+
+  const textSegments: string[] = [];
+  const textRegex = /<text[^>]*>([\s\S]*?)<\/text>/g;
+  let match;
+  while ((match = textRegex.exec(captionXml)) !== null) {
+    const text = match[1]
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n/g, " ")
+      .trim();
+    if (text) textSegments.push(text);
+  }
+  return textSegments;
+}
+
+/** Scrape the current InnerTube API key from YouTube's homepage. */
+async function scrapeInnerTubeKey(): Promise<string | null> {
+  try {
+    const resp = await fetch("https://www.youtube.com/", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+    const match = html.match(/"INNERTUBE_API_KEY"\s*:\s*"([^"]+)"/);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+// Known InnerTube API keys (publicly embedded in YouTube's frontend)
+const KNOWN_INNERTUBE_KEYS = [
+  "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+  "AIzaSyB-63vPrdThhKuerbB2N_l7Kwwcxj6yUAc",
+  "AIzaSyDK3iBpDP9nHVTk2qL73FLJICfOC3c51Og",
+];
+
+/** Gather all available InnerTube keys in priority order. */
+async function getInnerTubeKeys(): Promise<string[]> {
+  const keys: string[] = [];
+  const stored = Deno.env.get("INNERTUBE_API_KEY");
+  if (stored) keys.push(stored);
+
+  const scraped = await scrapeInnerTubeKey();
+  if (scraped && !keys.includes(scraped)) keys.push(scraped);
+
+  for (const k of KNOWN_INNERTUBE_KEYS) {
+    if (!keys.includes(k)) keys.push(k);
+  }
+  return keys;
+}
+
+async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string): Promise<string | null> {
+  const apiKeys = await getInnerTubeKeys();
+  if (apiKeys.length === 0) {
+    console.error("No InnerTube API keys available");
+    return null;
+  }
+
+  // Try multiple InnerTube client types — some videos only serve captions to certain clients
+  const clients: Array<{ name: string; version: string }> = [
+    { name: "WEB", version: "2.20260401.01.00" },
+    { name: "ANDROID", version: "20.14.38" },
+    { name: "IOS", version: "20.14.4" },
+  ];
+
+  // Try each key × each client combination
+  for (const apiKey of apiKeys) {
+    for (const client of clients) {
+      try {
+        const playerData = await callInnerTubePlayer(videoId, client.name, client.version, apiKey, scrapingBeeKey);
+        if (!playerData) continue;
+
+        const videoTitle = playerData?.videoDetails?.title || "";
+        const captionUrl = extractCaptionsFromPlayer(playerData);
+
+        if (!captionUrl) {
+          console.log(`No captions from ${client.name} (key ${apiKey.substring(0, 12)}...) for video: ${videoId}`);
+          continue;
+        }
+
+        console.log(`Found captions via ${client.name} (key ${apiKey.substring(0, 12)}...) for "${videoTitle}"`);
+        const segments = await fetchCaptionText(captionUrl);
+
+        if (segments.length === 0) {
+          console.error(`Caption XML from ${client.name} had no text segments`);
+          continue;
+        }
+
+        const transcript = segments.join(" ");
+        console.log(`Fetched transcript for "${videoTitle}" (${transcript.length} chars, ${segments.length} segments)`);
+        return `Video Title: ${videoTitle}\n\nTranscript:\n${transcript}`;
+      } catch (err) {
+        console.error(`Error with ${client.name} (key ${apiKey.substring(0, 12)}...):`, err);
+      }
+    }
+  }
+
+  // Also try direct call (no proxy) if ScrapingBee was used above and all clients failed
+  if (scrapingBeeKey) {
+    console.log("All proxied clients failed, trying direct calls as last resort");
+    for (const apiKey of apiKeys) {
+      for (const client of clients) {
+        try {
+          const playerData = await callInnerTubePlayer(videoId, client.name, client.version, apiKey);
+          if (!playerData) continue;
+
+          const videoTitle = playerData?.videoDetails?.title || "";
+          const captionUrl = extractCaptionsFromPlayer(playerData);
+          if (!captionUrl) continue;
+
+          const segments = await fetchCaptionText(captionUrl);
+          if (segments.length === 0) continue;
+
+          const transcript = segments.join(" ");
+          console.log(`Fetched transcript (direct, ${client.name}) for "${videoTitle}" (${transcript.length} chars)`);
+          return `Video Title: ${videoTitle}\n\nTranscript:\n${transcript}`;
+        } catch (err) {
+          console.error(`Direct ${client.name} error:`, err);
+        }
+      }
+    }
+  }
+
+  // All exhausted — check if video exists but has no captions
+  console.log("All InnerTube clients exhausted for video:", videoId);
+  const checkData = await callInnerTubePlayer(videoId, "WEB", "2.20260401.01.00", apiKeys[0]);
+  if (checkData?.videoDetails) {
+    return "NO_CAPTIONS";
+  }
+
+  return null;
 }
 
 serve(async (req) => {
@@ -266,40 +373,18 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
-        const SCRAPINGBEE_KEY2 = Deno.env.get("SCRAPINGBEE_API_KEY");
-        if (SCRAPINGBEE_KEY2) {
-          console.log("Transcript failed, falling back to ScrapingBee page scrape for YouTube");
-          try {
-            const scrapeResp = await fetch(
-              `https://app.scrapingbee.com/api/v1/?api_key=${SCRAPINGBEE_KEY2}&url=${encodeURIComponent(youtubeUrl)}&render_js=false&premium_proxy=true&extract_rules=${encodeURIComponent(JSON.stringify({ text: "body" }))}`
-            );
-            if (scrapeResp.ok) {
-              const scrapeData = await scrapeResp.json();
-              const pageText = typeof scrapeData.text === "string" ? scrapeData.text : JSON.stringify(scrapeData);
-              const trimmed = pageText.slice(0, 100000);
-              console.log(`Scraped YouTube page: ${trimmed.length} chars`);
-              contentParts.push({
-                type: "text",
-                text: `--- Content scraped from YouTube video page: ${youtubeUrl} ---\n${trimmed}\n\nNote: The full transcript could not be extracted. Use all available text from the page to generate comprehensive notes.`,
-              });
-            } else {
-              return new Response(
-                JSON.stringify({ error: "Could not retrieve captions or page content from this video. The video may be private, age-restricted, or have no subtitles. Try pasting the content as text instead." }),
-                { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-          } catch {
-            return new Response(
-              JSON.stringify({ error: "Could not retrieve captions. The video may not have subtitles enabled, or is age-restricted." }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        } else {
-          return new Response(
-            JSON.stringify({ error: "Could not retrieve captions from this video. It may not have subtitles enabled. Try pasting the content as text instead." }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+        // transcript is null — API failure, not "no captions"
+        // Don't try scraping YouTube page — it always returns JS boilerplate
+        const hasKey = !!Deno.env.get("INNERTUBE_API_KEY");
+        console.error(`YouTube transcript extraction failed for ${videoId}. INNERTUBE_API_KEY configured: ${hasKey}`);
+        return new Response(
+          JSON.stringify({
+            error: hasKey
+              ? "Could not retrieve the transcript from this video. The YouTube API may be temporarily unavailable. Please try again in a moment, or paste the content as text instead."
+              : "YouTube transcript extraction is not configured. Please contact support or paste the content as text instead.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
@@ -511,29 +596,25 @@ serve(async (req) => {
     if (learningMode === "dyslexia") {
       modePrompt = `
 Format for a reader with dyslexia:
-- Use short sentences (under 15 words each).
-- Avoid walls of text. Use plenty of white space.
-- Use bullet points and numbered lists extensively.
+- ZERO DATA LOSS (CRITICAL): You are strictly forbidden from summarizing, cutting, or condensing information. Every single detail, example, mechanism, and nuance from the source text MUST be preserved in your output.
+- VISUAL PACING: To make the full depth of information readable, you must split the text into a high volume of short paragraphs. Use as many paragraphs as needed to retain 100% of the source data, but NEVER let a single paragraph exceed 3 sentences.
+- Use bullet points ONLY for actual lists, categories, or sequential steps. Do not use bullets for narrative explanations.
+- Avoid walls of text. Ensure every paragraph is separated by clear white space.
 - Bold key terms on first use.
-- Avoid idioms, sarcasm, and abstract metaphors.
-- Every <section> must contain at least one <h3> sub-heading to further categorize the information.
-- Break paragraphs after every 1-2 sentences maximum to maximize white space.`;
+- Avoid idioms, sarcasm, and abstract metaphors. Use literal, concrete language.
+- Every <section> must contain at least one <h3> sub-heading to logically group the deep information.`;
     } else {
       modePrompt = `
 Format for a reader with ADHD:
-- Use chunked, color-coded sections with clear headers.
-- Start each section with a one-line hook or "why this matters" statement.
-- Use bullet points, not paragraphs.
-- Keep each bullet under 20 words.
+- ZERO DATA LOSS (CRITICAL): You are strictly forbidden from summarizing, cutting, or condensing information. Every single detail, example, mechanism, and nuance from the source text MUST be preserved in your output.
+- VISUAL PACING: You must retain the deep, complex information, but format it strictly for rapid visual processing. Use as many paragraphs as necessary to cover all the material, but keep every individual paragraph under 3 sentences.
+- INFORMATION HIERARCHY: Start each section with a one-line hook or "why this matters" statement. Then, provide the full context using short, punchy paragraphs. Use bullet points specifically to break out granular facts, data sets, or lists.
+- NARRATIVE PRESERVATION: Do NOT use bullet points exclusively if it destroys the narrative context of a complex topic.
+- SKIMMABILITY: Use **bold text** strategically on key phrases, core mechanisms, and important terms within paragraphs. This allows the reader's eye to jump through the text and grasp the full concept without reading every filler word.
 - Add emoji icons to section headers for visual anchoring.
 - Include a "⚡ TL;DR" section at the very top (3-5 bullet summary).
-- Every <section> must contain at least one <h3> sub-heading to further categorize the information.
-- Break paragraphs after every 1-2 sentences maximum to maximize white space.
-- CRITICAL FORMATTING FOR ADHD READABILITY:
-  - Set generous spacing between all elements — no dense walls of text.
-  - Keep text columns narrow. Never let content stretch across the full width.
-  - Use line height of at least 1.6 between lines.
-  - Add visual breathing room between sections.`;
+- Every <section> must contain at least one <h3> sub-heading.
+- CRITICAL FORMATTING: Set generous spacing between all elements, keep text columns narrow, and use line height of at least 1.6.`;
     }
 
     // 1. Process standard profile and age

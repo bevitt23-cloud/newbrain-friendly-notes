@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Send, Loader2, Flag, MessageCircle } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEBATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-study-tool`;
 
@@ -40,11 +41,14 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
     setLoading(true);
 
     try {
+      const session = await supabase.auth.getSession();
+      const token = session.data?.session?.access_token;
       const resp = await fetch(DEBATE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           tool: "socratic",

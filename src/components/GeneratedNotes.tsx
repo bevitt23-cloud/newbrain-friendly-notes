@@ -219,7 +219,7 @@ const GeneratedNotes = ({
     ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
     : resolvedAdhd
       ? "'Lexend', sans-serif"
-      : undefined;
+      : "'EB Garamond', 'Georgia', serif";
 
   const dyslexiaStyles: React.CSSProperties = resolvedDyslexia
     ? {
@@ -229,9 +229,7 @@ const GeneratedNotes = ({
         letterSpacing: `${dyslexiaSettings.letterSpacing}em`,
         wordSpacing: `${dyslexiaSettings.wordSpacing}em`,
       }
-    : fontFamily
-      ? { fontFamily }
-      : {};
+    : { fontFamily };
 
   // Extract title from h1 first, then h2 fallback
   const autoTitle = title || (() => {

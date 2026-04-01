@@ -135,7 +135,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
           research_data_shared: d.research_data_shared ?? true,
           insights_enabled: d.insights_enabled ?? true,
           dyslexia_font: d.dyslexia_font ?? false,
-          adhd_font: d.adhd_font ?? true,
+          adhd_font: d.adhd_font ?? (localStorage.getItem("bfn:adhd_font") !== null ? localStorage.getItem("bfn:adhd_font") === "true" : true),
           font_size: Number(d.font_size) || 0.95,
           line_spacing: Number(d.line_spacing) || 1.6,
           letter_spacing: Number(d.letter_spacing) || 0,
@@ -165,6 +165,11 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     async (updates: Partial<UserPreferences>) => {
       const newPrefs = { ...preferences, ...updates };
       setPreferences(newPrefs);
+
+      // Persist adhd_font to localStorage (not in DB schema)
+      if ("adhd_font" in updates || "dyslexia_font" in updates) {
+        localStorage.setItem("bfn:adhd_font", String(newPrefs.adhd_font));
+      }
 
       if (!user) return;
 

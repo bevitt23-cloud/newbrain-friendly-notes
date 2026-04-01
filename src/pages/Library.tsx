@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFunFacts } from "@/hooks/useFunFacts";
+import { DEFAULT_FOLDER } from "@/lib/constants";
 
 interface SavedNote {
   id: string;
@@ -51,8 +52,6 @@ interface SavedMaterial {
   updated_at: string;
 }
 
-const DEFAULT_FOLDER = "Unsorted";
-
 const Library = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -62,6 +61,10 @@ const Library = () => {
   const [search, setSearch] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+
+  const PAGE_SIZE = 20;
+  const [visibleNoteCount, setVisibleNoteCount] = useState(PAGE_SIZE);
+  const [visibleMaterialCount, setVisibleMaterialCount] = useState(PAGE_SIZE);
 
   // Bulk action state
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
@@ -180,6 +183,12 @@ const Library = () => {
 
   const filteredNotes = filterItems(notes);
   const filteredMaterials = filterItems(materials);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleNoteCount(PAGE_SIZE);
+    setVisibleMaterialCount(PAGE_SIZE);
+  }, [search, showFavoritesOnly, selectedFolder]);
 
   // Derive folders dynamically from saved notes (excluding placeholder metadata records)
   const usedFolders = Array.from(new Set(notes.map((n) => n.folder).filter(Boolean)));
@@ -594,7 +603,7 @@ const Library = () => {
                 ) : (
                   <div className="grid gap-3">
                     <AnimatePresence>
-                      {filteredNotes.map((note) => (
+                      {filteredNotes.slice(0, visibleNoteCount).map((note) => (
                         <NoteCard
                           key={note.id}
                           note={note}
@@ -609,6 +618,15 @@ const Library = () => {
                         />
                       ))}
                     </AnimatePresence>
+                    {filteredNotes.length > visibleNoteCount && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setVisibleNoteCount((c) => c + PAGE_SIZE)}
+                        className="w-full mt-2"
+                      >
+                        Load more ({filteredNotes.length - visibleNoteCount} remaining)
+                      </Button>
+                    )}
                   </div>
                 )}
               </TabsContent>
@@ -619,7 +637,7 @@ const Library = () => {
                 ) : (
                   <div className="grid gap-3">
                     <AnimatePresence>
-                      {filteredMaterials.map((mat) => (
+                      {filteredMaterials.slice(0, visibleMaterialCount).map((mat) => (
                         <MaterialCard
                           key={mat.id}
                           material={mat}
@@ -640,6 +658,15 @@ const Library = () => {
                         />
                       ))}
                     </AnimatePresence>
+                    {filteredMaterials.length > visibleMaterialCount && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setVisibleMaterialCount((c) => c + PAGE_SIZE)}
+                        className="w-full mt-2"
+                      >
+                        Load more ({filteredMaterials.length - visibleMaterialCount} remaining)
+                      </Button>
+                    )}
                   </div>
                 )}
               </TabsContent>
