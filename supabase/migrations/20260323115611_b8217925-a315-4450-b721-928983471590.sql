@@ -1,0 +1,1 @@
+ALTER TABLE public.saved_notes ADD COLUMN IF NOT EXISTS sticky_notes jsonb NOT NULL DEFAULT '[]'::jsonb;

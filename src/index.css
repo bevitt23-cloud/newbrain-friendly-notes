@@ -1,0 +1,650 @@
+/* ADHD Font: Lexend (Hyper-legible, expanded spacing) */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
+/* Sticky Note Font: Caveat */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600&display=swap');
+
+/* Dyslexia Font: OpenDyslexic (Heavy bottom-weighted letters) — loaded via @fontsource */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Warm cream base — soft, never harsh */
+    --background: 40 22% 94%;
+    --foreground: 35 20% 14%;
+
+    --card: 40 20% 96%;
+    --card-foreground: 35 20% 14%;
+
+    --popover: 40 20% 96%;
+    --popover-foreground: 35 20% 14%;
+
+    /* Calming blue primary — slightly desaturated for comfort */
+    --primary: 199 72% 48%;
+    --primary-foreground: 40 20% 97%;
+
+    /* Sage green secondary */
+    --secondary: 152 28% 52%;
+    --secondary-foreground: 40 20% 97%;
+
+    --muted: 38 14% 90%;
+    --muted-foreground: 35 12% 42%;
+
+    --accent: 38 14% 91%;
+    --accent-foreground: 35 20% 12%;
+
+    --destructive: 0 50% 48%;
+    --destructive-foreground: 40 20% 97%;
+
+    /* Soft borders */
+    --border: 214 20% 88%;
+    --input: 214 20% 88%;
+    /* Sage green focus ring */
+    --ring: 152 28% 52%;
+
+    --radius: 0.75rem;
+
+    /* ─── Color palette: muted & comfortable ─── */
+
+    /* Sage greens — gentle focus */
+    --sage-50: 152 18% 95%;
+    --sage-100: 152 16% 89%;
+    --sage-200: 152 20% 76%;
+    --sage-300: 152 24% 52%;
+    --sage-400: 152 28% 40%;
+    --sage-500: 152 30% 32%;
+    --sage-600: 152 28% 24%;
+    --sage-700: 152 24% 18%;
+
+    /* Sky blue — calming */
+    --sky-50: 199 28% 96%;
+    --sky-100: 199 24% 90%;
+    --sky-200: 199 26% 78%;
+    --sky-300: 199 32% 54%;
+    --sky-400: 199 38% 42%;
+
+    /* Teal — bridging sage & sky */
+    --teal-50: 174 22% 94%;
+    --teal-100: 174 20% 87%;
+    --teal-200: 174 22% 68%;
+    --teal-300: 174 28% 44%;
+    --teal-400: 174 32% 34%;
+
+    /* Lavender — soft accent */
+    --lavender-50: 262 22% 96%;
+    --lavender-100: 262 20% 90%;
+    --lavender-200: 262 22% 78%;
+    --lavender-300: 262 26% 58%;
+    --lavender-400: 262 28% 48%;
+    --lavender-500: 262 30% 40%;
+    --lavender-600: 262 28% 30%;
+
+    /* Peach — warm & inviting */
+    --peach-50: 16 36% 95%;
+    --peach-100: 16 30% 89%;
+    --peach-200: 16 28% 76%;
+    --peach-300: 16 30% 58%;
+    --peach-400: 16 34% 48%;
+    --peach-500: 16 36% 40%;
+
+    /* Rose — soft warmth */
+    --rose-50: 340 24% 96%;
+    --rose-100: 340 20% 90%;
+    --rose-200: 340 22% 76%;
+    --rose-300: 340 26% 56%;
+    --rose-400: 340 30% 46%;
+
+    /* Mint — fresh light accent */
+    --mint-50: 162 20% 95%;
+    --mint-100: 162 18% 88%;
+    --mint-200: 162 20% 72%;
+    --mint-300: 162 26% 50%;
+
+    /* Amber — warm pop */
+    --amber-400: 36 56% 50%;
+    --amber-500: 36 52% 40%;
+
+    /* ─── Section colors (used in generated notes) ─── */
+    --section-sage-bg: 150 16% 94%;
+    --section-sage-border: 150 20% 80%;
+    --section-lavender-bg: 262 18% 94%;
+    --section-lavender-border: 262 20% 80%;
+    --section-peach-bg: 16 24% 94%;
+    --section-peach-border: 16 22% 80%;
+    --section-sky-bg: 198 22% 93%;
+    --section-sky-border: 198 24% 80%;
+    --section-amber-bg: 38 28% 94%;
+    --section-amber-border: 38 26% 80%;
+
+    --sidebar-background: 40 20% 96%;
+    --sidebar-foreground: 35 20% 14%;
+    --sidebar-primary: 199 72% 48%;
+    --sidebar-primary-foreground: 40 20% 97%;
+    --sidebar-accent: 215 16% 91%;
+    --sidebar-accent-foreground: 222 30% 12%;
+    --sidebar-border: 214 18% 86%;
+    --sidebar-ring: 152 28% 46%;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* Deep navy base */
+    --background: 225 40% 4%;
+    --foreground: 38 16% 88%;
+
+    --card: 220 30% 8%;
+    --card-foreground: 38 16% 88%;
+
+    --popover: 220 30% 8%;
+    --popover-foreground: 38 16% 88%;
+
+    /* Calming blue primary (brighter for dark) */
+    --primary: 199 68% 56%;
+    --primary-foreground: 225 40% 4%;
+
+    /* Sage green secondary */
+    --secondary: 152 24% 36%;
+    --secondary-foreground: 152 16% 92%;
+
+    --muted: 220 24% 12%;
+    --muted-foreground: 215 12% 50%;
+
+    --accent: 220 20% 12%;
+    --accent-foreground: 38 14% 82%;
+
+    --destructive: 0 42% 42%;
+    --destructive-foreground: 0 0% 96%;
+
+    /* Soft borders */
+    --border: 220 18% 16%;
+    --input: 220 18% 16%;
+    --ring: 152 28% 44%;
+
+    --sidebar-background: 220 30% 8%;
+    --sidebar-foreground: 38 16% 88%;
+    --sidebar-primary: 199 68% 56%;
+    --sidebar-primary-foreground: 225 40% 4%;
+    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent-foreground: 38 14% 82%;
+    --sidebar-border: 220 18% 16%;
+    --sidebar-ring: 152 28% 44%;
+
+    /* Dark mode palette overrides */
+    --sage-50: 152 20% 6%;
+    --sage-100: 152 18% 11%;
+    --sage-200: 152 20% 18%;
+    --sage-300: 152 24% 38%;
+    --sky-50: 199 28% 6%;
+    --sky-100: 199 24% 11%;
+    --sky-200: 199 26% 18%;
+    --sky-300: 199 32% 36%;
+    --lavender-50: 262 22% 7%;
+    --lavender-100: 262 20% 12%;
+    --lavender-200: 262 22% 20%;
+    --lavender-300: 262 26% 40%;
+    --peach-50: 16 36% 6%;
+    --peach-100: 16 30% 11%;
+    --peach-200: 16 28% 18%;
+    --peach-300: 16 30% 36%;
+    --mint-50: 162 20% 6%;
+    --mint-100: 162 18% 11%;
+    --mint-200: 162 20% 16%;
+    --rose-50: 340 24% 6%;
+    --rose-100: 340 20% 11%;
+    --teal-50: 174 22% 6%;
+    --teal-100: 174 20% 11%;
+
+    /* Dark section colors */
+    --section-sage-bg: 152 18% 10%;
+    --section-sage-border: 152 20% 22%;
+    --section-lavender-bg: 250 16% 11%;
+    --section-lavender-border: 250 18% 24%;
+    --section-peach-bg: 18 18% 10%;
+    --section-peach-border: 18 20% 22%;
+    --section-sky-bg: 200 20% 10%;
+    --section-sky-border: 200 22% 24%;
+    --section-amber-bg: 36 18% 10%;
+    --section-amber-border: 36 20% 22%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased text-base;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   GENERATED NOTES STYLING
+   ═══════════════════════════════════════════ */
+
+.generated-notes {
+  @apply space-y-8;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.65;
+}
+
+.generated-notes > h1,
+.generated-notes > div > h1 {
+  display: none; /* Title shown in header bar instead */
+}
+
+/* Section cards — NO transition (prevents dark mode flash) */
+.generated-notes > section,
+.generated-notes > div > section {
+  @apply rounded-2xl p-6 md:p-7;
+  margin-bottom: 2rem;
+  border-width: 1px;
+  border-style: solid;
+}
+
+/* Generating state — smooth content appearance */
+.generated-notes.generating > section,
+.generated-notes.generating > div > section {
+  animation: section-fade-in 0.3s ease-out;
+}
+@keyframes section-fade-in {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* ─── Section color cycle (uses CSS variables — instant theme switch) ─── */
+.generated-notes > section:nth-of-type(5n+1),
+.generated-notes > div > section:nth-of-type(5n+1) {
+  background: hsl(var(--section-sage-bg));
+  border-color: hsl(var(--section-sage-border));
+}
+.generated-notes > section:nth-of-type(5n+2),
+.generated-notes > div > section:nth-of-type(5n+2) {
+  background: hsl(var(--section-lavender-bg));
+  border-color: hsl(var(--section-lavender-border));
+}
+.generated-notes > section:nth-of-type(5n+3),
+.generated-notes > div > section:nth-of-type(5n+3) {
+  background: hsl(var(--section-peach-bg));
+  border-color: hsl(var(--section-peach-border));
+}
+.generated-notes > section:nth-of-type(5n+4),
+.generated-notes > div > section:nth-of-type(5n+4) {
+  background: hsl(var(--section-sky-bg));
+  border-color: hsl(var(--section-sky-border));
+}
+.generated-notes > section:nth-of-type(5n+5),
+.generated-notes > div > section:nth-of-type(5n+5) {
+  background: hsl(var(--section-amber-bg));
+  border-color: hsl(var(--section-amber-border));
+}
+
+/* Explicit data-section-color overrides */
+.generated-notes section[data-section-color="sage"] {
+  background: hsl(var(--section-sage-bg));
+  border-color: hsl(var(--section-sage-border));
+}
+.generated-notes section[data-section-color="lavender"] {
+  background: hsl(var(--section-lavender-bg));
+  border-color: hsl(var(--section-lavender-border));
+}
+.generated-notes section[data-section-color="peach"] {
+  background: hsl(var(--section-peach-bg));
+  border-color: hsl(var(--section-peach-border));
+}
+.generated-notes section[data-section-color="sky"] {
+  background: hsl(var(--section-sky-bg));
+  border-color: hsl(var(--section-sky-border));
+}
+.generated-notes section[data-section-color="amber"] {
+  background: hsl(var(--section-amber-bg));
+  border-color: hsl(var(--section-amber-border));
+}
+
+/* Dark mode text — inherits from CSS variables, no flash */
+.dark .generated-notes p,
+.dark .generated-notes li,
+.dark .generated-notes h3,
+.dark .generated-notes span:not(.bionic-bold),
+.dark .generated-notes em {
+  color: hsl(var(--foreground));
+}
+.dark .generated-notes strong {
+  color: hsl(var(--foreground));
+  font-weight: 700;
+}
+.dark .generated-notes h2 {
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+/* ─── Headings ─── */
+.generated-notes h2 {
+  @apply text-lg font-bold mb-3 pb-2 border-b;
+  border-color: hsl(var(--border));
+}
+.generated-notes h2[data-section-color="sage"] {
+  @apply text-sage-600;
+  border-color: hsl(var(--sage-200));
+}
+.generated-notes h2[data-section-color="lavender"] {
+  color: hsl(var(--lavender-400));
+  border-color: hsl(var(--lavender-200));
+}
+.generated-notes h2[data-section-color="peach"] {
+  color: hsl(var(--peach-400));
+  border-color: hsl(var(--peach-200));
+}
+.generated-notes h2[data-section-color="sky"] {
+  color: hsl(var(--sky-300));
+  border-color: hsl(var(--sky-200));
+}
+.generated-notes h2[data-section-color="amber"] {
+  color: hsl(var(--amber-500));
+  border-color: hsl(var(--amber-400) / 0.3);
+}
+
+/* Dark mode h2 — lighter shades */
+.dark .generated-notes h2[data-section-color="sage"] {
+  color: hsl(var(--sage-300));
+  border-color: hsl(var(--sage-200));
+}
+.dark .generated-notes h2[data-section-color="lavender"] {
+  color: hsl(var(--lavender-300));
+  border-color: hsl(var(--lavender-200));
+}
+.dark .generated-notes h2[data-section-color="peach"] {
+  color: hsl(var(--peach-300));
+  border-color: hsl(var(--peach-200));
+}
+.dark .generated-notes h2[data-section-color="sky"] {
+  color: hsl(var(--sky-200));
+  border-color: hsl(var(--sky-200) / 0.4);
+}
+.dark .generated-notes h2[data-section-color="amber"] {
+  color: hsl(38 52% 60%);
+  border-color: hsl(36 22% 22%);
+}
+
+/* ─── Text elements ─── */
+.generated-notes h3 {
+  @apply text-base font-semibold mt-4 mb-2 text-foreground;
+}
+.generated-notes p {
+  @apply text-[0.95rem] leading-relaxed text-foreground mb-3;
+}
+.generated-notes ul, .generated-notes ol {
+  @apply ml-4 mb-4 space-y-1.5;
+}
+.generated-notes li {
+  @apply text-[0.95rem] text-foreground leading-relaxed;
+}
+.generated-notes ul li {
+  @apply list-disc;
+}
+.generated-notes ol li {
+  @apply list-decimal;
+}
+.generated-notes strong {
+  @apply font-bold text-foreground;
+}
+.generated-notes em {
+  @apply italic text-muted-foreground;
+}
+
+/* ─── Jargon definitions ─── */
+.generated-notes .jargon {
+  @apply cursor-help border-b border-dashed border-primary/40 text-primary font-medium;
+}
+.generated-notes .jargon:hover,
+.generated-notes .jargon:focus-visible {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  outline: none;
+}
+@keyframes jargon-fade {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ─── Special blocks ─── */
+
+/* Recall prompts — soft sky */
+.generated-notes .recall-prompt {
+  @apply mt-5 rounded-2xl p-4;
+  background: hsl(var(--sky-50));
+  border: 1px solid hsl(var(--sky-200) / 0.6);
+}
+
+/* Feynman check — soft lavender */
+.generated-notes .feynman-check {
+  @apply mt-5 rounded-2xl p-4;
+  background: hsl(var(--lavender-50));
+  border: 1px solid hsl(var(--lavender-200) / 0.6);
+}
+
+.generated-notes .recall-input,
+.generated-notes .feynman-input {
+  @apply w-full mt-2 rounded-xl border border-border bg-background p-3 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/30;
+}
+.generated-notes .recall-submit,
+.generated-notes .feynman-submit {
+  @apply mt-2 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 cursor-pointer;
+}
+.generated-notes .recall-feedback,
+.generated-notes .feynman-feedback {
+  @apply mt-3 rounded-xl border border-border bg-card p-3 text-sm;
+}
+
+/* Write This Down — soft peach */
+.generated-notes .write-this-down {
+  @apply mt-4 rounded-2xl p-4 text-sm;
+  background: hsl(var(--peach-50));
+  border: 1px solid hsl(var(--peach-200) / 0.6);
+}
+
+/* Why Should I Care — warm amber */
+.generated-notes .why-care {
+  @apply mt-4 rounded-2xl p-4 text-sm;
+  background: hsl(var(--section-amber-bg));
+  border: 1px solid hsl(var(--section-amber-border));
+}
+
+/* TL;DR — sage */
+.generated-notes .tldr-box {
+  @apply mt-4 rounded-2xl p-4 text-sm;
+  background: hsl(var(--sage-50));
+  border: 1px solid hsl(var(--sage-200) / 0.6);
+}
+
+/* Starred missed items */
+.generated-notes .starred-concept {
+  background: hsl(var(--section-amber-bg));
+  @apply border-l-4 pl-2;
+  border-left-color: hsl(var(--amber-400));
+}
+
+/* Custom selection color */
+.generated-notes *::selection {
+  background-color: hsl(var(--primary) / 0.2);
+  color: inherit;
+}
+.dark .generated-notes *::selection {
+  background-color: hsl(var(--primary) / 0.35);
+}
+
+/* ═══════════════════════════════════════════
+   DYSLEXIA-ACTIVE OVERRIDES
+   ═══════════════════════════════════════════ */
+body.dyslexia-active {
+  color: hsl(var(--foreground));
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+body.dyslexia-active *:not(.bionic-bold):not(.generated-notes strong):not(.generated-notes h1):not(.generated-notes h2):not(.generated-notes h3):not(.generated-notes h4) {
+  font-weight: 400 !important;
+}
+body.dyslexia-active .bionic-bold {
+  font-weight: 700 !important;
+}
+body.dyslexia-active h1,
+body.dyslexia-active h2,
+body.dyslexia-active h3,
+body.dyslexia-active h4 {
+  font-weight: 600 !important;
+}
+body.dyslexia-active p {
+  margin-bottom: 1.5em;
+}
+/* Isolated reading surface for dyslexia */
+body.dyslexia-active .generated-notes {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
+  padding: 2rem;
+  line-height: 1.75;
+  letter-spacing: 0.06em;
+}
+
+/* ═══════════════════════════════════════════
+   IN-APP YOUTUBE BUTTONS
+   ═══════════════════════════════════════════ */
+.generated-notes .in-app-youtube-btn {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 mb-1 rounded-lg text-sm font-medium cursor-pointer;
+  background: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.2);
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+.generated-notes .in-app-youtube-btn:hover {
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
+}
+
+/* ═══════════════════════════════════════════
+   PROSE / AI SECTIONS — LAYOUT & DARK MODE
+   ═══════════════════════════════════════════ */
+
+/* Hide JSON data */
+.mindmap-data, .flowchart-data, .feynman-key, .recall-key {
+  display: none !important;
+}
+
+/* Base layout for prose sections — NO transition */
+.prose section {
+  padding: 1.5rem 2rem !important;
+  border-radius: 1rem !important;
+  margin-bottom: 2rem !important;
+  border: 1px solid transparent !important;
+  box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.04) !important;
+}
+
+/* Prose section colors (use CSS variables) */
+.prose section[data-section-color="sage"] { background-color: hsl(var(--section-sage-bg)); border-color: hsl(var(--section-sage-border)) !important; }
+.prose section[data-section-color="lavender"] { background-color: hsl(var(--section-lavender-bg)); border-color: hsl(var(--section-lavender-border)) !important; }
+.prose section[data-section-color="peach"] { background-color: hsl(var(--section-peach-bg)); border-color: hsl(var(--section-peach-border)) !important; }
+.prose section[data-section-color="sky"] { background-color: hsl(var(--section-sky-bg)); border-color: hsl(var(--section-sky-border)) !important; }
+.prose section[data-section-color="amber"] { background-color: hsl(var(--section-amber-bg)); border-color: hsl(var(--section-amber-border)) !important; }
+
+/* Dark prose text contrast */
+.dark .prose,
+.dark .prose h1,
+.dark .prose h2,
+.dark .prose h3,
+.dark .prose h4,
+.dark .prose p,
+.dark .prose li,
+.dark .prose strong,
+.dark .prose em,
+.dark .prose span {
+  color: hsl(var(--foreground)) !important;
+}
+.dark .prose code {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* ═══════════════════════════════════════════
+   DARK MODE FIXES: TOGGLES & WRITE THIS DOWN
+   ═══════════════════════════════════════════ */
+
+/* Toggle buttons contrast in dark mode */
+.dark button[data-state="on"],
+.dark .toggle-selected {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Write This Down (standalone) */
+.write-this-down {
+  background-color: hsl(var(--primary) / 0.05);
+  border-left: 4px solid hsl(var(--primary));
+  padding: 1.25rem;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+.write-this-down strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: hsl(var(--primary));
+  font-size: 1.1em;
+}
+.dark .write-this-down {
+  background-color: hsl(var(--primary) / 0.12);
+}
+.dark .write-this-down p {
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Hide accidental AI-generated mind map/flow chart lists */
+.prose ul.mindmap-data,
+.prose ul.flowchart-data {
+  display: none !important;
+}
+
+/* ═══════════════════════════════════════════
+   YOUTUBE EXPLAINER BUTTON
+   ═══════════════════════════════════════════ */
+.prose button.watch-explainer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: hsl(var(--primary) / 0.08);
+  color: hsl(var(--primary));
+  border: 1px solid hsl(var(--primary) / 0.18);
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.prose button.watch-explainer:hover {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: translateY(-1px);
+}
+.dark .prose button.watch-explainer {
+  background-color: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.25);
+}

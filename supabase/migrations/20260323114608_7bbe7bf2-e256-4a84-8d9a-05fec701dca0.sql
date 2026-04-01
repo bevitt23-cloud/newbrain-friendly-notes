@@ -1,0 +1,1 @@
+ALTER TABLE public.saved_notes ADD COLUMN IF NOT EXISTS folder text NOT NULL DEFAULT '📥 Unsorted';

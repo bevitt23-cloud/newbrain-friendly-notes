@@ -1,0 +1,1 @@
+ALTER TABLE public.user_preferences ADD COLUMN action_plan_default boolean NOT NULL DEFAULT true;

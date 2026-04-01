@@ -1,0 +1,422 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, FileText, BookOpen, ChevronRight, Loader2 } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize";
+import Layout from "@/components/Layout";
+import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
+import ClozeNotes from "@/components/study-tools/ClozeNotes";
+
+import Visualizer from "@/components/study-tools/Visualizer";
+import SocraticDebate from "@/components/study-tools/SocraticDebate";
+import FinalExam from "@/components/study-tools/FinalExam";
+import FunFactLink from "@/components/study-tools/FunFactLink";
+import TextSelectionMenu from "@/components/TextSelectionMenu";
+import { useNotesInteractivity } from "@/hooks/useNotesInteractivity";
+import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
+import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
+import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import InAppVideoModal from "@/components/InAppVideoModal";
+import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
+
+interface ReviewItem {
+  id: string;
+  title: string;
+  type: "note" | "material";
+  materialType?: string;
+  content: string;
+  rawContent?: Record<string, unknown>;
+  noteId?: string; // database id for saving sticky notes
+}
+
+interface GeneratedTool {
+  id: string;
+  toolType: StudyToolType;
+  label: string;
+  result: string | null;
+  generating: boolean;
+  noteContent: string;
+}
+
+const materialTypeLabel: Record<string, string> = {
+  flashcard: "🃏 Flash Cards",
+  practice: "🎮 Quiz",
+  mindmap: "🗺️ Mind Map",
+  flowchart: "📊 Flow Chart",
+  cloze: "📝 Fill-in-Blank",
+  socratic: "💬 Debate",
+  "final-exam": "🎓 Exam",
+};
+
+const toolLabel: Record<string, string> = {
+  mindmap: "🗺️ Mind Map",
+  flowchart: "📊 Flow Chart",
+  flashcard: "🃏 Flash Cards",
+  practice: "🎮 Knowledge Quest",
+  cloze: "📝 Fill-in-Blank",
+  socratic: "💬 Debate",
+};
+
+/* ── Interactive Note Viewer (mirrors GeneratedNotes interactivity) ── */
+function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string }) {
+  const [videoQuery, setVideoQuery] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [stickyNotes, setStickyNotes] = useState<any[]>([]);
+  const [savedVideos, setSavedVideos] = useState<SavedExplainerVideo[]>([]);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedRef = useRef(false);
+
+  useNotesInteractivity(containerRef, html);
+
+  // Load sticky notes from DB
+  useEffect(() => {
+    if (!noteId || loadedRef.current) return;
+    loadedRef.current = true;
+    (async () => {
+      const { data } = await supabase
+        .from("saved_notes")
+        .select("sticky_notes, saved_videos")
+        .eq("id", noteId)
+        .single();
+      if (data?.sticky_notes && Array.isArray(data.sticky_notes)) {
+        setStickyNotes(data.sticky_notes as any[]);
+      }
+      if (data?.saved_videos && Array.isArray(data.saved_videos)) {
+        setSavedVideos(data.saved_videos as SavedExplainerVideo[]);
+      }
+    })();
+  }, [noteId]);
+
+  // Debounced auto-save whenever sticky notes or saved videos change
+  useEffect(() => {
+    if (!noteId || !loadedRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      await supabase
+        .from("saved_notes")
+        .update({ sticky_notes: stickyNotes as any, saved_videos: savedVideos as any })
+        .eq("id", noteId);
+    }, 800);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [stickyNotes, savedVideos, noteId]);
+
+  const plainText = (() => {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || "";
+  })();
+
+  const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const btn = target.closest("button.watch-explainer") as HTMLElement | null;
+    if (btn) {
+      e.preventDefault();
+      const query = btn.getAttribute("data-query");
+      if (query) setVideoQuery(query);
+      return;
+    }
+  };
+
+  return (
+    <div className="relative">
+      <TextSelectionMenu
+        containerRef={containerRef}
+        notesContext={plainText}
+        stickyNotes={stickyNotes}
+        onStickyNotesChange={setStickyNotes}
+        onVideoQuery={setVideoQuery}
+      />
+      <div
+        ref={containerRef}
+        onClick={handleNoteClick}
+        className="generated-notes rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm select-text cursor-text"
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+      />
+      {videoQuery && (
+        <InAppVideoModal
+          searchQuery={videoQuery}
+          onClose={() => setVideoQuery(null)}
+          savedVideos={savedVideos}
+          onSaveVideo={(video) => {
+            setSavedVideos((prev) => (prev.some((v) => v.videoId === video.videoId) ? prev : [...prev, video]));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function StudyReview() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { generate } = useStudyToolGeneration();
+  const { profile } = useCognitiveProfile();
+  const { user } = useAuth();
+
+  const state = location.state as { items: ReviewItem[]; toolsToGenerate?: string[] } | null;
+  const items = state?.items || [];
+  const toolsToGenerate = state?.toolsToGenerate || [];
+
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [generatedTools, setGeneratedTools] = useState<GeneratedTool[]>([]);
+  const hasStartedGeneration = useRef(false);
+
+  // Combine notes content for tool generation
+  const allNotesHtml = items
+    .filter((i) => i.type === "note")
+    .map((i) => i.content)
+    .join("\n\n");
+
+  // Generate tools on mount
+  useEffect(() => {
+    if (hasStartedGeneration.current || toolsToGenerate.length === 0 || !allNotesHtml) return;
+    hasStartedGeneration.current = true;
+
+    const tools: GeneratedTool[] = toolsToGenerate.map((toolType) => ({
+      id: `gen-${toolType}-${Date.now()}`,
+      toolType: toolType as StudyToolType,
+      label: toolLabel[toolType] || toolType,
+      result: null,
+      generating: toolType !== "socratic",
+      noteContent: allNotesHtml,
+    }));
+    setGeneratedTools(tools);
+
+    tools
+      .filter((t) => t.toolType !== "socratic")
+      .forEach(async (tool) => {
+        try {
+          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined);
+          setGeneratedTools((prev) =>
+            prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
+          );
+          if (res && user) {
+            const title = `${tool.label} — Study Session — ${new Date().toLocaleDateString()}`;
+            await supabase.from("saved_study_materials").insert({
+              user_id: user.id,
+              title,
+              material_type: tool.toolType,
+              content: { raw: res },
+              tags: [],
+            });
+          }
+        } catch {
+          setGeneratedTools((prev) =>
+            prev.map((t) => (t.id === tool.id ? { ...t, generating: false } : t))
+          );
+          toast.error(`Failed to generate ${tool.label}`);
+        }
+      });
+  }, [toolsToGenerate, allNotesHtml]);
+
+  useEffect(() => {
+    if (!items.length) {
+      toast.error("No items selected. Go back to Library.");
+    }
+  }, [items.length]);
+
+  if (!items.length) {
+    return (
+      <Layout>
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <p className="text-muted-foreground">No items to review.</p>
+          <button onClick={() => navigate("/library")} className="text-sm font-semibold text-primary hover:underline">
+            ← Back to Library
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const allTabs = [
+    ...items.map((item, i) => ({
+      key: item.id,
+      label: item.title,
+      type: item.type as string,
+      index: i,
+      isGenerated: false,
+    })),
+    ...generatedTools.map((tool) => ({
+      key: tool.id,
+      label: tool.label,
+      type: "generated-tool",
+      index: -1,
+      isGenerated: true,
+      generating: tool.generating,
+    })),
+  ];
+
+  const activeTab = allTabs[activeIndex] || allTabs[0];
+  const goPrev = () => setActiveIndex((i) => Math.max(0, i - 1));
+  const goNext = () => setActiveIndex((i) => Math.min(allTabs.length - 1, i + 1));
+
+  const renderMaterial = (item: ReviewItem) => {
+    const raw = item.rawContent
+      ? typeof item.rawContent.raw === "string"
+        ? item.rawContent.raw
+        : JSON.stringify(item.rawContent)
+      : item.content;
+
+    switch (item.materialType) {
+      case "flashcard": return <FlashcardDeck data={raw} />;
+      case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
+      case "cloze": return <ClozeNotes data={raw} />;
+      case "mindmap":
+      case "flowchart": return <Visualizer data={raw} />;
+      case "final-exam": return <FinalExam data={raw} />;
+      case "socratic": return <SocraticDebate notesHtml={item.content} />;
+      default: return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
+    }
+  };
+
+  const renderGeneratedTool = (tool: GeneratedTool) => {
+    if (tool.generating) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm font-medium text-muted-foreground">Generating {tool.label}...</p>
+        </div>
+      );
+    }
+
+    if (tool.toolType === "socratic") return <SocraticDebate notesHtml={tool.noteContent} />;
+    if (!tool.result) return <p className="text-sm text-muted-foreground py-10 text-center">No result generated.</p>;
+
+    const content = (() => {
+      switch (tool.toolType) {
+        case "flashcard": return <FlashcardDeck data={tool.result} />;
+        case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{tool.result}</pre>;
+        case "cloze": return <ClozeNotes data={tool.result} />;
+        case "mindmap":
+        case "flowchart": return <Visualizer data={tool.result} notesContext={tool.noteContent} />;
+        default: return <pre className="text-xs whitespace-pre-wrap">{tool.result}</pre>;
+      }
+    })();
+
+    return (
+      <div className="space-y-4">
+        <FunFactLink topic={tool.label} context={tool.noteContent} />
+        {content}
+      </div>
+    );
+  };
+
+  const renderActiveContent = () => {
+    if (!activeTab) return null;
+
+    if (activeTab.isGenerated) {
+      const tool = generatedTools.find((t) => t.id === activeTab.key);
+      if (!tool) return null;
+      return renderGeneratedTool(tool);
+    }
+
+    const item = items[activeTab.index];
+    if (!item) return null;
+
+    if (item.type === "note") {
+      return <InteractiveNoteViewer html={item.content} noteId={item.noteId} />;
+    }
+    return renderMaterial(item);
+  };
+
+  return (
+    <Layout>
+      <div className="min-h-screen flex flex-col">
+        {/* Sticky top bar */}
+        <div className="sticky top-14 z-30 border-b border-border bg-card/95 backdrop-blur-sm">
+          <div className="container max-w-6xl flex items-center gap-3 py-2.5">
+            <button
+              onClick={() => navigate("/library")}
+              className="rounded-lg border border-border p-2 text-muted-foreground hover:bg-muted transition-colors shrink-0"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {/* Tab strip */}
+            <div className="flex-1 overflow-x-auto scrollbar-none">
+              <div className="flex gap-1">
+                {allTabs.map((tab, i) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveIndex(i)}
+                    className={`shrink-0 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all whitespace-nowrap ${
+                      i === activeIndex
+                        ? "bg-primary/10 text-primary shadow-sm"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
+                  >
+                    {tab.type === "note" ? (
+                      <FileText className="h-3.5 w-3.5" />
+                    ) : tab.type === "generated-tool" ? (
+                      (tab as any).generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />
+                    ) : (
+                      <BookOpen className="h-3.5 w-3.5" />
+                    )}
+                    <span className="max-w-[140px] truncate">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Prev / Next */}
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={goPrev}
+                disabled={activeIndex === 0}
+                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs font-medium text-muted-foreground px-1 tabular-nums">
+                {activeIndex + 1}/{allTabs.length}
+              </span>
+              <button
+                onClick={goNext}
+                disabled={activeIndex === allTabs.length - 1}
+                className="rounded-lg border border-border p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content area */}
+        <div className="flex-1 container max-w-4xl py-6">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab?.key}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Item header */}
+              <div className="mb-5 flex items-center gap-2">
+                {activeTab?.type === "note" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-sage-100 dark:bg-sage-700/20 px-2.5 py-1 text-xs font-semibold text-sage-700 dark:text-sage-300">
+                    <FileText className="h-3 w-3" /> Note
+                  </span>
+                ) : activeTab?.type === "generated-tool" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-peach-100 dark:bg-peach-400/15 px-2.5 py-1 text-xs font-semibold text-peach-600 dark:text-peach-300">
+                    <BookOpen className="h-3 w-3" /> Generated
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-lavender-100 dark:bg-lavender-400/15 px-2.5 py-1 text-xs font-semibold text-lavender-500 dark:text-lavender-300">
+                    <BookOpen className="h-3 w-3" /> {materialTypeLabel[items[activeTab?.index || 0]?.materialType || ""] || "Material"}
+                  </span>
+                )}
+                <h2 className="text-lg font-bold text-foreground truncate">{activeTab?.label}</h2>
+              </div>
+
+              {renderActiveContent()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </Layout>
+  );
+}

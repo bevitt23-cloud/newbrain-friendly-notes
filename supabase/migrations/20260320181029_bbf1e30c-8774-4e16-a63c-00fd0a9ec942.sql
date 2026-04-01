@@ -1,0 +1,1 @@
+ALTER TABLE public.user_preferences ADD COLUMN IF NOT EXISTS dopamine_rewards boolean NOT NULL DEFAULT true;

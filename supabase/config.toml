@@ -1,0 +1,16 @@
+project_id = "epagtlrtzwdvferumowx"
+
+[functions.generate-notes]
+verify_jwt = false
+
+[functions.explain-text]
+verify_jwt = false
+
+[functions.generate-study-tool]
+verify_jwt = false
+
+[functions.generate-fun-fact]
+verify_jwt = false
+
+[functions.generate-retention-quiz]
+verify_jwt = false
