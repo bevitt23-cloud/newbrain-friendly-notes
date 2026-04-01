@@ -90,6 +90,7 @@ Output ONLY valid JSON, no markdown fences, no extra text. Do NOT ask for more i
         const arrEnd = cleaned.lastIndexOf("]");
         if (arrStart === -1 || arrEnd === -1 || arrEnd <= arrStart) throw new Error("No JSON array found");
         cleaned = cleaned.substring(arrStart, arrEnd + 1);
+        // eslint-disable-next-line no-control-regex
         cleaned = cleaned.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, " ");
         const parsed = JSON.parse(cleaned);
         if (!Array.isArray(parsed)) throw new Error("Not an array");
