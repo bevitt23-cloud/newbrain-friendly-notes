@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import InAppVideoModal from "@/components/InAppVideoModal";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
+import VideoBar from "@/components/VideoBar";
 
 interface ReviewItem {
   id: string;
@@ -142,6 +143,14 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
           savedVideos={savedVideos}
           onSaveVideo={(video) => {
             setSavedVideos((prev) => (prev.some((v) => v.videoId === video.videoId) ? prev : [...prev, video]));
+          }}
+        />
+      )}
+      {savedVideos.length > 0 && (
+        <VideoBar
+          savedVideos={savedVideos}
+          onRemoveVideo={(videoId) => {
+            setSavedVideos((prev) => prev.filter((v) => v.videoId !== videoId));
           }}
         />
       )}

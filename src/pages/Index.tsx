@@ -9,6 +9,7 @@ import StudyToolsInline from "@/components/StudyToolsInline";
 import GeneratedNotes from "@/components/GeneratedNotes";
 import type { StickyNoteData } from "@/components/TextSelectionMenu";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
+import VideoBar from "@/components/VideoBar";
 import DyslexiaSettings from "@/components/DyslexiaSettings";
 import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,7 @@ import { Brain, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpeg";
 import { LEARNING_MODE, DEFAULT_FOLDER } from "@/lib/constants";
+import { extractYouTubeVideoId } from "@/lib/youtube";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -78,13 +80,31 @@ const Index = () => {
   ]);
 
   const handleGenerate = useCallback(
-    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean }) => {
+    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean }) => {
       autoSavedRef.current = false;
       setSavedNoteId(null);
       setSavedNoteTitle("");
       setStickyNotes([]);
       setSavedVideos([]);
       pendingMetaRef.current = { folder: data.folder, tags: data.tags, shouldSaveToLibrary: data.shouldSaveToLibrary };
+
+      // Save source YouTube video if checkbox was checked
+      if (data.saveYouTubeVideo && data.youtubeUrl) {
+        const videoId = extractYouTubeVideoId(data.youtubeUrl);
+        if (videoId) {
+          setSavedVideos([{
+            id: `source-${videoId}-${Date.now()}`,
+            query: "Source video",
+            videoId,
+            title: "Source Video",
+            channelTitle: "",
+            thumbnailUrl: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+            duration: "",
+            savedAt: new Date().toISOString(),
+          }]);
+        }
+      }
+
       generate({
         ...data,
         learningMode: learningMode,
@@ -264,6 +284,15 @@ const Index = () => {
       </div>
 
       <FloatingStudyBar />
+
+      {notesGenerated && savedVideos.length > 0 && (
+        <VideoBar
+          savedVideos={savedVideos}
+          onRemoveVideo={(videoId) => {
+            setSavedVideos((prev) => prev.filter((v) => v.videoId !== videoId));
+          }}
+        />
+      )}
     </Layout>
   );
 };

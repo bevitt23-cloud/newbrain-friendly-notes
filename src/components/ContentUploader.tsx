@@ -18,6 +18,7 @@ interface ContentUploaderProps {
     folder: string;
     tags: string[];
     shouldSaveToLibrary: boolean;
+    saveYouTubeVideo?: boolean;
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
@@ -37,6 +38,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [shouldSaveToLibrary, setShouldSaveToLibrary] = useState(true);
+  const [saveYouTubeVideo, setSaveYouTubeVideo] = useState(true);
   const [libraryFolders, setLibraryFolders] = useState<string[]>([]);
 
   const DEFAULT_FOLDERS = [DEFAULT_FOLDER] as const;
@@ -151,7 +153,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
       onGenerate({ textContent: text.trim(), ...common });
     } else if (activeTab === "url" && url.trim()) {
       if (isYouTubeUrl(url)) {
-        onGenerate({ youtubeUrl: url.trim(), ...common });
+        onGenerate({ youtubeUrl: url.trim(), saveYouTubeVideo, ...common });
       } else {
         const normalizedWebsiteUrl = normalizeWebsiteUrl(url);
         if (!normalizedWebsiteUrl) {
@@ -282,6 +284,17 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
                 ? "🎥 YouTube detected — AI will transcribe and generate notes from the video"
                 : "Paste a URL or YouTube link and we'll generate notes from it"}
             </p>
+            {isYouTubeUrl(url) && (
+              <label className="mt-2 flex items-center gap-2 cursor-pointer px-1">
+                <input
+                  type="checkbox"
+                  checked={saveYouTubeVideo}
+                  onChange={(e) => setSaveYouTubeVideo(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-red-500 focus:ring-red-500/30 accent-red-500 cursor-pointer"
+                />
+                <span className="text-xs font-medium text-muted-foreground">Save this video to my notes</span>
+              </label>
+            )}
           </motion.div>
         )}
 
