@@ -400,11 +400,55 @@ serve(async (req) => {
 
       const SCRAPINGBEE_API_KEY = Deno.env.get("SCRAPINGBEE_API_KEY");
       if (!SCRAPINGBEE_API_KEY) {
-        console.error("SCRAPINGBEE_API_KEY not configured");
-        return new Response(
-          JSON.stringify({ error: "Website scraping is not configured. Please paste the content as text instead." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // Fallback: try a direct fetch when ScrapingBee is not configured
+        console.warn("SCRAPINGBEE_API_KEY not configured — attempting direct fetch fallback");
+        try {
+          const directResp = await fetch(normalizedWebsiteUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9",
+            },
+            redirect: "follow",
+          });
+          if (directResp.ok) {
+            const html = await directResp.text();
+            // Strip HTML tags to get plain text
+            const text = html
+              .replace(/<script[\s\S]*?<\/script>/gi, "")
+              .replace(/<style[\s\S]*?<\/style>/gi, "")
+              .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+              .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+              .replace(/<header[\s\S]*?<\/header>/gi, "")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/\s{2,}/g, " ")
+              .trim();
+            if (text.length > 200) {
+              const trimmed = text.slice(0, 100000);
+              console.log(`Direct fetch succeeded for ${normalizedWebsiteUrl}: ${trimmed.length} chars`);
+              contentParts.push({
+                type: "text",
+                text: `--- Content fetched from ${normalizedWebsiteUrl} ---\n${trimmed}`,
+              });
+            } else {
+              contentParts.push({
+                type: "text",
+                text: `Could not extract enough readable content from ${normalizedWebsiteUrl}. The page may require JavaScript or a login. Try pasting the text directly.`,
+              });
+            }
+          } else {
+            contentParts.push({
+              type: "text",
+              text: `Could not fetch ${normalizedWebsiteUrl} (status ${directResp.status}). The site may block automated requests. Try pasting the text directly.`,
+            });
+          }
+        } catch (fetchErr) {
+          console.error("Direct fetch fallback failed:", fetchErr);
+          contentParts.push({
+            type: "text",
+            text: `Failed to fetch ${normalizedWebsiteUrl}: ${fetchErr instanceof Error ? fetchErr.message : "Unknown error"}. Try pasting the text directly.`,
+          });
+        }
       } else {
         // Selectors for academic, blog, and news article content
         const contentSelectors = "article, main, [class*='article'], [class*='post'], [class*='content'], [id*='content'], [class*='entry'], [class*='body'], .page-content, #core, .text, [role='main'], .prose, [class*='narrative'], .pmc-content, .ncbi-content";

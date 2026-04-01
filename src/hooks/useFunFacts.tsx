@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface SavedFunFact {
   id: string;
@@ -55,6 +56,12 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
       return parsed as { fact: string; search_query: string };
     } catch (e) {
       console.error("Fun fact generation failed:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error("Fun fact generation failed", {
+        description: msg.includes("non-2xx")
+          ? "The AI service may not be configured. Please check that your API keys are set in Supabase Function Secrets."
+          : msg,
+      });
       return null;
     } finally {
       setIsGenerating(false);
