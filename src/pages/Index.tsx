@@ -44,12 +44,13 @@ const Index = () => {
     wordSpacing: 0.2,
   });
 
-  // Derive activeExtras purely from saved preferences (source of truth)
+  // Extras managed by DB preferences — synced on preference change
+  // Extras NOT in prefMap (e.g. visual_learner) are managed purely by NoteExtras toggle
+  const managedExtras = new Set(["tldr", "retention_quiz", "feynman", "recall", "simplify", "why_care", "jargon", "mindmap", "flowchart"]);
   useEffect(() => {
     const prefMap: Array<[boolean, string]> = [
       [preferences.tldr_default, "tldr"],
       [preferences.retention_quiz_default, "retention_quiz"],
-      
       [preferences.feynman_default, "feynman"],
       [preferences.recall_prompts_default, "recall"],
       [preferences.simplify_default, "simplify"],
@@ -58,12 +59,15 @@ const Index = () => {
       [preferences.mindmap_default, "mindmap"],
       [preferences.flowchart_default, "flowchart"],
     ];
-    // Note: mindmap & flowchart are Study Tools but still sent as extras to the AI
-    const extras: string[] = [];
-    for (const [enabled, key] of prefMap) {
-      if (enabled) extras.push(key);
-    }
-    setActiveExtras(extras);
+    setActiveExtras((prev) => {
+      // Keep any manually toggled extras that aren't preference-managed
+      const manual = prev.filter((e) => !managedExtras.has(e));
+      const fromPrefs: string[] = [];
+      for (const [enabled, key] of prefMap) {
+        if (enabled) fromPrefs.push(key);
+      }
+      return [...fromPrefs, ...manual];
+    });
   }, [
     preferences.tldr_default, preferences.retention_quiz_default,
     preferences.feynman_default,
