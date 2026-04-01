@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Loader2, X, Send, ChevronDown, ChevronUp, Sparkles, MessageCircleQuestion, Quote } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { supabase } from "@/integrations/supabase/client";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -81,6 +82,7 @@ function renderSectionContent(section: string): ReactNode {
 }
 
 const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPanelProps) => {
+  const { track } = useTelemetry();
   const [isExplaining, setIsExplaining] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -103,6 +105,7 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
 
   const handleExplain = async () => {
     setIsExplaining(true);
+    track("explain_this_clicked", { text: selectedText.slice(0, 100) });
     try {
       const { data, error } = await supabase.functions.invoke("explain-text", {
         body: { text: selectedText, context: notesContext?.slice(0, 2000) },

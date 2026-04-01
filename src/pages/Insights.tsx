@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,7 +11,88 @@ import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { supabase } from "@/integrations/supabase/client";
 import type { CognitiveTrait } from "@/lib/cognitiveRules";
+
+// ─── Telemetry aggregation hook ─────────────────────────────
+interface InsightsData {
+  toolCounts: { tool: string; count: number }[];
+  curiosityTopics: { topic: string; count: number }[];
+  hourCounts: { hour: number; count: number }[];
+  loaded: boolean;
+}
+
+const TOOL_EVENT_MAP: Record<string, string> = {
+  flashcard_flip: "Flashcards",
+  flashcard_rated: "Flashcards",
+  cloze_answer: "Fill-in-the-Blank",
+  quiz_answer: "Retention Quiz",
+  socratic_turn: "Socratic Debate",
+  mindmap_node_click: "Mind Map",
+  flowchart_node_click: "Flow Chart",
+  practice_answer: "Knowledge Quest",
+  final_exam_answer: "Final Exam",
+};
+
+function useInsightsData(userId: string | undefined): InsightsData {
+  const [data, setData] = useState<InsightsData>({ toolCounts: [], curiosityTopics: [], hourCounts: [], loaded: false });
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const { data: events } = await supabase
+        .from("telemetry_events")
+        .select("event_type, event_data, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (!events) { setData((d) => ({ ...d, loaded: true })); return; }
+
+      // Tool usage counts
+      const toolMap = new Map<string, number>();
+      // Curiosity topics
+      const topicMap = new Map<string, number>();
+      // Hour distribution
+      const hourMap = new Map<number, number>();
+
+      for (const ev of events) {
+        // Tool affinity
+        const toolLabel = TOOL_EVENT_MAP[ev.event_type];
+        if (toolLabel) {
+          toolMap.set(toolLabel, (toolMap.get(toolLabel) || 0) + 1);
+        }
+
+        // Curiosity
+        if (ev.event_type === "explain_this_clicked") {
+          const topic = (ev.event_data as any)?.text?.slice(0, 40) || (ev.event_data as any)?.topic || "Unknown";
+          topicMap.set(topic, (topicMap.get(topic) || 0) + 1);
+        }
+
+        // Hour distribution
+        const hour = new Date(ev.created_at).getHours();
+        hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+      }
+
+      const toolCounts = Array.from(toolMap.entries())
+        .map(([tool, count]) => ({ tool, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const curiosityTopics = Array.from(topicMap.entries())
+        .map(([topic, count]) => ({ topic, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      const hourCounts = Array.from(hourMap.entries())
+        .map(([hour, count]) => ({ hour, count }))
+        .sort((a, b) => a.hour - b.hour);
+
+      setData({ toolCounts, curiosityTopics, hourCounts, loaded: true });
+    })();
+  }, [userId]);
+
+  return data;
+}
 
 // ─── Cognitive Mirror Card Data ─────────────────────────────
 interface MirrorCard {
@@ -104,6 +185,7 @@ const Insights = () => {
   const { profile, loading: profileLoading } = useCognitiveProfile();
   const { preferences, updatePreferences, loading: prefsLoading } = useUserPreferences();
   const { track } = useTelemetry();
+  const insights = useInsightsData(user?.id);
   const [dataNoticeExpanded, setDataNoticeExpanded] = useState(false);
 
   const isLowBattery = preferences.energy_mode === "low";
@@ -324,24 +406,57 @@ const Insights = () => {
                 <TrendingUp className="h-4 w-4 text-sage-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Format Affinity</span>
               </div>
-              <div className="flex items-center justify-center h-24">
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  🎯 Complete a few study sessions and we'll show you which tools work best for your brain!
-                </p>
-              </div>
+              {insights.loaded && insights.toolCounts.length > 0 ? (
+                <div className="space-y-2">
+                  {insights.toolCounts.slice(0, 4).map((t) => {
+                    const max = insights.toolCounts[0].count;
+                    return (
+                      <div key={t.tool}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs font-medium text-foreground">{t.tool}</span>
+                          <span className="text-[10px] text-muted-foreground">{t.count}</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-sage-400 to-sage-500"
+                            style={{ width: `${(t.count / max) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-24">
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                    Complete a few study sessions and we'll show you which tools work best for your brain!
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Curiosity Heatmap */}
+            {/* Curiosity Map */}
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 mb-3">
                 <HelpCircle className="h-4 w-4 text-lavender-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Curiosity Map</span>
               </div>
-              <div className="flex items-center justify-center h-24">
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  🔍 Use "Explain This" on highlighted text and we'll map your curiosity patterns!
-                </p>
-              </div>
+              {insights.loaded && insights.curiosityTopics.length > 0 ? (
+                <div className="space-y-2">
+                  {insights.curiosityTopics.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs text-lavender-500 font-bold">{t.count}x</span>
+                      <span className="text-xs text-foreground truncate">{t.topic}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-24">
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                    Use "Explain This" on highlighted text and we'll map your curiosity patterns!
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Focus Windows */}
@@ -350,11 +465,44 @@ const Insights = () => {
                 <Clock className="h-4 w-4 text-peach-500" />
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Focus Windows</span>
               </div>
-              <div className="flex items-center justify-center h-24">
-                <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                  ⏰ Use the Focus Timer a few times and we'll find your optimal study windows!
-                </p>
-              </div>
+              {insights.loaded && insights.hourCounts.length > 0 ? (() => {
+                const maxCount = Math.max(...insights.hourCounts.map((h) => h.count));
+                const peakHour = insights.hourCounts.reduce((a, b) => (b.count > a.count ? b : a));
+                const formatHour = (h: number) => h === 0 ? "12am" : h < 12 ? `${h}am` : h === 12 ? "12pm" : `${h - 12}pm`;
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs text-foreground font-medium">
+                      Peak: <span className="text-peach-500 font-bold">{formatHour(peakHour.hour)}</span>
+                    </p>
+                    <div className="flex items-end gap-[2px] h-16">
+                      {Array.from({ length: 24 }, (_, h) => {
+                        const entry = insights.hourCounts.find((e) => e.hour === h);
+                        const count = entry?.count || 0;
+                        const height = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                        return (
+                          <div
+                            key={h}
+                            title={`${formatHour(h)}: ${count} events`}
+                            className={`flex-1 rounded-t-sm transition-all ${count > 0 ? "bg-gradient-to-t from-peach-400 to-peach-300" : "bg-muted/50"}`}
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-between text-[9px] text-muted-foreground">
+                      <span>12am</span>
+                      <span>12pm</span>
+                      <span>11pm</span>
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="flex items-center justify-center h-24">
+                  <p className="text-xs text-muted-foreground text-center leading-relaxed">
+                    Study a few times and we'll find your optimal focus windows!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </section>

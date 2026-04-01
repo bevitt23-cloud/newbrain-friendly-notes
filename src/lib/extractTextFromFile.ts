@@ -105,9 +105,20 @@ export type ExtractionResult = {
  * Supports: PDF, DOCX, DOC, PPTX, PPT, TXT, MD, CSV
  * Returns null for unsupported types (images, video, etc.)
  */
+const MAX_FILE_SIZE_MB = 20;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export async function extractTextFromFile(
   file: File
 ): Promise<ExtractionResult | null> {
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    toast.error(
+      `"${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum file size is ${MAX_FILE_SIZE_MB} MB.`,
+      { duration: 8000 }
+    );
+    return null;
+  }
+
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
   try {
