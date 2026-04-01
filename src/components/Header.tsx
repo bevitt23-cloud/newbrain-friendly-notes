@@ -14,11 +14,15 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const { preferences, updatePreferences } = useUserPreferences();
 
-  const isDark = theme === "dark";
-  const toggleTheme = () => setTheme(isDark ? "light" : "dark");
+  const isDark = resolvedTheme === "dark";
+  const toggleTheme = () => {
+    const nextIsDark = !isDark;
+    setTheme(nextIsDark ? "dark" : "light");
+    void updatePreferences({ default_dark_mode: nextIsDark });
+  };
 
   const learningMode = preferences.dyslexia_font ? "dyslexia" : "adhd";
   const handleModeChange = (mode: string) => {

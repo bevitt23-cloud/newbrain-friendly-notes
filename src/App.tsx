@@ -1,13 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { FunFactProvider } from "@/hooks/useFunFacts";
 import { NotesProvider } from "@/hooks/useNotesContext";
-import { UserPreferencesProvider } from "@/hooks/useUserPreferences";
+import { UserPreferencesProvider, useUserPreferences } from "@/hooks/useUserPreferences";
 import Index from "./pages/Index.tsx";
 import About from "./pages/About.tsx";
 import Support from "./pages/Support.tsx";
@@ -22,16 +23,34 @@ import AdminResearch from "./pages/AdminResearch.tsx";
 import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import { useTheme } from "next-themes";
 
 const ADMIN_EMAIL = "adhdnotemodifier@gmail.com";
 
 const queryClient = new QueryClient();
+
+const ThemePreferenceSync = () => {
+  const { preferences, loading } = useUserPreferences();
+  const { theme, setTheme } = useTheme();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const preferredTheme = preferences.default_dark_mode ? "dark" : "light";
+    if (theme !== preferredTheme) {
+      setTheme(preferredTheme);
+    }
+  }, [loading, preferences.default_dark_mode, setTheme, theme]);
+
+  return null;
+};
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <UserPreferencesProvider>
+        <ThemePreferenceSync />
         <NotesProvider>
         <FunFactProvider>
         <TooltipProvider>
