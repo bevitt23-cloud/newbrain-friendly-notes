@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lightbulb, Loader2, X, Send, ChevronDown, ChevronUp, Sparkles, MessageCircleQuestion, Quote } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
+// Add the supabase client import
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -103,13 +105,17 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
   const handleExplain = async () => {
     setIsExplaining(true);
     try {
+      // Get the active user session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${token}`, // Use the secure token here
           },
           body: JSON.stringify({ text: selectedText, context: notesContext?.slice(0, 2000) }),
         }
@@ -133,13 +139,17 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
     setIsChatLoading(true);
 
     try {
+      // Get the active user session token
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-text`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${token}`, // Use the secure token here
           },
           body: JSON.stringify({
             text: selectedText,
