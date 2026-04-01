@@ -17,8 +17,8 @@ export default {
       fontFamily: {
         sans: ["'Inter'", "system-ui", "sans-serif"],
         opendyslexic: ["'OpenDyslexic'", "sans-serif"],
-        lexend: ["'Times New Roman'", "'Times'", "serif"],
-        garamond: ["'EB Garamond'", "'Georgia'", "serif"],
+        lexend: ["'Lexend'", "system-ui", "sans-serif"],
+        arial: ["'Arial'", "'Helvetica Neue'", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

@@ -32,10 +32,10 @@ const STICKY_COLORS = [
 const TextSelectionMenu = ({ containerRef, notesContext, stickyNotes: externalStickyNotes, onStickyNotesChange, onVideoQuery }: TextSelectionMenuProps) => {
   const { preferences } = useUserPreferences();
   const stickyFont = preferences.dyslexia_font
-    ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
+    ? "'OpenDyslexic', sans-serif"
     : preferences.adhd_font
-      ? "'Times New Roman', 'Times', serif"
-      : "'EB Garamond', 'Georgia', serif";
+      ? "'Lexend', sans-serif"
+      : "'Arial', 'Helvetica Neue', sans-serif";
 
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [selectedText, setSelectedText] = useState("");

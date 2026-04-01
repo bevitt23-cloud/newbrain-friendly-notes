@@ -324,8 +324,8 @@ export default function FlowChart({ html }: { html: string }) {
   const fontFamily = isDyslexia
     ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
     : preferences.adhd_font
-      ? "'Times New Roman', 'Times', serif"
-      : "'EB Garamond', 'Georgia', serif";
+      ? "'Lexend', sans-serif"
+      : "'Arial', 'Helvetica Neue', sans-serif";
   const letterSpacing = isDyslexia ? preferences.letter_spacing : 0;
   const lineSpacing = isDyslexia ? preferences.line_spacing : 1.4;
   const padding = isDyslexia ? 16 : 10;

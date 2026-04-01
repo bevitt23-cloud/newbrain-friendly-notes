@@ -184,9 +184,9 @@ const Settings = () => {
           <div className="space-y-2">
             <div className="text-xs font-semibold text-foreground">Font Style</div>
             {([
-              { value: "lexend" as const, label: "Times New Roman", desc: "Classic structured serif — clean, familiar, and easy to read", font: "'Times New Roman', 'Times', serif", color: "border-sage-300 bg-sage-50 dark:border-sage-400/30 dark:bg-sage-500/10" },
+              { value: "lexend" as const, label: "Lexend", desc: "Clean, expanded spacing — optimized for ADHD focus", font: "'Lexend', sans-serif", color: "border-sage-300 bg-sage-50 dark:border-sage-400/30 dark:bg-sage-500/10" },
               { value: "opendyslexic" as const, label: "OpenDyslexic", desc: "Bottom-weighted letters — optimized for dyslexia readability", font: "'OpenDyslexic', sans-serif", color: "border-lavender-300 bg-lavender-50 dark:border-lavender-400/30 dark:bg-lavender-500/10" },
-              { value: "garamond" as const, label: "EB Garamond", desc: "Classic serif — comfortable traditional reading", font: "'EB Garamond', Georgia, serif", color: "border-sky-300 bg-sky-50 dark:border-sky-400/30 dark:bg-sky-500/10" },
+              { value: "arial" as const, label: "Arial", desc: "Clean, universal sans-serif — familiar and easy to read", font: "'Arial', 'Helvetica Neue', sans-serif", color: "border-sky-300 bg-sky-50 dark:border-sky-400/30 dark:bg-sky-500/10" },
             ]).map((opt) => {
               const isActive =
                 opt.value === "opendyslexic" ? !!font.staged.dyslexia_font :
@@ -237,8 +237,8 @@ const Settings = () => {
               fontFamily: font.staged.dyslexia_font
                 ? "'OpenDyslexic', sans-serif"
                 : font.staged.adhd_font
-                  ? "'Times New Roman', 'Times', serif"
-                  : "'EB Garamond', Georgia, serif",
+                  ? "'Lexend', sans-serif"
+                  : "'Arial', 'Helvetica Neue', sans-serif",
               fontSize: `${font.staged.font_size}rem`,
               lineHeight: font.staged.line_spacing,
               letterSpacing: `${font.staged.letter_spacing}em`,

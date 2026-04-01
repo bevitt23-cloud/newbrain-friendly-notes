@@ -5,15 +5,15 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 const FONT_MAP: Record<string, string> = {
   "font-opendyslexic": "'OpenDyslexic', sans-serif",
-  "font-lexend": "'Times New Roman', 'Times', serif",
-  "font-garamond": "'EB Garamond', 'Georgia', serif",
+  "font-lexend": "'Lexend', system-ui, sans-serif",
+  "font-arial": "'Arial', 'Helvetica Neue', sans-serif",
 };
 
 const Layout = ({ children }: { children: ReactNode }) => {
   const { preferences } = useUserPreferences();
 
-  // Three-way font selection: OpenDyslexic > Lexend > EB Garamond (default)
-  let fontClass = "font-garamond";
+  // Three-way font selection: OpenDyslexic > Lexend > Arial (default)
+  let fontClass = "font-arial";
 
   if (preferences.dyslexia_font) {
     fontClass = "font-opendyslexic";
