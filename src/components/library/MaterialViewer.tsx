@@ -16,7 +16,6 @@ interface MaterialViewerProps {
 
 const typeLabel: Record<string, string> = {
   flashcard: "🃏 Flash Cards",
-  practice: "🎮 Knowledge Quest",
   mindmap: "🗺️ Mind Map",
   flowchart: "📊 Flow Chart",
   cloze: "📝 Fill-in-the-Blank",
@@ -29,7 +28,6 @@ export default function MaterialViewer({ open, onOpenChange, materialType, conte
   const renderContent = () => {
     switch (materialType) {
       case "flashcard": return <FlashcardDeck data={raw} />;
-      case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
       case "cloze": return <ClozeNotes data={raw} />;
       case "mindmap": return <div className="h-[500px]"><MindMap data={raw} /></div>;
       case "flowchart": return <div className="h-[500px]"><FlowChart data={raw} /></div>;

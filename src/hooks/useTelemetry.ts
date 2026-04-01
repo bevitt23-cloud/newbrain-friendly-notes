@@ -23,8 +23,6 @@ export type TelemetryEventType =
   | "flowchart_node_click"
   | "socratic_turn"
   | "socratic_session_end"
-  | "practice_answer"
-  | "practice_complete"
   | "final_exam_answer"
   | "final_exam_complete"
   | "video_watched"

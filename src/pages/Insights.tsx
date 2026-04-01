@@ -30,7 +30,6 @@ const TOOL_EVENT_MAP: Record<string, string> = {
   socratic_turn: "Socratic Debate",
   mindmap_node_click: "Mind Map",
   flowchart_node_click: "Flow Chart",
-  practice_answer: "Knowledge Quest",
   final_exam_answer: "Final Exam",
 };
 
@@ -167,7 +166,7 @@ const MIRROR_CARDS: MirrorCard[] = [
     color: "from-sage-300 to-sage-500",
     category: "Environment & Emotion",
     observation: "You indicated that getting practice questions wrong can trigger an intense surge of frustration, anxiety, or the desire to quit.",
-    theWhy: "Traditional testing environments trigger a stress response that blocks learning. We've switched your testing to 'Safe-to-Fail' Mode with Knowledge Quests and XP points instead of red X's.",
+    theWhy: "Traditional testing environments trigger a stress response that blocks learning. We've switched your study tools to 'Safe-to-Fail' Mode with supportive feedback instead of red X's.",
   },
   {
     trait: "cognitive_burnout",

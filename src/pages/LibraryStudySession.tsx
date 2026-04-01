@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Map, GitBranch, Layers, ClipboardCheck, FileText, MessageCircle,
+  Map, GitBranch, Layers, FileText, MessageCircle,
   GraduationCap, Loader2, X, ChevronLeft, Plus, Clock, Hash, AlertTriangle,
 } from "lucide-react";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
@@ -24,7 +24,6 @@ const studyTools = [
   { id: "mindmap" as StudyToolType, label: "Mind Map", icon: Map },
   { id: "flowchart" as StudyToolType, label: "Flow Chart", icon: GitBranch },
   { id: "flashcard" as StudyToolType, label: "Flash Cards", icon: Layers },
-  { id: "practice" as StudyToolType, label: "Knowledge Quest", icon: ClipboardCheck },
   { id: "cloze" as StudyToolType, label: "Fill-in-the-Blank", icon: FileText },
   { id: "socratic" as StudyToolType, label: "Argue With Me", icon: MessageCircle },
   { id: "final-exam" as StudyToolType, label: "Final Exam", icon: GraduationCap },
@@ -160,7 +159,6 @@ export default function LibraryStudySession() {
 
     switch (tab.toolId) {
       case "flashcard": return <FlashcardDeck data={tab.result} />;
-      case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{tab.result}</pre>;
       case "cloze": return <ClozeNotes data={tab.result} />;
       case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
       case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;

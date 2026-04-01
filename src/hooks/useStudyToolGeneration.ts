@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const TOOL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-study-tool`;
 
-export type StudyToolType = "flashcard" | "mindmap" | "flowchart" | "practice" | "cloze" | "socratic" | "final-exam";
+export type StudyToolType = "flashcard" | "mindmap" | "flowchart" | "cloze" | "socratic" | "final-exam";
 
 export function useStudyToolGeneration() {
   const [result, setResult] = useState<string | null>(null);

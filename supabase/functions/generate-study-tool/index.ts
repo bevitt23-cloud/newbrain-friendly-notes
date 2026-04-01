@@ -64,18 +64,6 @@ OUTPUT: A JSON object:
 
 Output ONLY valid JSON, no markdown fences, no explanation.`,
 
-  practice: `${AESTHETIC_PREAMBLE}
-TASK: Generate a 5-question "Knowledge Quest" gamified assessment from the material.
-
-RULES:
-• Use scenario-based questions when possible ("Imagine you are..." / "A scientist discovers...").
-• Provide 4 options (A-D) per question. Make distractors plausible but clearly distinguishable.
-• "hintText" = a supportive, RSD-safe hint for wrong answers. Frame it as: "This is a common trap because [X]. Try thinking about [Y]..." NEVER say "you got this wrong."
-• "explanation" = brief (1-2 sentences) explanation of WHY the correct answer is right.
-• Difficulty should ramp: Q1-Q2 recall, Q3-Q4 application, Q5 synthesis/analysis.
-
-OUTPUT: A JSON array: [{"question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"...","hintText":"..."}]. Output ONLY valid JSON, no markdown fences.`,
-
   cloze: `${AESTHETIC_PREAMBLE}
 TASK: Create a fill-in-the-blank (cloze) exercise from the material.
 

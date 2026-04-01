@@ -45,7 +45,6 @@ interface GeneratedTool {
 
 const materialTypeLabel: Record<string, string> = {
   flashcard: "🃏 Flash Cards",
-  practice: "🎮 Quiz",
   mindmap: "🗺️ Mind Map",
   flowchart: "📊 Flow Chart",
   cloze: "📝 Fill-in-Blank",
@@ -57,7 +56,6 @@ const toolLabel: Record<string, string> = {
   mindmap: "🗺️ Mind Map",
   flowchart: "📊 Flow Chart",
   flashcard: "🃏 Flash Cards",
-  practice: "🎮 Knowledge Quest",
   cloze: "📝 Fill-in-Blank",
   socratic: "💬 Debate",
 };
@@ -272,7 +270,6 @@ export default function StudyReview() {
 
     switch (item.materialType) {
       case "flashcard": return <FlashcardDeck data={raw} />;
-      case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
       case "cloze": return <ClozeNotes data={raw} />;
       case "mindmap": return <div className="h-[500px]"><MindMap data={raw} /></div>;
       case "flowchart": return <div className="h-[500px]"><FlowChart data={raw} /></div>;
@@ -298,7 +295,6 @@ export default function StudyReview() {
     const content = (() => {
       switch (tool.toolType) {
         case "flashcard": return <FlashcardDeck data={tool.result} />;
-        case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{tool.result}</pre>;
         case "cloze": return <ClozeNotes data={tool.result} />;
         case "mindmap": return <div className="h-[500px]"><MindMap data={tool.result} /></div>;
         case "flowchart": return <div className="h-[500px]"><FlowChart data={tool.result} /></div>;

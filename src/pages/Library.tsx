@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Folder, Star, FileText, BookOpen, Search, MoreVertical, Trash2,
   Eye, RotateCcw, GraduationCap, CheckSquare, Square, Sparkles, ExternalLink,
-  Map, GitBranch, Layers, ClipboardCheck, MessageCircle, FolderOpen, MoveRight,
+  Map, GitBranch, Layers, MessageCircle, FolderOpen, MoveRight,
   CheckCheck, FolderPlus, Plus, Pencil,
 } from "lucide-react";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
@@ -119,7 +119,6 @@ const Library = () => {
     { id: "mindmap", label: "Mind Map", icon: Map },
     { id: "flowchart", label: "Flow Chart", icon: GitBranch },
     { id: "flashcard", label: "Flash Cards", icon: Layers },
-    { id: "practice", label: "Knowledge Quest", icon: ClipboardCheck },
     { id: "cloze", label: "Fill-in-the-Blank", icon: FileText },
     { id: "socratic", label: "Argue With Me", icon: MessageCircle },
   ];
@@ -960,7 +959,6 @@ interface MaterialCardProps {
 const MaterialCard = ({ material, onToggleFavorite, onDelete, onView, onRegenerate, selectMode, isSelected, onToggleSelect }: MaterialCardProps) => {
   const typeLabel: Record<string, string> = {
     flashcard: "🃏 Flash Cards",
-    practice: "🎮 Knowledge Quest",
     mindmap: "🗺️ Mind Map",
     flowchart: "📊 Flow Chart",
     cloze: "📝 Fill-in-the-Blank",

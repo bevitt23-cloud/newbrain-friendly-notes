@@ -51,7 +51,6 @@ const TOOL_META: Record<string, { label: string; icon: typeof Map; color: string
   flowchart: { label: "Flow Chart", icon: GitBranch, color: "text-peach-500" },
   socratic: { label: "Argue With Me", icon: MessageCircle, color: "text-sky-300" },
   cloze: { label: "Fill-in-the-Blank", icon: FileText, color: "text-sage-600" },
-  practice: { label: "Knowledge Quest", icon: Target, color: "text-lavender-400" },
   quiz: { label: "Retention Quiz", icon: CheckCircle2, color: "text-peach-400" },
   video: { label: "Video Explainer", icon: Video, color: "text-sky-400" },
   explain: { label: "Explain This", icon: Brain, color: "text-sage-400" },
@@ -121,7 +120,7 @@ const AdminResearch = () => {
   // Derived stats
   const toolEngagements = events.filter((e) => e.event_type === "tool_engaged");
   const toolCompletions = events.filter((e) =>
-    ["flashcard_session_complete", "cloze_session_complete", "quiz_complete", "practice_complete", "final_exam_complete", "socratic_session_end"].includes(e.event_type)
+    ["flashcard_session_complete", "cloze_session_complete", "quiz_complete", "final_exam_complete", "socratic_session_end"].includes(e.event_type)
   );
   const toolAbandoned = events.filter((e) => e.event_type === "tool_abandoned");
 
@@ -155,10 +154,10 @@ const AdminResearch = () => {
 
   // Quiz performance (strengths & struggles)
   const quizAnswers = events.filter((e) =>
-    ["quiz_answer", "practice_answer", "cloze_answer", "final_exam_answer"].includes(e.event_type)
+    ["quiz_answer", "cloze_answer", "final_exam_answer"].includes(e.event_type)
   );
   const quizCompletes = events.filter((e) =>
-    ["quiz_complete", "practice_complete", "final_exam_complete"].includes(e.event_type)
+    ["quiz_complete", "final_exam_complete"].includes(e.event_type)
   );
 
   const totalCorrect = quizAnswers.filter((e) => e.event_data?.correct === true).length;
@@ -543,8 +542,7 @@ function mapCompletionToTool(eventType: string): string {
   if (eventType.startsWith("flashcard")) return "flashcard";
   if (eventType.startsWith("cloze")) return "cloze";
   if (eventType.startsWith("quiz")) return "quiz";
-  if (eventType.startsWith("practice")) return "practice";
-  if (eventType.startsWith("final_exam")) return "practice";
+  if (eventType.startsWith("final_exam")) return "quiz";
   if (eventType.startsWith("socratic")) return "socratic";
   return "unknown";
 }
