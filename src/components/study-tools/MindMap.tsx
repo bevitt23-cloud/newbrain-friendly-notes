@@ -347,7 +347,7 @@ function radialLayout(
 }
 
 /* ── Main component ── */
-export default function MindMap({ html }: { html: string }) {
+export default function MindMap({ html, data: rawData }: { html?: string; data?: string }) {
   const { preferences } = useUserPreferences();
   const { track } = useTelemetry();
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
@@ -363,6 +363,22 @@ export default function MindMap({ html }: { html: string }) {
   }, []);
 
   const parsedData = useMemo<MindMapDataFlat | null>(() => {
+    // Parse from raw JSON string (study tool output)
+    if (rawData) {
+      try {
+        const cleanJson = rawData.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+        const start = cleanJson.indexOf("{");
+        const end = cleanJson.lastIndexOf("}");
+        if (start === -1 || end === -1) return null;
+        const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
+        const parsed = JSON.parse(validJsonStr);
+        if (parsed.nodes && Array.isArray(parsed.nodes)) return parsed as MindMapDataFlat;
+        if (parsed.label) return flattenNested(parsed as MindMapDataNested);
+        return null;
+      } catch { return null; }
+    }
+
+    // Parse from HTML (embedded in generated notes)
     if (!html) return null;
     try {
       const parser = new DOMParser();
@@ -390,7 +406,7 @@ export default function MindMap({ html }: { html: string }) {
     } catch {
       return null;
     }
-  }, [html]);
+  }, [html, rawData]);
 
   const fontFamily = preferences.dyslexia_font
     ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"

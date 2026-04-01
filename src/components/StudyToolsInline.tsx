@@ -15,7 +15,8 @@ import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
 import ClozeNotes from "@/components/study-tools/ClozeNotes";
 
 import SocraticDebate from "@/components/study-tools/SocraticDebate";
-import Visualizer from "@/components/study-tools/Visualizer";
+import MindMap from "@/components/study-tools/MindMap";
+import FlowChart from "@/components/study-tools/FlowChart";
 import StickyNoteButton from "@/components/study-tools/StickyNoteButton";
 import FunFactLink from "@/components/study-tools/FunFactLink";
 
@@ -146,8 +147,8 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
       switch (tab.toolId) {
         case "flashcard": return <FlashcardDeck data={tab.result} />;
         case "cloze": return <ClozeNotes data={tab.result} />;
-        case "mindmap":
-        case "flowchart": return <Visualizer data={tab.result} notesContext={notesHtml} />;
+        case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
+        case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;
         default: return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
       }
     })();

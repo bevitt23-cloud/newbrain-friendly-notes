@@ -285,7 +285,7 @@ function layoutWithDagre(
 }
 
 /* ── Main component ── */
-export default function FlowChart({ html }: { html: string }) {
+export default function FlowChart({ html, data: rawData }: { html?: string; data?: string }) {
   const { preferences } = useUserPreferences();
   const { track } = useTelemetry();
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -300,6 +300,19 @@ export default function FlowChart({ html }: { html: string }) {
   }, []);
 
   const parsedData = useMemo<FlowChartData | null>(() => {
+    // Parse from raw JSON string (study tool output)
+    if (rawData) {
+      try {
+        const cleanJson = rawData.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+        const start = cleanJson.indexOf("{");
+        const end = cleanJson.lastIndexOf("}");
+        if (start === -1 || end === -1) return null;
+        const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
+        return JSON.parse(validJsonStr);
+      } catch { return null; }
+    }
+
+    // Parse from HTML (embedded in generated notes)
     if (!html) return null;
     try {
       const parser = new DOMParser();
@@ -318,7 +331,7 @@ export default function FlowChart({ html }: { html: string }) {
     } catch {
       return null;
     }
-  }, [html]);
+  }, [html, rawData]);
 
   const isDyslexia = preferences.dyslexia_font;
   const fontFamily = isDyslexia

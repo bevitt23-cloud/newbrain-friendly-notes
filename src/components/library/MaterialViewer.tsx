@@ -2,7 +2,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
 import ClozeNotes from "@/components/study-tools/ClozeNotes";
 
-import Visualizer from "@/components/study-tools/Visualizer";
+import MindMap from "@/components/study-tools/MindMap";
+import FlowChart from "@/components/study-tools/FlowChart";
 import SocraticDebate from "@/components/study-tools/SocraticDebate";
 
 interface MaterialViewerProps {
@@ -30,8 +31,8 @@ export default function MaterialViewer({ open, onOpenChange, materialType, conte
       case "flashcard": return <FlashcardDeck data={raw} />;
       case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
       case "cloze": return <ClozeNotes data={raw} />;
-      case "mindmap":
-      case "flowchart": return <Visualizer data={raw} />;
+      case "mindmap": return <div className="h-[500px]"><MindMap data={raw} /></div>;
+      case "flowchart": return <div className="h-[500px]"><FlowChart data={raw} /></div>;
       default: return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
     }
   };

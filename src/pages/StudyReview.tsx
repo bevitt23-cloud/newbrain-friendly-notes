@@ -7,7 +7,8 @@ import Layout from "@/components/Layout";
 import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
 import ClozeNotes from "@/components/study-tools/ClozeNotes";
 
-import Visualizer from "@/components/study-tools/Visualizer";
+import MindMap from "@/components/study-tools/MindMap";
+import FlowChart from "@/components/study-tools/FlowChart";
 import SocraticDebate from "@/components/study-tools/SocraticDebate";
 import FinalExam from "@/components/study-tools/FinalExam";
 import FunFactLink from "@/components/study-tools/FunFactLink";
@@ -273,8 +274,8 @@ export default function StudyReview() {
       case "flashcard": return <FlashcardDeck data={raw} />;
       case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
       case "cloze": return <ClozeNotes data={raw} />;
-      case "mindmap":
-      case "flowchart": return <Visualizer data={raw} />;
+      case "mindmap": return <div className="h-[500px]"><MindMap data={raw} /></div>;
+      case "flowchart": return <div className="h-[500px]"><FlowChart data={raw} /></div>;
       case "final-exam": return <FinalExam data={raw} />;
       case "socratic": return <SocraticDebate notesHtml={item.content} />;
       default: return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
@@ -299,8 +300,8 @@ export default function StudyReview() {
         case "flashcard": return <FlashcardDeck data={tool.result} />;
         case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{tool.result}</pre>;
         case "cloze": return <ClozeNotes data={tool.result} />;
-        case "mindmap":
-        case "flowchart": return <Visualizer data={tool.result} notesContext={tool.noteContent} />;
+        case "mindmap": return <div className="h-[500px]"><MindMap data={tool.result} /></div>;
+        case "flowchart": return <div className="h-[500px]"><FlowChart data={tool.result} /></div>;
         default: return <pre className="text-xs whitespace-pre-wrap">{tool.result}</pre>;
       }
     })();

@@ -14,7 +14,8 @@ import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
 import ClozeNotes from "@/components/study-tools/ClozeNotes";
 
 import SocraticDebate from "@/components/study-tools/SocraticDebate";
-import Visualizer from "@/components/study-tools/Visualizer";
+import MindMap from "@/components/study-tools/MindMap";
+import FlowChart from "@/components/study-tools/FlowChart";
 import FinalExam from "@/components/study-tools/FinalExam";
 import StickyNoteButton from "@/components/study-tools/StickyNoteButton";
 import Layout from "@/components/Layout";
@@ -161,8 +162,8 @@ export default function LibraryStudySession() {
       case "flashcard": return <FlashcardDeck data={tab.result} />;
       case "practice": return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{tab.result}</pre>;
       case "cloze": return <ClozeNotes data={tab.result} />;
-      case "mindmap":
-      case "flowchart": return <Visualizer data={tab.result} notesContext={notesHtml} />;
+      case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
+      case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;
       case "final-exam": return <FinalExam data={tab.result} timerMinutes={tab.timerMinutes} />;
       default: return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
     }
