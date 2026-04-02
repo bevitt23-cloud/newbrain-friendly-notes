@@ -1,25 +1,71 @@
 import { useState, useCallback, useEffect } from "react";
-import { Upload, Link2, FileText, X, Sparkles, Mic, MessageSquare, Loader2, Youtube, FolderPlus, Check, Save } from "lucide-react";
+import { Upload, Link2, FileText, X, Sparkles, Loader2, Youtube, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
+import { extractTextFromFile, isClientExtractable } from "@/lib/extractTextFromFile";
+
+const DEFAULT_FOLDER = "Unsorted";
+
+export interface ChapterChunk {
+  id: string;
+  title: string;
+  text: string;
+}
 
 interface ContentUploaderProps {
   onGenerate: (data: {
-    textContent?: string;
-    files?: File[];
+    chapters: ChapterChunk[];
     youtubeUrl?: string;
     websiteUrl?: string;
     instructions: string;
     folder: string;
     tags: string[];
     shouldSaveToLibrary: boolean;
+    saveYouTubeVideo?: boolean;
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
+}
+
+function detectChapters(text: string, defaultTitle: string): ChapterChunk[] {
+  // Try to split by common chapter markers (Chapter 1, Part 1, Section 1)
+  const chapterRegex = /(?=^(?:Chapter|Part|Section)\s+[A-Z0-9]+)/im;
+  const parts = text.split(chapterRegex).filter((t) => t.trim().length > 100);
+
+  if (parts.length > 1) {
+    return parts.map((partText, i) => {
+      const firstLine = partText.split('\n')[0].trim().substring(0, 40);
+      return { id: `ch-${i}`, title: firstLine || `${defaultTitle} - Part ${i + 1}`, text: partText };
+    });
+  }
+
+  // Fallback: If it's just a massive wall of text without markers, split by ~30k characters safely
+  if (text.length > 30000) {
+    const chunks: ChapterChunk[] = [];
+    let currentIndex = 0;
+    let index = 1;
+    while (currentIndex < text.length) {
+      let endIndex = currentIndex + 30000;
+      if (endIndex < text.length) {
+        const nextNewline = text.lastIndexOf("\n", endIndex);
+        if (nextNewline > currentIndex + 15000) endIndex = nextNewline;
+      }
+      chunks.push({
+        id: `pt-${index}`,
+        title: `${defaultTitle} - Part ${index}`,
+        text: text.slice(currentIndex, endIndex)
+      });
+      currentIndex = endIndex;
+      index++;
+    }
+    return chunks;
+  }
+
+  return [{ id: "full", title: defaultTitle, text }];
 }
 
 const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUploaderProps) => {
@@ -28,445 +74,338 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [files, setFiles] = useState<File[]>([]);
   const [url, setUrl] = useState("");
   const [text, setText] = useState("");
+  
+  // Chapter Selection State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [detectedChapters, setDetectedChapters] = useState<ChapterChunk[] | null>(null);
+  const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(new Set());
+
   const [instructions, setInstructions] = useState("");
-  const [showInstructions, setShowInstructions] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
   const [dragOver, setDragOver] = useState(false);
-  const [folder, setFolder] = useState("Unsorted");
+  const [folder, setFolder] = useState(DEFAULT_FOLDER);
   const [tagsInput, setTagsInput] = useState("");
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
   const [shouldSaveToLibrary, setShouldSaveToLibrary] = useState(true);
+  const [saveYouTubeVideo, setSaveYouTubeVideo] = useState(true);
   const [libraryFolders, setLibraryFolders] = useState<string[]>([]);
 
-  const DEFAULT_FOLDERS = ["Unsorted"] as const;
-
-  // Fetch existing folders from user's library
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("saved_notes")
-        .select("folder")
-        .eq("user_id", user.id);
+      const { data } = await supabase.from("saved_notes").select("folder").eq("user_id", user.id);
       if (data) {
-        const unique = [...new Set(data.map((r: any) => r.folder as string))].filter(
-          (f) => !DEFAULT_FOLDERS.includes(f as any)
-        );
+        const unique = [...new Set(data.map((r) => r.folder).filter((f): f is string => typeof f === "string" && f.length > 0))].filter((f) => f !== DEFAULT_FOLDER);
         setLibraryFolders(unique);
       }
     })();
   }, [user]);
 
-  const ALL_FOLDERS = [...DEFAULT_FOLDERS, ...libraryFolders];
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const droppedFiles = Array.from(e.dataTransfer.files).slice(0, 5);
-    setFiles((prev) => [...prev, ...droppedFiles].slice(0, 5));
+    setFiles(Array.from(e.dataTransfer.files).slice(0, 1));
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
-    const selected = Array.from(e.target.files).slice(0, 5);
-    setFiles((prev) => [...prev, ...selected].slice(0, 5));
+    setFiles(Array.from(e.target.files).slice(0, 1));
   }, []);
 
-  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
-
-  const isYouTubeUrl = (u: string) => isTranscribableYouTubeUrl(u);
-
-  const normalizeWebsiteUrl = (input: string): string | null => {
-    const raw = input.trim();
-    if (!raw || /\s/.test(raw)) return null;
-
-    const unwrapCandidate = (value: string): string => {
-      const redirectKeys = [
-        "url",
-        "u",
-        "target",
-        "dest",
-        "destination",
-        "redirect",
-        "redirect_url",
-        "redirectUri",
-        "redirect_uri",
-        "redirectTo",
-        "redirect_to",
-        "to",
-        "out",
-        "next",
-        "link",
-        "source",
-        "source_url",
-        "article",
-        "article_url",
-        "articleUrl",
-      ];
-
-      let current = value;
-      for (let depth = 0; depth < 3; depth += 1) {
-        try {
-          const parsed = new URL(/^https?:\/\//i.test(current) ? current : `https://${current}`);
-          const nested = redirectKeys
-            .map((key) => parsed.searchParams.get(key))
-            .find((candidate) => typeof candidate === "string" && candidate.trim().length > 0);
-          if (!nested) return current;
-          current = nested;
-          continue;
-        } catch {
-          try {
-            const decoded = decodeURIComponent(current);
-            if (decoded === current) return current;
-            current = decoded;
-            continue;
-          } catch {
-            return current;
-          }
-        }
-      }
-      return current;
-    };
-
-    const candidate = unwrapCandidate(raw).trim();
-    if (!candidate || !/[.:/]/.test(candidate)) return null;
-
-    try {
-      const parsed = new URL(/^https?:\/\//i.test(candidate) ? candidate : `https://${candidate}`);
-      if (!["http:", "https:"].includes(parsed.protocol)) return null;
-      if (!parsed.hostname) return null;
-      if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") return null;
-      return parsed.toString();
-    } catch {
-      return null;
-    }
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const parsedTags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
+  const handleAnalyzeAndSubmit = async () => {
+    const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: tagsInput.split(",").map(t => t.trim()).filter(Boolean), shouldSaveToLibrary };
+    
+    // If they already selected chapters, generate them!
+    if (detectedChapters) {
+      const selected = detectedChapters.filter(c => selectedChapterIds.has(c.id));
+      if (selected.length === 0) return toast.error("Select at least one chapter.");
+      onGenerate({ chapters: selected, ...common });
+      return;
+    }
 
-  const handleSubmit = () => {
-    const common = { instructions, folder: shouldSaveToLibrary ? folder : "Unsorted", tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary };
-    if (activeTab === "text" && text.trim()) {
-      onGenerate({ textContent: text.trim(), ...common });
-    } else if (activeTab === "url" && url.trim()) {
-      if (isYouTubeUrl(url)) {
-        onGenerate({ youtubeUrl: url.trim(), ...common });
+    // URL Handling
+    if (activeTab === "url" && url.trim()) {
+      if (isTranscribableYouTubeUrl(url)) {
+        onGenerate({ chapters: [], youtubeUrl: url.trim(), saveYouTubeVideo, ...common });
       } else {
-        const normalizedWebsiteUrl = normalizeWebsiteUrl(url);
-        if (!normalizedWebsiteUrl) {
-          toast.error("Paste a valid website URL, including the domain name.");
+        onGenerate({ chapters: [], websiteUrl: url.trim(), ...common });
+      }
+      return;
+    }
+
+    // Text Handling
+    if (activeTab === "text" && text.trim()) {
+      const chunks = detectChapters(text.trim(), "Pasted Text");
+      if (chunks.length > 1) {
+        setDetectedChapters(chunks);
+        setSelectedChapterIds(new Set(chunks.map(c => c.id)));
+      } else {
+        onGenerate({ chapters: chunks, ...common });
+      }
+      return;
+    }
+
+    // File Handling
+    if (activeTab === "file" && files.length > 0) {
+      setIsAnalyzing(true);
+      try {
+        const file = files[0];
+        if (!isClientExtractable(file.name)) {
+          toast.error("This file type is not supported for local extraction. Please use PDF, DOCX, or TXT.");
           return;
         }
-        onGenerate({ websiteUrl: normalizedWebsiteUrl, ...common });
+
+        const result = await extractTextFromFile(file);
+        if (!result?.text?.trim()) {
+          toast.error("No readable text was found in this file.");
+          return;
+        }
+
+        const chunks = detectChapters(result.text, file.name.split(".")[0]);
+
+        if (chunks.length > 1) {
+          setDetectedChapters(chunks);
+          setSelectedChapterIds(new Set(chunks.map((c) => c.id)));
+        } else {
+          onGenerate({ chapters: chunks, ...common });
+          }
+      } catch (err) {
+        toast.error("Failed to analyze file.");
+      } finally {
+        setIsAnalyzing(false);
       }
-    } else if (activeTab === "file" && files.length > 0) {
-      const oversized = files.find((f) => f.size > 100 * 1024 * 1024);
-      if (oversized) {
-        toast.error(`${oversized.name} is too large (max 100MB per file)`);
-        return;
-      }
-      onGenerate({ files, ...common });
     }
   };
 
-  const tabs = [
-    { id: "file" as const, label: "Upload File", icon: Upload, color: "text-sage-600" },
-    { id: "url" as const, label: "Paste URL", icon: Link2, color: "text-lavender-500" },
-    { id: "text" as const, label: "Paste Text", icon: FileText, color: "text-peach-500" },
-  ];
-
-  const hasContent = files.length > 0 || url.trim() || text.trim();
-
-  const formatFileSize = (size: number) => {
-    if (size < 1024) return `${size}B`;
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(0)}KB`;
-    return `${(size / (1024 * 1024)).toFixed(1)}MB`;
+  const toggleChapter = (id: string) => {
+    const newSet = new Set(selectedChapterIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedChapterIds(newSet);
   };
 
-  return (
-    <div className="animate-fade-in">
-      {/* Tab switcher */}
-      <div className="mb-6 flex gap-1 rounded-2xl bg-gradient-to-r from-sage-200 via-lavender-200 to-peach-200 dark:from-sage-500/20 dark:via-lavender-500/20 dark:to-peach-500/20 p-1.5 ring-1 ring-sage-300 dark:ring-border">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`relative flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ${
-              activeTab === tab.id
-                ? "bg-card text-foreground shadow-lg ring-1 ring-border/80"
-                : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-            }`}
+  const hasContent = files.length > 0 || url.trim() || text.trim();
+  const allFolders = [DEFAULT_FOLDER, ...libraryFolders];
+
+  // --- CHAPTER SELECTION UI ---
+  if (detectedChapters) {
+    return (
+      <div className="animate-fade-in space-y-4">
+        <div className="rounded-2xl border border-sage-200 bg-sage-50/50 p-6 dark:border-sage-500/20 dark:bg-sage-500/5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sage-200 dark:bg-sage-500/30">
+              <BookOpen className="h-5 w-5 text-sage-700 dark:text-sage-200" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Large Document Detected</h3>
+              <p className="text-sm text-muted-foreground">We found {detectedChapters.length} sections. Select which ones you want to convert into notes.</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <Button variant="outline" size="sm" onClick={() => setSelectedChapterIds(new Set(detectedChapters.map(c => c.id)))}>Select All</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedChapterIds(new Set())}>Deselect All</Button>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-card p-2 space-y-1">
+            {detectedChapters.map((chapter) => (
+              <label key={chapter.id} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedChapterIds.has(chapter.id) ? 'bg-primary/10' : 'hover:bg-muted'}`}>
+                <input 
+                  type="checkbox" 
+                  checked={selectedChapterIds.has(chapter.id)}
+                  onChange={() => toggleChapter(chapter.id)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30"
+                />
+                <span className="text-sm font-medium">{chapter.title}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button variant="outline" className="w-full" onClick={() => setDetectedChapters(null)}>Cancel</Button>
+          <Button 
+            className="w-full" 
+            onClick={handleAnalyzeAndSubmit}
+            disabled={selectedChapterIds.size === 0 || isGenerating}
           >
-            <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? tab.color : ""}`} />
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+            Generate {selectedChapterIds.size} Notes
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in space-y-4">
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border p-1">
+        <button
+          onClick={() => setActiveTab("file")}
+          className={`rounded-lg px-3 py-2 text-sm ${activeTab === "file" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+        >
+          <span className="inline-flex items-center gap-2"><Upload className="h-4 w-4" /> File</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("url")}
+          className={`rounded-lg px-3 py-2 text-sm ${activeTab === "url" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+        >
+          <span className="inline-flex items-center gap-2"><Link2 className="h-4 w-4" /> URL</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("text")}
+          className={`rounded-lg px-3 py-2 text-sm ${activeTab === "text" ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+        >
+          <span className="inline-flex items-center gap-2"><FileText className="h-4 w-4" /> Text</span>
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
         {activeTab === "file" && (
-          <motion.div key="file" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }} className="space-y-3">
+          <motion.div key="file" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="space-y-3">
             <div
               onDrop={handleDrop}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
-              className={`relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-300 ${
-                dragOver
-                  ? "border-sage-600 bg-sage-200 dark:border-sage-300 dark:bg-sage-500/30 scale-[1.01]"
-                  : "border-sage-400 bg-gradient-to-br from-sage-100 to-sage-200/60 dark:border-sage-300/40 dark:from-sage-500/20 dark:to-sage-500/10 hover:border-sage-500 hover:bg-sage-200/80 dark:hover:border-sage-200/50 dark:hover:bg-sage-500/25"
+              className={`relative flex min-h-[160px] cursor-pointer items-center justify-center rounded-xl border-2 border-dashed p-6 text-center ${
+                dragOver ? "border-primary bg-primary/5" : "border-border"
               }`}
             >
               <input
-                id="content-files"
-                name="contentFiles"
                 type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.avi"
+                accept=".pdf,.doc,.docx,.txt,.md"
                 onChange={handleFileSelect}
                 className="absolute inset-0 cursor-pointer opacity-0"
               />
-              <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sage-300 dark:bg-sage-500/35 shadow-md">
-                <Upload className="h-7 w-7 text-sage-700 dark:text-sage-100" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Drop one file here or click to browse</p>
+                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD</p>
               </div>
-              <p className="text-sm font-medium text-foreground">Drop files here or click to browse</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF, Word, PowerPoint, images, video — up to 5 files (100MB each)
-              </p>
             </div>
 
-            {files.length > 0 && (
-              <div className="space-y-2">
-                {files.map((file, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between rounded-xl bg-sage-100 dark:bg-sage-500/15 px-3 py-2.5 ring-1 ring-sage-300 dark:ring-sage-200/30"
-                  >
-                    <div className="flex items-center gap-2 text-sm">
-                      <FileText className="h-4 w-4 text-sage-500" />
-                      <span className="truncate text-foreground">{file.name}</span>
-                      <span className="text-xs text-muted-foreground">({formatFileSize(file.size)})</span>
-                    </div>
-                    <button onClick={() => removeFile(i)} className="rounded-lg p-1 text-muted-foreground hover:bg-sage-100 hover:text-foreground transition-colors">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </motion.div>
-                ))}
+            {files.map((file, i) => (
+              <div key={`${file.name}-${i}`} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <span className="truncate text-sm">{file.name}</span>
+                <button onClick={() => removeFile(i)} className="rounded p-1 text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            )}
+            ))}
           </motion.div>
         )}
 
         {activeTab === "url" && (
-          <motion.div key="url" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
+          <motion.div key="url" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="space-y-2">
             <div className="relative">
-              {isYouTubeUrl(url) ? (
-                <Youtube className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-red-500" />
+              {isTranscribableYouTubeUrl(url) ? (
+                <Youtube className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-red-500" />
               ) : (
-                <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-lavender-500" />
+                <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               )}
               <input
-                id="content-url"
-                name="contentUrl"
                 type="url"
-                placeholder="https://example.com/article or YouTube URL..."
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                className="w-full rounded-2xl border-2 border-lavender-300 dark:border-lavender-300/30 bg-gradient-to-br from-lavender-100/60 to-lavender-200/30 dark:from-lavender-500/15 dark:to-lavender-500/10 pl-10 pr-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-lavender-500 focus:bg-lavender-100 dark:focus:bg-lavender-500/20 focus:outline-none focus:ring-2 focus:ring-lavender-300/60 transition-all"
+                placeholder="https://example.com or https://youtube.com/..."
+                className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-3 text-sm"
               />
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {isYouTubeUrl(url)
-                ? "🎥 YouTube detected — AI will transcribe and generate notes from the video"
-                : "Paste a URL or YouTube link and we'll generate notes from it"}
-            </p>
+            {isTranscribableYouTubeUrl(url) && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={saveYouTubeVideo}
+                  onChange={(e) => setSaveYouTubeVideo(e.target.checked)}
+                />
+                Save YouTube video metadata with this note
+              </label>
+            )}
           </motion.div>
         )}
 
         {activeTab === "text" && (
-          <motion.div key="text" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
+          <motion.div key="text" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
             <textarea
-              id="content-text"
-              name="contentText"
-              placeholder="Paste your study material here..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              rows={6}
-              className="w-full resize-none rounded-2xl border-2 border-peach-300 dark:border-peach-300/30 bg-gradient-to-br from-peach-100/60 to-peach-200/30 dark:from-peach-500/15 dark:to-peach-500/10 px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-peach-500 focus:bg-peach-100 dark:focus:bg-peach-500/20 focus:outline-none focus:ring-2 focus:ring-peach-300/60 transition-all"
+              rows={8}
+              placeholder="Paste your content here..."
+              className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm"
             />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Speak notes button */}
-      <button className="mt-3 flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors group">
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-lavender-50 dark:bg-lavender-500/15 group-hover:bg-lavender-100 dark:group-hover:bg-lavender-500/25 transition-colors">
-          <Mic className="h-3 w-3 text-lavender-500 dark:text-lavender-300" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Folder</label>
+          <select
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            disabled={!shouldSaveToLibrary}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
+          >
+            {allFolders.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
         </div>
-        Or speak your notes aloud
-      </button>
-
-      {/* Save checkbox + Folder & Tags */}
-      <div className="mt-4 space-y-3">
-        {/* Save to Library checkbox */}
-        <label className="flex items-center gap-2 cursor-pointer px-1">
+        <div>
+          <label className="mb-1 block text-xs text-muted-foreground">Tags (comma separated)</label>
           <input
-            id="save-to-library"
-            name="saveToLibrary"
-            type="checkbox"
-            checked={shouldSaveToLibrary}
-            onChange={(e) => setShouldSaveToLibrary(e.target.checked)}
-            className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30 accent-primary cursor-pointer"
+            type="text"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            disabled={!shouldSaveToLibrary}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-60"
           />
-          <span className="text-xs font-medium text-muted-foreground">Save to Library</span>
-        </label>
-
-        {shouldSaveToLibrary ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Save to folder</label>
-              {isCreatingFolder ? (
-                <div className="flex gap-1.5">
-                  <input
-                    id="content-new-folder"
-                    name="contentNewFolder"
-                    type="text"
-                    autoFocus
-                    placeholder="Name your new folder..."
-                    value={newFolderName}
-                    onChange={(e) => setNewFolderName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newFolderName.trim()) {
-                        const name = `📂 ${newFolderName.trim()}`;
-                        setLibraryFolders((prev) => [...prev, name]);
-                        setFolder(name);
-                        setNewFolderName("");
-                        setIsCreatingFolder(false);
-                      } else if (e.key === "Escape") {
-                        setNewFolderName("");
-                        setIsCreatingFolder(false);
-                      }
-                    }}
-                    className="flex-1 rounded-xl border border-primary/40 bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                  <button
-                    onClick={() => {
-                      if (newFolderName.trim()) {
-                        const name = `📂 ${newFolderName.trim()}`;
-                        setLibraryFolders((prev) => [...prev, name]);
-                        setFolder(name);
-                        setNewFolderName("");
-                        setIsCreatingFolder(false);
-                      }
-                    }}
-                    disabled={!newFolderName.trim()}
-                    className="rounded-xl border border-border bg-primary/10 px-2.5 text-primary hover:bg-primary/20 transition-colors disabled:opacity-40"
-                  >
-                    <Check className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => { setNewFolderName(""); setIsCreatingFolder(false); }}
-                    className="rounded-xl border border-border bg-card px-2.5 text-muted-foreground hover:bg-muted transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <select
-                    id="content-folder"
-                    name="contentFolder"
-                    value={folder}
-                    onChange={(e) => setFolder(e.target.value)}
-                    className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-                  >
-                    {ALL_FOLDERS.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={() => setIsCreatingFolder(true)}
-                    className="rounded-xl border border-border bg-card p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    title="Create New Folder"
-                  >
-                    <FolderPlus className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tags</label>
-              <input
-                id="content-tags"
-                name="contentTags"
-                type="text"
-                placeholder="biology, chapter 1, exam prep"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground italic px-1">
-            ⚠️ These notes will disappear if you refresh or leave the page.
-          </p>
-        )}
+        </div>
       </div>
 
-      {/* Instructions toggle */}
-      <div className="mt-4">
-        <button
-          onClick={() => setShowInstructions(!showInstructions)}
-          className="flex items-center gap-2 text-xs font-medium text-primary hover:text-sage-700 transition-colors"
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          {showInstructions ? "Hide instructions" : "+ Add instructions for your notes"}
-        </button>
-        <AnimatePresence>
-          {showInstructions && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <textarea
-                id="content-instructions"
-                name="contentInstructions"
-                placeholder='e.g. "Focus on Chapter 3 only" or "Make it step-by-step for a beginner"'
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                rows={3}
-                className="mt-2 w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+        <input
+          type="checkbox"
+          checked={shouldSaveToLibrary}
+          onChange={(e) => setShouldSaveToLibrary(e.target.checked)}
+        />
+        Save generated notes to Library
+      </label>
 
-      {/* CTA button */}
-      <Button
-        disabled={!hasContent || isGenerating}
-        size="lg"
-        onClick={handleSubmit}
-        className="mt-6 w-full gap-2 rounded-2xl py-6 text-base font-semibold shadow-md transition-all duration-200 hover:shadow-lg disabled:opacity-40 disabled:shadow-none"
+      <button
+        onClick={() => setShowInstructions((s) => !s)}
+        className="text-xs font-medium text-primary"
       >
-        {isGenerating ? (
-          <>
-            <Loader2 className="h-5 w-5 animate-spin" />
-            {uploadProgress || "Generating Notes..."}
-          </>
+        {showInstructions ? "Hide instructions" : "Add instructions"}
+      </button>
+      {showInstructions && (
+        <textarea
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          rows={3}
+          placeholder="Optional instructions for the generated notes"
+          className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm"
+        />
+      )}
+
+      <Button
+        disabled={!hasContent || isGenerating || isAnalyzing}
+        size="lg"
+        onClick={handleAnalyzeAndSubmit}
+        className="mt-6 w-full gap-2 rounded-2xl py-6 text-base font-semibold shadow-md transition-all duration-200"
+      >
+        {isGenerating || isAnalyzing ? (
+          <><Loader2 className="h-5 w-5 animate-spin" /> {isAnalyzing ? "Analyzing Document..." : uploadProgress || "Generating..."}</>
         ) : (
-          <>
-            <Sparkles className="h-5 w-5" />
-            Turn into Brain-Friendly Notes
-          </>
+          <><Sparkles className="h-5 w-5" /> Turn into Brain-Friendly Notes</>
         )}
       </Button>
     </div>
   );
 };
-
 export default ContentUploader;

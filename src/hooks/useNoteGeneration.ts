@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
+import type { ChapterChunk } from "@/components/ContentUploader";
 
 export interface QuizQuestion {
   question: string;
@@ -11,10 +11,10 @@ export interface QuizQuestion {
 }
 
 export interface GenerateOptions {
-  textContent?: string;
-  files?: File[];
+  chapters: ChapterChunk[];
   youtubeUrl?: string;
   websiteUrl?: string;
+  saveYouTubeVideo?: boolean;
   instructions?: string;
   learningMode?: string;
   extras?: string[];
@@ -30,7 +30,7 @@ export function useNoteGeneration() {
   const [error, setError] = useState<string | null>(null);
   const [generatedHtml, setGeneratedHtml] = useState("");
   const [uploadProgress, setUploadProgress] = useState("");
-  const [quizQuestions, setQuizQuestions] = useState<any[]>([]);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
   const ageRef = useRef<number | null>(null);
 
@@ -44,184 +44,201 @@ export function useNoteGeneration() {
     ageRef.current = opts.age ?? null;
 
     try {
-      // 1. Normalize text to prevent "undefined" string coercion
-      const normalizedTextContent =
-        typeof opts.textContent === "string" && opts.textContent.trim().toLowerCase() !== "undefined"
-          ? opts.textContent
-          : "";
-
-      // 2. Advanced Safe File Extraction
-      const extractedTexts: string[] = [];
-      if (Array.isArray(opts.files) && opts.files.length > 0) {
-        for (let i = 0; i < opts.files.length; i++) {
-          const file = opts.files[i];
-
-          if (opts.files.length > 1) {
-            setUploadProgress(`Extracting text locally from file ${i + 1} of ${opts.files.length}...`);
-          } else {
-            setUploadProgress("Extracting text locally (this may take a minute for large files)...");
-          }
-
-          if (typeof isClientExtractable === "function" && isClientExtractable(file.name)) {
-            try {
-              const result = await extractTextFromFile(file);
-              if (result && typeof result.text === "string" && result.text.trim().length > 0) {
-                extractedTexts.push(`--- Content from ${result.fileName || file.name} ---\n${result.text}`);
-              } else {
-                extractedTexts.push(`[Could not extract text from ${file.name}]`);
-              }
-            } catch (err) {
-              console.error(`Client-side extraction failed for ${file.name}:`, err);
-              extractedTexts.push(`[Failed to extract text from ${file.name}: ${err instanceof Error ? err.message : "Unknown error"}]`);
-            }
-          } else if (file.type.startsWith("text/")) {
-            try {
-              const text = await file.text();
-              extractedTexts.push(`--- Content from ${file.name} ---\n${text}`);
-            } catch (err) {
-              extractedTexts.push(`[Failed to read text file ${file.name}: ${err instanceof Error ? err.message : "Unknown error"}]`);
-            }
-          } else {
-            extractedTexts.push(`[File "${file.name}" is a ${file.type || "binary"} file that cannot be extracted client-side. Please use PDF, DOCX, or TXT format.]`);
-          }
-        }
-      }
-
-      const combinedTextContent = [normalizedTextContent, extractedTexts.join("\n\n")]
-        .filter((chunk) => typeof chunk === "string" && chunk.trim().length > 0)
-        .join("\n\n");
-
-      const payload = {
-        textContent: combinedTextContent || "",
-        youtubeUrl: typeof opts.youtubeUrl === "string" ? opts.youtubeUrl : undefined,
-        websiteUrl: typeof opts.websiteUrl === "string" ? opts.websiteUrl : undefined,
-        learningMode: opts.learningMode,
-        extras: Array.isArray(opts.extras) ? opts.extras : [],
-        instructions: typeof opts.instructions === "string" ? opts.instructions : "",
-        profilePrompt: typeof opts.profilePrompt === "string" ? opts.profilePrompt : undefined,
-        age: opts.age ?? null,
-      };
-
-      if (!payload.textContent && !payload.youtubeUrl && !payload.websiteUrl) {
-        throw new Error("No valid content found to generate notes from. Please provide text, a file, or a URL.");
-      }
-
-      setUploadProgress("Generating your notes...");
-
       const { data: session } = await supabase.auth.getSession();
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`,
-        {
+      const userId = session?.session?.user?.id;
+
+      if (opts.youtubeUrl || opts.websiteUrl) {
+        setUploadProgress("Generating your notes...");
+
+        const payload = {
+          textContent: "",
+          youtubeUrl: opts.youtubeUrl,
+          websiteUrl: opts.websiteUrl,
+          learningMode: opts.learningMode,
+          extras: Array.isArray(opts.extras) ? opts.extras : [],
+          instructions: typeof opts.instructions === "string" ? opts.instructions : "",
+          profilePrompt: opts.profilePrompt,
+          age: opts.age ?? null,
+          saveYouTubeVideo: opts.saveYouTubeVideo,
+        };
+
+        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({ error: "Request failed" }));
+          throw new Error(errData.error || `Error ${resp.status}`);
         }
-      );
+        if (!resp.body) throw new Error("No response body");
 
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({ error: "Request failed" }));
-        const errorMsg = errData.error || `Error ${resp.status}`;
-        throw new Error(errorMsg);
-      }
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullContent = "";
 
-      if (!resp.body) throw new Error("No response body");
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      setUploadProgress("");
-
-      // ==========================================
-      // 3. THE FIX: UNIVERSAL STREAM DECODER
-      // ==========================================
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let fullContent = "";
-      let isSSE = false; // We will detect the format on the fly
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        buffer += chunk;
-
-        // Auto-detect if the AI is using Server-Sent Events
-        if (!isSSE && buffer.includes("data: ")) {
-          isSSE = true;
-        }
-
-        if (isSSE) {
-          // Parse as SSE JSON chunks
+          buffer += decoder.decode(value, { stream: true });
           let newlineIndex: number;
           while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
             let line = buffer.slice(0, newlineIndex);
             buffer = buffer.slice(newlineIndex + 1);
             if (line.endsWith("\r")) line = line.slice(0, -1);
-            
+
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6).trim();
-              if (jsonStr === "[DONE]") break;
+              if (jsonStr === "[DONE]") continue;
 
               try {
                 const parsed = JSON.parse(jsonStr);
-                const delta = parsed.choices?.[0]?.delta?.content || parsed.text || parsed.delta || "";
+                const delta = parsed.choices?.[0]?.delta?.content || parsed.text || "";
                 if (delta) {
                   fullContent += delta;
                   setGeneratedHtml(fullContent);
                 }
               } catch {
-                // If JSON is cut off, put it back in the buffer and wait for the next piece
-                buffer = line + "\n" + buffer;
+                buffer = `${line}\n${buffer}`;
                 break;
               }
             }
           }
-        } else {
-          // Parse as Raw Text Stream
-          fullContent += chunk;
-          setGeneratedHtml(fullContent);
-          buffer = ""; // Clear buffer so we don't duplicate text
         }
+
+        const finalHtml = fullContent
+          .replace(/^```html\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```\s*$/i, "")
+          .trim();
+
+        setGeneratedHtml(finalHtml);
+        setUploadProgress("");
+
+        const shouldQuiz = (opts.extras || []).includes("retention_quiz");
+        if (shouldQuiz && finalHtml.length > 100) {
+          setIsGeneratingQuiz(true);
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-retention-quiz`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ notesHtml: finalHtml, age: ageRef.current }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.questions && Array.isArray(data.questions)) {
+                setQuizQuestions(data.questions as QuizQuestion[]);
+              }
+            })
+            .catch(() => {})
+            .finally(() => setIsGeneratingQuiz(false));
+        }
+
+        return;
       }
 
-      // 4. Formatting Cleanups
-      let cleaned = fullContent;
-      if (cleaned.startsWith("```html")) cleaned = cleaned.slice(7);
-      if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
-      if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-      
-      const finalHtml = cleaned.trim();
-      setGeneratedHtml(finalHtml);
+      if (!opts.chapters || opts.chapters.length === 0) {
+        throw new Error("No content provided to generate.");
+      }
 
-      // 5. Trigger Quiz Generation
-      const shouldQuiz = payload.extras.includes("retention_quiz");
-      if (shouldQuiz && finalHtml.length > 100) {
-        setIsGeneratingQuiz(true);
-        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-retention-quiz`, {
+      // --- SEQUENTIAL CHAPTER PROCESSING ---
+      for (let i = 0; i < opts.chapters.length; i++) {
+        const chapter = opts.chapters[i];
+        const isFirstChapter = i === 0;
+
+        setUploadProgress(`Generating note ${i + 1} of ${opts.chapters.length}: ${chapter.title}`);
+
+        const payload = {
+          textContent: chapter.text,
+          learningMode: opts.learningMode,
+          extras: isFirstChapter ? opts.extras : [], // Don't duplicate mindmaps on background notes
+          instructions: opts.instructions,
+          profilePrompt: opts.profilePrompt,
+          age: opts.age,
+        };
+
+        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ notesHtml: finalHtml, age: ageRef.current }),
-        })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data?.questions && Array.isArray(data.questions)) {
-              setQuizQuestions(data.questions);
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) throw new Error("Failed to generate chapter.");
+        if (!resp.body) throw new Error("No response body");
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
+        let chunkContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          sseBuffer += decoder.decode(value, { stream: true });
+          let newlineIndex: number;
+          while ((newlineIndex = sseBuffer.indexOf("\n")) !== -1) {
+            let line = sseBuffer.slice(0, newlineIndex);
+            sseBuffer = sseBuffer.slice(newlineIndex + 1);
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+              try {
+                const parsed = JSON.parse(line.slice(6));
+                const delta = parsed.choices?.[0]?.delta?.content || "";
+                chunkContent += delta;
+
+                if (isFirstChapter) {
+                  setGeneratedHtml(chunkContent);
+                }
+              } catch {
+                sseBuffer = `${line}\n${sseBuffer}`;
+                break;
+              }
             }
-          })
-          .catch(() => {})
-          .finally(() => setIsGeneratingQuiz(false));
+          }
+        }
+
+        // Format cleanup
+        if (chunkContent.startsWith("```html")) chunkContent = chunkContent.slice(7);
+        if (chunkContent.endsWith("```")) chunkContent = chunkContent.slice(0, -3);
+
+        if (opts.shouldSaveToLibrary && userId) {
+          await supabase.from("saved_notes").insert({
+            user_id: userId,
+            title: chapter.title,
+            content: chunkContent.trim(),
+            source_type: "generated",
+            learning_mode: opts.learningMode || "adhd",
+            folder: opts.folder || "Unsorted",
+            tags: opts.tags || [],
+            sticky_notes: [],
+            saved_videos: [],
+          });
+
+          if (!isFirstChapter) {
+            toast.success(`Saved "${chapter.title}" to ${opts.folder}`);
+          }
+        }
       }
+
+      toast.success("All selected chapters have been processed!");
 
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
-      console.error("[NoteGen] Generation failed:", msg);
       setError(msg);
-      toast.error(msg, { duration: 8000 });
+      toast.error(msg);
     } finally {
       setIsGenerating(false);
       setUploadProgress("");
@@ -246,6 +263,6 @@ export function useNoteGeneration() {
     generatedHtml,
     uploadProgress,
     quizQuestions,
-    isGeneratingQuiz
+    isGeneratingQuiz,
   };
 }

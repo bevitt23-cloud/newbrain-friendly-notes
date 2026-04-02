@@ -23,6 +23,7 @@ const NotesContext = createContext<NotesContextType | null>(null);
 export const NotesProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const noteGen = useNoteGeneration();
+  const { reset: resetNoteGen } = noteGen;
   const [savedNoteId, setSavedNoteId] = useState<string | null>(null);
   const [savedNoteTitle, setSavedNoteTitle] = useState("");
   const autoSavedRef = useRef(false);
@@ -31,20 +32,20 @@ export const NotesProvider = ({ children }: { children: React.ReactNode }) => {
   // Reset notes on sign out
   useEffect(() => {
     if (prevUserId.current && !user) {
-      noteGen.reset();
+      resetNoteGen();
       setSavedNoteId(null);
       setSavedNoteTitle("");
       autoSavedRef.current = false;
     }
     prevUserId.current = user?.id;
-  }, [user]);
+  }, [user, resetNoteGen]);
 
   const reset = useCallback(() => {
-    noteGen.reset();
+    resetNoteGen();
     autoSavedRef.current = false;
     setSavedNoteId(null);
     setSavedNoteTitle("");
-  }, [noteGen.reset]);
+  }, [resetNoteGen]);
 
   return (
     <NotesContext.Provider value={{
@@ -61,6 +62,7 @@ export const NotesProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useNotesContext = () => {
   const ctx = useContext(NotesContext);
   if (!ctx) throw new Error("useNotesContext must be used within NotesProvider");

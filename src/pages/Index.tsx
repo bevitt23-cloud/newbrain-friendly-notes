@@ -73,7 +73,7 @@ const Index = () => {
   ]);
 
   const handleGenerate = useCallback(
-    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean }) => {
+    (data: { chapters: Array<{ id: string; title: string; text: string }>; youtubeUrl?: string; websiteUrl?: string; saveYouTubeVideo?: boolean; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean }) => {
       autoSavedRef.current = false;
       setSavedNoteId(null);
       setSavedNoteTitle("");
@@ -88,7 +88,7 @@ const Index = () => {
         age: profile.age,
       });
     },
-    [generate, learningMode, activeExtras, profile.promptAppend, profile.age]
+    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, autoSavedRef, setSavedNoteId, setSavedNoteTitle]
   );
 
   // Auto-save notes when generated
@@ -130,7 +130,7 @@ const Index = () => {
         toast.success("Notes auto-saved to Library!");
       }
     })();
-  }, [generatedHtml, user, isGenerating, learningMode]);
+  }, [generatedHtml, user, isGenerating, learningMode, autoSavedRef, setSavedNoteId, setSavedNoteTitle]);
 
   // Auto-save sticky notes + saved explainer videos to the corresponding library note.
   useEffect(() => {
