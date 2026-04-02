@@ -20,8 +20,9 @@ import { motion } from "framer-motion";
 import {
   Brain, ArrowRight, Upload, Sparkles, BookOpen,
   Eye, MessageCircle, GitBranch, Map, Layers,
-  ChevronRight,
+  ChevronRight, Sun, Moon, Type,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpeg";
@@ -39,9 +40,20 @@ const fade = (delay = 0) => ({
   transition: { duration: 0.6, delay, ease: "easeOut" },
 });
 
+const FONT_OPTIONS = [
+  { key: "lexend", label: "Lexend", cls: "font-lexend" },
+  { key: "opendyslexic", label: "OpenDyslexic", cls: "font-opendyslexic" },
+  { key: "arial", label: "Arial", cls: "font-arial" },
+] as const;
+
 function LandingPage() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const [fontIdx, setFontIdx] = useState(0);
+  const currentFont = FONT_OPTIONS[fontIdx];
+
   return (
-    <div className="min-h-screen flex flex-col font-lexend bg-background text-foreground">
+    <div className={`min-h-screen flex flex-col ${currentFont.cls} bg-background text-foreground`}>
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
@@ -56,7 +68,34 @@ function LandingPage() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Font toggle */}
+            <button
+              onClick={() => setFontIdx((i) => (i + 1) % FONT_OPTIONS.length)}
+              aria-label={`Switch font (current: ${currentFont.label})`}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <Type className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{currentFont.label}</span>
+            </button>
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label="Toggle theme"
+              className="relative flex h-7 w-12 items-center rounded-full bg-muted p-0.5 transition-colors"
+            >
+              <motion.div
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-card shadow-sm"
+                animate={{ x: isDark ? 20 : 0 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              >
+                {isDark ? <Moon className="h-3 w-3 text-lavender-400" /> : <Sun className="h-3 w-3 text-peach-400" />}
+              </motion.div>
+            </button>
+
+            <div className="h-5 w-px bg-border/60" />
+
             <Button variant="ghost" size="sm" asChild>
               <Link to="/auth">Log in</Link>
             </Button>
@@ -96,7 +135,7 @@ function LandingPage() {
             className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-lg leading-relaxed"
           >
             Automatically transform your lectures, PDFs, and YouTube videos into
-            ADHD and Dyslexia-friendly study materials — powered by AI.
+            personalized, brain-friendly study materials — powered by AI.
           </motion.p>
 
           <motion.div {...fade(0.3)} className="mt-8">
@@ -202,7 +241,7 @@ function LandingPage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
-                Bionic Reading for ADHD focus
+                Bionic Reading for sustained focus
               </li>
               <li className="flex items-start gap-2">
                 <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
