@@ -398,59 +398,214 @@ serve(async (req) => {
         );
       }
 
-      const SCRAPINGBEE_API_KEY = Deno.env.get("SCRAPINGBEE_API_KEY");
-      if (!SCRAPINGBEE_API_KEY) {
-        // Fallback: try a direct fetch when ScrapingBee is not configured
-        console.warn("SCRAPINGBEE_API_KEY not configured — attempting direct fetch fallback");
+      // ── Multi-strategy website content extraction ──
+      // Strategy 1: Free academic APIs (PMC, PubMed, ArXiv, Semantic Scholar, DOI/Unpaywall)
+      // Strategy 2: Smart direct fetch with academic-aware HTML extraction
+      // Strategy 3: ScrapingBee (when configured) with 4-attempt escalation
+      // Strategy 4: Unpaywall open-access fallback for paywalled papers
+
+      let websiteText = "";
+      const parsedUrl = new URL(normalizedWebsiteUrl);
+      const host = parsedUrl.hostname.replace(/^www\./i, "").toLowerCase();
+
+      // ── Helper: strip HTML to plain text ──
+      const stripHtml = (html: string): string =>
+        html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+          .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+          .replace(/<header[\s\S]*?<\/header>/gi, "")
+          .replace(/<aside[\s\S]*?<\/aside>/gi, "")
+          .replace(/<!--[\s\S]*?-->/g, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/&nbsp;/gi, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&#?\w+;/g, " ")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+
+      // ── Helper: fetch with browser-like headers ──
+      const browserFetch = (url: string) =>
+        fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+          redirect: "follow",
+        });
+
+      // ── STRATEGY 1: Academic Free APIs ──
+      try {
+        // PMC (PubMed Central) — free full-text XML API
+        const pmcMatch = normalizedWebsiteUrl.match(/pmc\.ncbi\.nlm\.nih\.gov\/articles\/(PMC\d+)/i)
+          || normalizedWebsiteUrl.match(/ncbi\.nlm\.nih\.gov\/pmc\/articles\/(PMC\d+)/i);
+        if (pmcMatch && !websiteText) {
+          const pmcId = pmcMatch[1];
+          console.log(`PMC detected: ${pmcId} — fetching via NCBI E-Utilities`);
+          const pmcResp = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=${pmcId}&rettype=xml`);
+          if (pmcResp.ok) {
+            const xml = await pmcResp.text();
+            // Extract body text from JATS XML
+            const bodyMatch = xml.match(/<body[\s\S]*?>([\s\S]*?)<\/body>/i);
+            const text = stripHtml(bodyMatch ? bodyMatch[1] : xml);
+            if (text.length > 500) {
+              websiteText = text;
+              console.log(`PMC API succeeded: ${text.length} chars`);
+            }
+          }
+        }
+
+        // PubMed abstract — free API
+        const pubmedMatch = normalizedWebsiteUrl.match(/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)/i)
+          || normalizedWebsiteUrl.match(/ncbi\.nlm\.nih\.gov\/pubmed\/(\d+)/i);
+        if (pubmedMatch && !websiteText) {
+          const pmid = pubmedMatch[1];
+          console.log(`PubMed detected: PMID ${pmid} — fetching abstract + checking for PMC full text`);
+          // Check if there's a PMC full-text version
+          const linkResp = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/elink.fcgi?dbfrom=pubmed&db=pmc&id=${pmid}&retmode=json`);
+          if (linkResp.ok) {
+            const linkData = await linkResp.json();
+            const pmcLinks = linkData?.linksets?.[0]?.linksetdbs?.find((db: any) => db.dbto === "pmc");
+            if (pmcLinks?.links?.[0]) {
+              const pmcId = `PMC${pmcLinks.links[0]}`;
+              console.log(`Found PMC full text: ${pmcId}`);
+              const pmcResp = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pmc&id=${pmcId}&rettype=xml`);
+              if (pmcResp.ok) {
+                const xml = await pmcResp.text();
+                const bodyMatch = xml.match(/<body[\s\S]*?>([\s\S]*?)<\/body>/i);
+                const text = stripHtml(bodyMatch ? bodyMatch[1] : xml);
+                if (text.length > 500) {
+                  websiteText = text;
+                  console.log(`PMC full text via PubMed link: ${text.length} chars`);
+                }
+              }
+            }
+          }
+          // Fallback: at least get the abstract
+          if (!websiteText) {
+            const absResp = await fetch(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${pmid}&rettype=abstract&retmode=text`);
+            if (absResp.ok) {
+              const absText = await absResp.text();
+              if (absText.trim().length > 100) {
+                websiteText = absText.trim();
+                console.log(`PubMed abstract: ${websiteText.length} chars`);
+              }
+            }
+          }
+        }
+
+        // ArXiv — free full-text HTML/PDF
+        const arxivMatch = normalizedWebsiteUrl.match(/arxiv\.org\/(?:abs|pdf|html)\/(\d+\.\d+)/i);
+        if (arxivMatch && !websiteText) {
+          const arxivId = arxivMatch[1];
+          console.log(`ArXiv detected: ${arxivId} — fetching HTML version`);
+          const htmlResp = await fetch(`https://arxiv.org/html/${arxivId}v1`);
+          if (htmlResp.ok) {
+            const html = await htmlResp.text();
+            const text = stripHtml(html);
+            if (text.length > 500) {
+              websiteText = text;
+              console.log(`ArXiv HTML: ${text.length} chars`);
+            }
+          }
+          // Fallback: get abstract from API
+          if (!websiteText) {
+            const apiResp = await fetch(`https://export.arxiv.org/api/query?id_list=${arxivId}`);
+            if (apiResp.ok) {
+              const xml = await apiResp.text();
+              const summaryMatch = xml.match(/<summary>([\s\S]*?)<\/summary>/);
+              if (summaryMatch) {
+                websiteText = summaryMatch[1].trim();
+                console.log(`ArXiv abstract: ${websiteText.length} chars`);
+              }
+            }
+          }
+        }
+
+        // Semantic Scholar — free API for any DOI or paper URL
+        const doiMatch = normalizedWebsiteUrl.match(/(?:doi\.org|dx\.doi\.org)\/(10\.\d{4,}\/[^\s?#]+)/i)
+          || normalizedWebsiteUrl.match(/(10\.\d{4,}\/[^\s?#]+)/i);
+        if (doiMatch && !websiteText) {
+          const doi = doiMatch[1];
+          console.log(`DOI detected: ${doi} — trying Semantic Scholar + Unpaywall`);
+          // Semantic Scholar full text
+          const s2Resp = await fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${doi}?fields=title,abstract,tldr,openAccessPdf`);
+          if (s2Resp.ok) {
+            const s2Data = await s2Resp.json();
+            const parts: string[] = [];
+            if (s2Data.title) parts.push(`Title: ${s2Data.title}`);
+            if (s2Data.abstract) parts.push(`Abstract: ${s2Data.abstract}`);
+            if (s2Data.tldr?.text) parts.push(`TL;DR: ${s2Data.tldr.text}`);
+            if (parts.join("\n\n").length > 200) {
+              websiteText = parts.join("\n\n");
+              console.log(`Semantic Scholar: ${websiteText.length} chars`);
+            }
+            // Try open access PDF URL from Semantic Scholar
+            if (!websiteText && s2Data.openAccessPdf?.url) {
+              console.log(`Trying open access PDF: ${s2Data.openAccessPdf.url}`);
+              const pdfPageResp = await browserFetch(s2Data.openAccessPdf.url);
+              if (pdfPageResp.ok) {
+                const ct = pdfPageResp.headers.get("content-type") || "";
+                if (ct.includes("html")) {
+                  const html = await pdfPageResp.text();
+                  const text = stripHtml(html);
+                  if (text.length > 500) websiteText = text;
+                }
+              }
+            }
+          }
+          // Unpaywall — find free/legal open access version
+          if (!websiteText) {
+            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=brainfriendlynotes@app.com`);
+            if (upResp.ok) {
+              const upData = await upResp.json();
+              const oaUrl = upData.best_oa_location?.url_for_landing_page || upData.best_oa_location?.url;
+              if (oaUrl) {
+                console.log(`Unpaywall found OA version: ${oaUrl}`);
+                const oaResp = await browserFetch(oaUrl);
+                if (oaResp.ok) {
+                  const html = await oaResp.text();
+                  const text = stripHtml(html);
+                  if (text.length > 500) {
+                    websiteText = text;
+                    console.log(`Unpaywall OA: ${text.length} chars`);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (apiErr) {
+        console.warn("Academic API strategy failed:", apiErr);
+      }
+
+      // ── STRATEGY 2: Smart direct fetch ──
+      if (!websiteText) {
         try {
-          const directResp = await fetch(normalizedWebsiteUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-              "Accept-Language": "en-US,en;q=0.9",
-            },
-            redirect: "follow",
-          });
+          console.log(`Trying direct fetch for ${normalizedWebsiteUrl}`);
+          const directResp = await browserFetch(normalizedWebsiteUrl);
           if (directResp.ok) {
             const html = await directResp.text();
-            // Strip HTML tags to get plain text
-            const text = html
-              .replace(/<script[\s\S]*?<\/script>/gi, "")
-              .replace(/<style[\s\S]*?<\/style>/gi, "")
-              .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-              .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-              .replace(/<header[\s\S]*?<\/header>/gi, "")
-              .replace(/<[^>]+>/g, " ")
-              .replace(/\s{2,}/g, " ")
-              .trim();
+            const text = stripHtml(html);
             if (text.length > 200) {
-              const trimmed = text.slice(0, 100000);
-              console.log(`Direct fetch succeeded for ${normalizedWebsiteUrl}: ${trimmed.length} chars`);
-              contentParts.push({
-                type: "text",
-                text: `--- Content fetched from ${normalizedWebsiteUrl} ---\n${trimmed}`,
-              });
-            } else {
-              contentParts.push({
-                type: "text",
-                text: `Could not extract enough readable content from ${normalizedWebsiteUrl}. The page may require JavaScript or a login. Try pasting the text directly.`,
-              });
+              websiteText = text;
+              console.log(`Direct fetch succeeded: ${text.length} chars`);
             }
           } else {
-            contentParts.push({
-              type: "text",
-              text: `Could not fetch ${normalizedWebsiteUrl} (status ${directResp.status}). The site may block automated requests. Try pasting the text directly.`,
-            });
+            console.warn(`Direct fetch returned status ${directResp.status}`);
           }
         } catch (fetchErr) {
-          console.error("Direct fetch fallback failed:", fetchErr);
-          contentParts.push({
-            type: "text",
-            text: `Failed to fetch ${normalizedWebsiteUrl}: ${fetchErr instanceof Error ? fetchErr.message : "Unknown error"}. Try pasting the text directly.`,
-          });
+          console.warn("Direct fetch failed:", fetchErr);
         }
-      } else {
-        // Selectors for academic, blog, and news article content
+      }
+
+      // ── STRATEGY 3: ScrapingBee (when configured) ──
+      const SCRAPINGBEE_API_KEY = Deno.env.get("SCRAPINGBEE_API_KEY");
+      if (!websiteText && SCRAPINGBEE_API_KEY) {
         const contentSelectors = "article, main, [class*='article'], [class*='post'], [class*='content'], [id*='content'], [class*='entry'], [class*='body'], .page-content, #core, .text, [role='main'], .prose, [class*='narrative'], .pmc-content, .ncbi-content";
         const extractRules = JSON.stringify({ content: contentSelectors });
         const bodyFallbackRules = JSON.stringify({ body: "body" });
@@ -471,18 +626,12 @@ serve(async (req) => {
             country_code: "us",
             extract_rules: useBodyFallback ? bodyFallbackRules : extractRules,
           });
-          if (mode === "google_bot") {
-            params.set("custom_google", "true");
-          }
-          if (mode === "no_js") {
-            params.delete("wait_for");
-          }
+          if (mode === "google_bot") params.set("custom_google", "true");
+          if (mode === "no_js") params.delete("wait_for");
           return `https://app.scrapingbee.com/api/v1/?${params.toString()}`;
         };
 
-        const scrapeHeaders: Record<string, string> = {
-          "Spb-Referer": "https://www.google.com/",
-        };
+        const scrapeHeaders: Record<string, string> = { "Spb-Referer": "https://www.google.com/" };
 
         const extractText = (data: Record<string, unknown>): string => {
           if (typeof data.content === "string" && data.content.trim().length > 200) return data.content;
@@ -491,86 +640,87 @@ serve(async (req) => {
           return "";
         };
 
-        const BLOCKED_STATUSES = new Set([401, 403, 407, 429, 503, 520, 521, 522, 523, 524]);
-
         const attemptScrape = async (mode: ScrapeMode, useBodyFallback = false): Promise<Response> => {
-          console.log(`Scraping ${normalizedWebsiteUrl} (mode=${mode}, bodyFallback=${useBodyFallback})`);
+          console.log(`ScrapingBee: ${normalizedWebsiteUrl} (mode=${mode}, bodyFallback=${useBodyFallback})`);
           return fetch(buildScrapeUrl(mode, useBodyFallback), { headers: scrapeHeaders });
         };
 
-        const recordAttempt = (mode: ScrapeMode, bodyFallback: boolean, status: number, textLength: number) => {
-          scrapeTrace.push({ mode, bodyFallback, status, textLength });
-        };
-
         try {
-          // Attempt 1: stealth proxy + JS rendering (best for paywalls / bot-protected sites)
-          let scrapeResp = await attemptScrape("stealth");
-          let pageText = "";
+          const modes: Array<{ mode: ScrapeMode; body: boolean }> = [
+            { mode: "stealth", body: false },
+            { mode: "google_bot", body: false },
+            { mode: "no_js", body: false },
+            { mode: "stealth", body: true },
+          ];
 
-          if (scrapeResp.ok) {
-            const data = await scrapeResp.json();
-            pageText = extractText(data);
-          }
-          recordAttempt("stealth", false, scrapeResp.status, pageText.length);
-
-          // Attempt 2: Google-bot loophole (many paywalls allow Googlebot for SEO)
-          if (!scrapeResp.ok || pageText.length < 200) {
-            console.warn(`Attempt 1 insufficient (status=${scrapeResp.status}, len=${pageText.length}), trying Google-bot mode...`);
-            scrapeResp = await attemptScrape("google_bot");
-            if (scrapeResp.ok) {
-              const data = await scrapeResp.json();
-              pageText = extractText(data);
+          for (const { mode, body } of modes) {
+            if (websiteText) break;
+            const resp = await attemptScrape(mode, body);
+            let text = "";
+            if (resp.ok) {
+              const data = await resp.json();
+              text = extractText(data);
             }
-            recordAttempt("google_bot", false, scrapeResp.status, pageText.length);
-          }
-
-          // Attempt 3: no JS (some sites detect and block headless browsers)
-          if (!scrapeResp.ok || pageText.length < 200) {
-            console.warn(`Attempt 2 insufficient (status=${scrapeResp.status}, len=${pageText.length}), trying no-JS mode...`);
-            scrapeResp = await attemptScrape("no_js");
-            if (scrapeResp.ok) {
-              const data = await scrapeResp.json();
-              pageText = extractText(data);
+            scrapeTrace.push({ mode, bodyFallback: body, status: resp.status, textLength: text.length });
+            if (text.length >= 200) {
+              websiteText = text;
+              console.log(`ScrapingBee succeeded (${mode}): ${text.length} chars`);
+            } else {
+              console.warn(`ScrapingBee attempt ${mode} insufficient (status=${resp.status}, len=${text.length})`);
             }
-            recordAttempt("no_js", false, scrapeResp.status, pageText.length);
           }
-
-          // Attempt 4: stealth + full body fallback (content selectors may have matched nothing)
-          if (!scrapeResp.ok || pageText.length < 200) {
-            console.warn(`Attempt 3 insufficient, trying stealth + full body fallback...`);
-            scrapeResp = await attemptScrape("stealth", true);
-            if (scrapeResp.ok) {
-              const data = await scrapeResp.json();
-              pageText = extractText(data);
-            }
-            recordAttempt("stealth", true, scrapeResp.status, pageText.length);
-          }
-
-          if (!scrapeResp.ok || pageText.length < 200) {
-            const status = scrapeResp.status;
-            console.error(`All ScrapingBee attempts failed for ${normalizedWebsiteUrl}. Final status: ${status}, content length: ${pageText.length}`, scrapeTrace);
-            const isHardBlock = BLOCKED_STATUSES.has(status);
-            contentParts.push({
-              type: "text",
-              text: isHardBlock
-                ? `This page at ${normalizedWebsiteUrl} is behind a high-security paywall or firewall that could not be bypassed. Please copy and paste the article text directly instead.`
-                : `Could not extract readable content from ${normalizedWebsiteUrl} (status ${status}). The page may require a login, subscription, or is behind a bot-check. Try pasting the text directly.`,
-            });
-          } else {
-            const trimmed = pageText.slice(0, 100000);
-            console.log(`Successfully scraped ${normalizedWebsiteUrl}: ${trimmed.length} chars`, scrapeTrace);
-            contentParts.push({
-              type: "text",
-              text: `--- Content scraped from ${normalizedWebsiteUrl} ---\n${trimmed}`,
-            });
+          if (!websiteText) {
+            console.error(`All ScrapingBee attempts failed for ${normalizedWebsiteUrl}`, scrapeTrace);
           }
         } catch (err) {
-          console.error("ScrapingBee fetch error:", err);
-          contentParts.push({
-            type: "text",
-            text: `Failed to scrape ${normalizedWebsiteUrl}: ${err instanceof Error ? err.message : "Unknown error"}. Please paste the content as text instead.`,
-          });
+          console.error("ScrapingBee error:", err);
         }
+      }
+
+      // ── STRATEGY 4: Unpaywall DOI lookup as last resort ──
+      if (!websiteText && host !== "doi.org") {
+        try {
+          // Try to extract a DOI from the page URL or fetch the page to find one
+          const possibleDoi = normalizedWebsiteUrl.match(/(10\.\d{4,}\/[^\s?#&]+)/);
+          if (possibleDoi) {
+            const doi = possibleDoi[1];
+            console.log(`Last resort: Unpaywall for DOI ${doi}`);
+            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=brainfriendlynotes@app.com`);
+            if (upResp.ok) {
+              const upData = await upResp.json();
+              const oaUrl = upData.best_oa_location?.url_for_landing_page || upData.best_oa_location?.url;
+              if (oaUrl && oaUrl !== normalizedWebsiteUrl) {
+                const oaResp = await browserFetch(oaUrl);
+                if (oaResp.ok) {
+                  const html = await oaResp.text();
+                  const text = stripHtml(html);
+                  if (text.length > 500) {
+                    websiteText = text;
+                    console.log(`Unpaywall last-resort OA: ${text.length} chars`);
+                  }
+                }
+              }
+            }
+          }
+        } catch (upErr) {
+          console.warn("Unpaywall last-resort failed:", upErr);
+        }
+      }
+
+      // ── Push result ──
+      if (websiteText && websiteText.length > 200) {
+        const trimmed = websiteText.slice(0, 100000);
+        console.log(`Website extraction succeeded for ${normalizedWebsiteUrl}: ${trimmed.length} chars`);
+        contentParts.push({
+          type: "text",
+          text: `--- Content from ${normalizedWebsiteUrl} ---\n${trimmed}`,
+        });
+      } else {
+        console.error(`All extraction strategies failed for ${normalizedWebsiteUrl}`);
+        contentParts.push({
+          type: "text",
+          text: `Could not extract readable content from ${normalizedWebsiteUrl}. The page may be behind a paywall, require login, or block automated access. Try copying and pasting the article text directly.`,
+        });
       }
     }
 
