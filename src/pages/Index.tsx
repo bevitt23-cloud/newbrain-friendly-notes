@@ -20,7 +20,7 @@ import { motion } from "framer-motion";
 import {
   Brain, ArrowRight, Upload, Sparkles, BookOpen,
   Eye, MessageCircle, GitBranch, Map, Layers,
-  ChevronRight, Sun, Moon, Type,
+  ChevronRight, Sun, Moon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -40,17 +40,45 @@ const fade = (delay = 0) => ({
   transition: { duration: 0.6, delay, ease: "easeOut" },
 });
 
-const FONT_OPTIONS = [
-  { key: "lexend", label: "Lexend", cls: "font-lexend" },
-  { key: "opendyslexic", label: "OpenDyslexic", cls: "font-opendyslexic" },
-  { key: "arial", label: "Arial", cls: "font-arial" },
-] as const;
+const LANDING_FONTS = [
+  {
+    key: "lexend" as const,
+    font: "'Lexend', system-ui, sans-serif",
+    cls: "font-lexend",
+    activeClass: "bg-sage-100 text-sage-700 shadow-sm ring-1 ring-sage-300/50 dark:bg-sage-500/20 dark:text-sage-300 dark:ring-sage-400/30",
+    title: "Lexend",
+  },
+  {
+    key: "opendyslexic" as const,
+    font: "'OpenDyslexic', sans-serif",
+    cls: "font-opendyslexic",
+    activeClass: "bg-lavender-100 text-lavender-600 shadow-sm ring-1 ring-lavender-300/50 dark:bg-lavender-500/20 dark:text-lavender-300 dark:ring-lavender-400/30",
+    title: "OpenDyslexic",
+  },
+  {
+    key: "arial" as const,
+    font: "'Arial', 'Helvetica Neue', sans-serif",
+    cls: "font-arial",
+    activeClass: "bg-sky-100 text-sky-700 shadow-sm ring-1 ring-sky-300/50 dark:bg-sky-500/20 dark:text-sky-300 dark:ring-sky-400/30",
+    title: "Arial",
+  },
+];
 
 function LandingPage() {
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  const [fontIdx, setFontIdx] = useState(0);
-  const currentFont = FONT_OPTIONS[fontIdx];
+  const [activeFont, setActiveFont] = useState<string>("lexend");
+  const currentFont = LANDING_FONTS.find((f) => f.key === activeFont) || LANDING_FONTS[0];
+
+  // Apply font to body so entire page picks it up (matches Layout.tsx pattern)
+  useEffect(() => {
+    document.body.style.fontFamily = currentFont.font;
+    document.body.classList.toggle("dyslexia-active", currentFont.key === "opendyslexic");
+    return () => {
+      document.body.style.fontFamily = "";
+      document.body.classList.remove("dyslexia-active");
+    };
+  }, [currentFont]);
 
   return (
     <div className={`min-h-screen flex flex-col ${currentFont.cls} bg-background text-foreground`}>
@@ -69,24 +97,33 @@ function LandingPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            {/* Font toggle */}
-            <button
-              onClick={() => setFontIdx((i) => (i + 1) % FONT_OPTIONS.length)}
-              aria-label={`Switch font (current: ${currentFont.label})`}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            >
-              <Type className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{currentFont.label}</span>
-            </button>
+            {/* Font style toggle — matches LearningModeSelector */}
+            <div className="flex rounded-xl bg-muted/60 p-1 ring-1 ring-border/40">
+              {LANDING_FONTS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setActiveFont(opt.key)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                    activeFont === opt.key
+                      ? opt.activeClass
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  style={{ fontFamily: opt.font }}
+                  title={opt.title}
+                >
+                  abc
+                </button>
+              ))}
+            </div>
 
-            {/* Dark mode toggle */}
+            {/* Dark mode toggle — matches Header.tsx */}
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="relative flex h-7 w-12 items-center rounded-full bg-muted p-0.5 transition-colors"
+              className="relative flex h-6 w-11 items-center rounded-full bg-muted p-0.5 transition-colors"
             >
               <motion.div
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-card shadow-sm"
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-card shadow-sm"
                 animate={{ x: isDark ? 20 : 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
               >
