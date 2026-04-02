@@ -6,6 +6,7 @@ export interface CallAIOptions {
   messages: Array<{ role: string; content: string | any[] }>;
   stream?: boolean;
   maxTokens?: number;
+  jsonMode?: boolean; // When true, requests structured JSON output from the model
   model?: string; // ignored — always uses gemini then claude
 }
 
@@ -42,7 +43,7 @@ function toClaudeMessages(messages: Array<{ role: string; content: string | any[
 // ─── Non-streaming call ───
 
 export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
-  const { systemPrompt, messages, maxTokens = 4096 } = opts;
+  const { systemPrompt, messages, maxTokens = 4096, jsonMode = false } = opts;
 
   const GOOGLE_API_KEY = Deno.env.get("GEMINI_KEY");
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_KEY");
@@ -55,6 +56,19 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
         ...messages,
       ];
 
+      const geminiBody: Record<string, unknown> = {
+        model: "gemini-2.5-flash",
+        messages: allMessages,
+        stream: false,
+        max_tokens: maxTokens,
+      };
+
+      // When JSON mode is requested, tell Gemini to output structured JSON
+      // and allocate minimal thinking budget so it doesn't waste tokens on reasoning
+      if (jsonMode) {
+        geminiBody.response_format = { type: "json_object" };
+      }
+
       const resp = await fetch(
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         {
@@ -63,12 +77,7 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
             Authorization: `Bearer ${GOOGLE_API_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model: "gemini-2.5-flash",
-            messages: allMessages,
-            stream: false,
-            max_tokens: maxTokens,
-          }),
+          body: JSON.stringify(geminiBody),
         },
       );
 

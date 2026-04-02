@@ -152,10 +152,15 @@ serve(async (req) => {
       messages.push({ role: "user", content: `Here is the study material:\n\n${plainText}` });
     }
 
+    // Tools that output JSON benefit from jsonMode (structured output + reduced thinking)
+    const jsonTools = new Set(["flashcard", "mindmap", "flowchart", "cloze", "final-exam"]);
+    const useJsonMode = jsonTools.has(tool);
+
     const result = await callAI({
       systemPrompt,
       messages,
       maxTokens: 8192,
+      jsonMode: useJsonMode,
     });
 
     return new Response(

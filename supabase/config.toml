@@ -1,16 +1,24 @@
 project_id = "epagtlrtzwdvferumowx"
 
+# JWT verification is handled inside each function via getAuthUser()
+# Gateway-level verify_jwt is disabled to avoid token-refresh timing issues
 [functions.generate-notes]
-verify_jwt = true
+verify_jwt = false
 
 [functions.explain-text]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-study-tool]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-fun-fact]
-verify_jwt = true
+verify_jwt = false
 
 [functions.generate-retention-quiz]
-verify_jwt = true
+verify_jwt = false
+
+[functions.manage-admin]
+verify_jwt = false
+
+[functions.search-youtube-videos]
+verify_jwt = false

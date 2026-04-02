@@ -300,16 +300,52 @@ export default function FlowChart({ html, data: rawData }: { html?: string; data
   }, []);
 
   const parsedData = useMemo<FlowChartData | null>(() => {
+    /**
+     * Robust JSON extractor — finds the actual JSON object even when AI
+     * reasoning / thinking text surrounds it. Looks for known structural
+     * markers first, then falls back to bracket-matching.
+     */
+    const extractJson = (text: string): FlowChartData | null => {
+      const clean = text.replace(/```json?\n?/gi, "").replace(/```/g, "").trim();
+
+      // Strategy 1: Find known structural starts like {"nodes"
+      const markers = [/\{"nodes"\s*:/];
+      for (const marker of markers) {
+        const m = clean.match(marker);
+        if (m && m.index !== undefined) {
+          let depth = 0;
+          for (let i = m.index; i < clean.length; i++) {
+            if (clean[i] === "{") depth++;
+            else if (clean[i] === "}") {
+              depth--;
+              if (depth === 0) {
+                try {
+                  const candidate = clean.slice(m.index, i + 1).replace(/,\s*([\]}])/g, "$1");
+                  return JSON.parse(candidate);
+                } catch { break; }
+              }
+            }
+          }
+        }
+      }
+
+      // Strategy 2: Find outermost { } (original approach — fallback)
+      const start = clean.indexOf("{");
+      const end = clean.lastIndexOf("}");
+      if (start !== -1 && end > start) {
+        try {
+          const candidate = clean.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
+          return JSON.parse(candidate);
+        } catch { /* fall through */ }
+      }
+      return null;
+    };
+
     // Parse from raw JSON string (study tool output)
     if (rawData) {
-      try {
-        const cleanJson = rawData.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
-        const start = cleanJson.indexOf("{");
-        const end = cleanJson.lastIndexOf("}");
-        if (start === -1 || end === -1) return null;
-        const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
-        return JSON.parse(validJsonStr);
-      } catch { return null; }
+      const result = extractJson(rawData);
+      if (!result) console.warn("[FlowChart] Failed to parse rawData:", rawData?.slice(0, 500));
+      return result;
     }
 
     // Parse from HTML (embedded in generated notes)
@@ -321,13 +357,9 @@ export default function FlowChart({ html, data: rawData }: { html?: string; data
       if (!dataDiv) return null;
 
       const rawText = dataDiv.textContent || "";
-      const cleanJson = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-      const start = cleanJson.indexOf("{");
-      const end = cleanJson.lastIndexOf("}");
-      if (start === -1 || end === -1) return null;
-
-      const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
-      return JSON.parse(validJsonStr);
+      const result = extractJson(rawText);
+      if (!result) console.warn("[FlowChart] Failed to parse HTML data:", rawText?.slice(0, 500));
+      return result;
     } catch {
       return null;
     }

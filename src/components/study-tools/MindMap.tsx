@@ -363,19 +363,62 @@ export default function MindMap({ html, data: rawData }: { html?: string; data?:
   }, []);
 
   const parsedData = useMemo<MindMapDataFlat | null>(() => {
+    /**
+     * Robust JSON extractor — finds the actual JSON object even when AI
+     * reasoning / thinking text surrounds it. Looks for known structural
+     * markers first, then falls back to bracket-matching.
+     */
+    const extractJson = (text: string): unknown | null => {
+      const clean = text.replace(/```json?\n?/gi, "").replace(/```/g, "").trim();
+
+      // Strategy 1: Find known structural starts like {"nodes" or {"label"
+      const markers = [/\{"nodes"\s*:/, /\{"label"\s*:/];
+      for (const marker of markers) {
+        const m = clean.match(marker);
+        if (m && m.index !== undefined) {
+          // Bracket-match from this position to find the complete object
+          let depth = 0;
+          for (let i = m.index; i < clean.length; i++) {
+            if (clean[i] === "{") depth++;
+            else if (clean[i] === "}") {
+              depth--;
+              if (depth === 0) {
+                try {
+                  const candidate = clean.slice(m.index, i + 1).replace(/,\s*([\]}])/g, "$1");
+                  return JSON.parse(candidate);
+                } catch { break; }
+              }
+            }
+          }
+        }
+      }
+
+      // Strategy 2: Find outermost { } (original approach — fallback)
+      const start = clean.indexOf("{");
+      const end = clean.lastIndexOf("}");
+      if (start !== -1 && end > start) {
+        try {
+          const candidate = clean.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
+          return JSON.parse(candidate);
+        } catch { /* fall through */ }
+      }
+      return null;
+    };
+
+    const validateMindMap = (parsed: unknown): MindMapDataFlat | null => {
+      if (!parsed || typeof parsed !== "object") return null;
+      const obj = parsed as Record<string, unknown>;
+      if (Array.isArray(obj.nodes) && obj.nodes.length > 0) return obj as unknown as MindMapDataFlat;
+      if (typeof obj.label === "string") return flattenNested(obj as unknown as MindMapDataNested);
+      return null;
+    };
+
     // Parse from raw JSON string (study tool output)
     if (rawData) {
-      try {
-        const cleanJson = rawData.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
-        const start = cleanJson.indexOf("{");
-        const end = cleanJson.lastIndexOf("}");
-        if (start === -1 || end === -1) return null;
-        const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
-        const parsed = JSON.parse(validJsonStr);
-        if (parsed.nodes && Array.isArray(parsed.nodes)) return parsed as MindMapDataFlat;
-        if (parsed.label) return flattenNested(parsed as MindMapDataNested);
-        return null;
-      } catch { return null; }
+      const parsed = extractJson(rawData);
+      const result = validateMindMap(parsed);
+      if (!result) console.warn("[MindMap] Failed to parse rawData:", rawData?.slice(0, 500));
+      return result;
     }
 
     // Parse from HTML (embedded in generated notes)
@@ -387,22 +430,10 @@ export default function MindMap({ html, data: rawData }: { html?: string; data?:
       if (!dataDiv) return null;
 
       const rawText = dataDiv.textContent || "";
-      const cleanJson = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-      const start = cleanJson.indexOf("{");
-      const end = cleanJson.lastIndexOf("}");
-      if (start === -1 || end === -1) return null;
-
-      const validJsonStr = cleanJson.slice(start, end + 1).replace(/,\s*([\]}])/g, "$1");
-      const parsed = JSON.parse(validJsonStr);
-
-      // Handle both flat {nodes, edges} and nested {label, children} formats
-      if (parsed.nodes && Array.isArray(parsed.nodes)) {
-        return parsed as MindMapDataFlat;
-      }
-      if (parsed.label) {
-        return flattenNested(parsed as MindMapDataNested);
-      }
-      return null;
+      const parsed = extractJson(rawText);
+      const result = validateMindMap(parsed);
+      if (!result) console.warn("[MindMap] Failed to parse HTML data:", rawText?.slice(0, 500));
+      return result;
     } catch {
       return null;
     }
@@ -454,9 +485,20 @@ export default function MindMap({ html, data: rawData }: { html?: string; data?:
   }, [parsedData, fontFamily]);
 
   if (!parsedData) {
+    const snippet = (rawData || html || "").slice(0, 300);
     return (
-      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-        No mind map data found. Try enabling the Mind Map study tool before generating notes.
+      <div className="flex flex-col items-center justify-center py-12 gap-3 text-sm text-muted-foreground">
+        <p>No mind map data found. Try generating a new Mind Map from the study tools.</p>
+        {snippet && (
+          <details className="w-full max-w-lg">
+            <summary className="cursor-pointer text-xs text-muted-foreground/60 hover:text-muted-foreground">
+              Debug: raw data preview
+            </summary>
+            <pre className="mt-2 text-[10px] bg-muted/50 rounded-lg p-3 overflow-auto max-h-40 whitespace-pre-wrap break-all">
+              {snippet}…
+            </pre>
+          </details>
+        )}
       </div>
     );
   }

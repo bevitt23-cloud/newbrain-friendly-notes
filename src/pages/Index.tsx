@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ContentUploader from "@/components/ContentUploader";
 
@@ -17,13 +17,297 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useNotesContext } from "@/hooks/useNotesContext";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Brain, ArrowRight } from "lucide-react";
+import {
+  Brain, ArrowRight, Upload, Sparkles, BookOpen,
+  Eye, MessageCircle, GitBranch, Map, Layers,
+  ChevronRight,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpeg";
 import { LEARNING_MODE, DEFAULT_FOLDER } from "@/lib/constants";
 import { extractYouTubeVideoId } from "@/lib/youtube";
 
-const Index = () => {
+/* ═══════════════════════════════════════════════════════════════
+   LANDING PAGE — shown to unauthenticated visitors
+   ═══════════════════════════════════════════════════════════════ */
+
+const fade = (delay = 0) => ({
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-40px" },
+  transition: { duration: 0.6, delay, ease: "easeOut" },
+});
+
+function LandingPage() {
+  return (
+    <div className="min-h-screen flex flex-col font-lexend bg-background text-foreground">
+      {/* ── Nav ── */}
+      <nav className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-lg">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
+          <Link to="/" className="flex items-center gap-2.5">
+            <img
+              src={logo}
+              alt="Brain-Friendly Notes"
+              className="h-9 w-9 rounded-xl shadow-soft ring-1 ring-border/30"
+            />
+            <span className="text-base font-bold tracking-tight text-foreground">
+              Brain-Friendly Notes
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/auth">Log in</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/auth">Sign up</Link>
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden">
+        {/* Soft multi-color gradient background */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sage-50 via-lavender-50 to-peach-50 dark:from-sage-50/30 dark:via-lavender-50/30 dark:to-peach-50/30" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(var(--primary)/0.08),transparent)]" />
+
+        <div className="mx-auto max-w-3xl px-5 pb-16 pt-20 md:pb-24 md:pt-28 text-center">
+          <motion.div {...fade(0)}>
+            <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full bg-primary/8 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
+              <Sparkles className="h-3.5 w-3.5" />
+              Built for every kind of mind
+            </div>
+          </motion.div>
+
+          <motion.h1
+            {...fade(0.1)}
+            className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-[3.25rem] leading-[1.15]"
+          >
+            Study smarter. Not harder.{" "}
+            <span className="bg-gradient-to-r from-primary via-lavender-400 to-peach-400 bg-clip-text text-transparent">
+              Notes designed for how your brain actually works.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            {...fade(0.2)}
+            className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-lg leading-relaxed"
+          >
+            Automatically transform your lectures, PDFs, and YouTube videos into
+            ADHD and Dyslexia-friendly study materials — powered by AI.
+          </motion.p>
+
+          <motion.div {...fade(0.3)} className="mt-8">
+            <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-md hover:shadow-lg" asChild>
+              <Link to="/auth">
+                Start Learning for Free
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
+            <p className="mt-3 text-xs text-muted-foreground/70">
+              No credit card required
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section className="border-y border-border/40 bg-card/50">
+        <div className="mx-auto max-w-4xl px-5 py-16 md:py-20">
+          <motion.h2
+            {...fade(0)}
+            className="text-center text-sm font-bold uppercase tracking-widest text-muted-foreground mb-10"
+          >
+            How It Works
+          </motion.h2>
+
+          <div className="grid gap-8 md:grid-cols-3 md:gap-6">
+            {[
+              {
+                step: "1",
+                icon: Upload,
+                title: "Upload anything",
+                desc: "Paste text, drop a PDF, link a YouTube video, or enter any website URL.",
+                color: "text-sage-400",
+                bg: "bg-sage-50 dark:bg-sage-100",
+              },
+              {
+                step: "2",
+                icon: Sparkles,
+                title: "AI transforms it",
+                desc: "Our AI reformats your material with visual breaks, chunked sections, and your preferred fonts.",
+                color: "text-lavender-400",
+                bg: "bg-lavender-50 dark:bg-lavender-100",
+              },
+              {
+                step: "3",
+                icon: BookOpen,
+                title: "Study your way",
+                desc: "Flash cards, mind maps, flow charts, quizzes — generated instantly from your notes.",
+                color: "text-peach-400",
+                bg: "bg-peach-50 dark:bg-peach-100",
+              },
+            ].map((item, i) => (
+              <motion.div
+                key={item.step}
+                {...fade(i * 0.1)}
+                className="flex flex-col items-center text-center"
+              >
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${item.bg}`}>
+                  <item.icon className={`h-6 w-6 ${item.color}`} />
+                </div>
+                <h3 className="text-sm font-bold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-[260px]">
+                  {item.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Connector arrows (desktop only) */}
+          <div className="hidden md:flex items-center justify-center gap-[10.5rem] -mt-[7.5rem] mb-12 pointer-events-none">
+            <ChevronRight className="h-5 w-5 text-border" />
+            <ChevronRight className="h-5 w-5 text-border" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features Grid ── */}
+      <section className="mx-auto max-w-5xl px-5 py-16 md:py-24">
+        <motion.div {...fade(0)} className="text-center mb-12">
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
+            Tools that meet your brain where it is
+          </h2>
+          <p className="mt-3 text-base text-muted-foreground max-w-lg mx-auto">
+            Every feature is designed to reduce cognitive load and make studying feel effortless.
+          </p>
+        </motion.div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Card 1 — Sage */}
+          <motion.div
+            {...fade(0)}
+            className="group rounded-2xl border border-sage-200/60 dark:border-sage-200/30 bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-50/40 dark:to-sage-100/30 p-6 transition-shadow hover:shadow-elevated"
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-sage-100 dark:bg-sage-200/60">
+              <Eye className="h-5 w-5 text-sage-500 dark:text-sage-300" />
+            </div>
+            <h3 className="text-base font-bold text-foreground mb-2">Sensory-Safe UI</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
+                Adjustable fonts — Lexend, OpenDyslexic, Arial
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
+                Bionic Reading for ADHD focus
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
+                Custom letter, word, and line spacing
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sage-400" />
+                Warm color palette with visual breaks
+              </li>
+            </ul>
+          </motion.div>
+
+          {/* Card 2 — Lavender */}
+          <motion.div
+            {...fade(0.1)}
+            className="group rounded-2xl border border-lavender-200/60 dark:border-lavender-200/30 bg-gradient-to-br from-lavender-50 to-lavender-100 dark:from-lavender-50/40 dark:to-lavender-100/30 p-6 transition-shadow hover:shadow-elevated"
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-lavender-100 dark:bg-lavender-200/60">
+              <MessageCircle className="h-5 w-5 text-lavender-500 dark:text-lavender-300" />
+            </div>
+            <h3 className="text-base font-bold text-foreground mb-2">Active Engagement</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                AI Socratic debates that challenge your thinking
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                Interactive flashcards with spaced repetition
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                Fill-in-the-blank and retention quizzes
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                Recall prompts and Feynman checks
+              </li>
+            </ul>
+          </motion.div>
+
+          {/* Card 3 — Peach */}
+          <motion.div
+            {...fade(0.15)}
+            className="group rounded-2xl border border-peach-200/60 dark:border-peach-200/30 bg-gradient-to-br from-peach-50 to-peach-100 dark:from-peach-50/40 dark:to-peach-100/30 p-6 transition-shadow hover:shadow-elevated"
+          >
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-peach-100 dark:bg-peach-200/60">
+              <Map className="h-5 w-5 text-peach-400 dark:text-peach-300" />
+            </div>
+            <h3 className="text-base font-bold text-foreground mb-2">Visual Learning</h3>
+            <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                Auto-generated interactive mind maps
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                Process flowcharts with click-to-expand detail
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                Curated YouTube explainer videos per section
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                Color-coded note sections for easy scanning
+              </li>
+            </ul>
+          </motion.div>
+        </div>
+
+        {/* Bottom CTA */}
+        <motion.div {...fade(0.1)} className="mt-14 text-center">
+          <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-md hover:shadow-lg" asChild>
+            <Link to="/auth">
+              Get Started — It's Free
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Link>
+          </Button>
+        </motion.div>
+      </section>
+
+      {/* ── Footer ── */}
+      <footer className="mt-auto border-t border-border/40 bg-card/50">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 py-8 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <img src={logo} alt="" className="h-5 w-5 rounded-md" />
+            <span>&copy; {new Date().getFullYear()} Brain-Friendly Notes</span>
+          </div>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/support" className="hover:text-foreground transition-colors">Support</Link>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   WORKSPACE — shown to authenticated users (unchanged logic)
+   ═══════════════════════════════════════════════════════════════ */
+
+function Workspace() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { preferences } = useUserPreferences();
@@ -48,7 +332,6 @@ const Index = () => {
   });
 
   // Extras managed by DB preferences — synced on preference change
-  // Extras NOT in prefMap (e.g. visual_learner) are managed purely by NoteExtras toggle
   const managedExtras = new Set(["tldr", "retention_quiz", "feynman", "recall", "simplify", "why_care", "jargon", "mindmap", "flowchart"]);
   useEffect(() => {
     const prefMap: Array<[boolean, string]> = [
@@ -63,7 +346,6 @@ const Index = () => {
       [preferences.flowchart_default, "flowchart"],
     ];
     setActiveExtras((prev) => {
-      // Keep any manually toggled extras that aren't preference-managed
       const manual = prev.filter((e) => !managedExtras.has(e));
       const fromPrefs: string[] = [];
       for (const [enabled, key] of prefMap) {
@@ -295,6 +577,19 @@ const Index = () => {
       )}
     </Layout>
   );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ROUTER — decides which view to show
+   ═══════════════════════════════════════════════════════════════ */
+
+const Index = () => {
+  const { user, loading } = useAuth();
+
+  // While auth state is loading, show nothing to prevent flash
+  if (loading) return null;
+
+  return user ? <Workspace /> : <LandingPage />;
 };
 
 export default Index;
