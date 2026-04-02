@@ -11,38 +11,38 @@
   :root {
     color-scheme: light;
 
-    /* Warm cream base — softer, more breathable */
-    --background: 40 14% 96%;
-    --foreground: 230 12% 16%;
+    /* Soft lavender-blue blush — gentle, pleasant base */
+    --background: 252 20% 94%;
+    --foreground: 230 14% 14%;
 
-    --card: 40 12% 98%;
-    --card-foreground: 230 12% 16%;
+    --card: 252 18% 96%;
+    --card-foreground: 230 14% 14%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 230 12% 16%;
+    --popover: 252 14% 97%;
+    --popover-foreground: 230 14% 14%;
 
     /* Calming blue primary */
-    --primary: 199 72% 48%;
+    --primary: 199 62% 44%;
     --primary-foreground: 0 0% 100%;
 
     /* Sage green secondary */
-    --secondary: 152 28% 52%;
+    --secondary: 152 28% 48%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 14% 92%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 248 14% 90%;
+    --muted-foreground: 230 8% 44%;
 
-    --accent: 220 14% 93%;
-    --accent-foreground: 230 12% 14%;
+    --accent: 248 14% 91%;
+    --accent-foreground: 230 14% 14%;
 
     --destructive: 0 50% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Soft borders — cooler, cleaner */
-    --border: 220 14% 90%;
-    --input: 220 14% 90%;
-    /* Sage green focus ring */
-    --ring: 199 72% 48%;
+    /* Soft lavender-tinted borders */
+    --border: 248 14% 87%;
+    --input: 248 14% 87%;
+    /* Calming blue focus ring */
+    --ring: 199 62% 44%;
 
     --radius: 0.75rem;
 
@@ -118,14 +118,14 @@
     --section-amber-bg: 38 28% 94%;
     --section-amber-border: 38 26% 80%;
 
-    --sidebar-background: 40 20% 96%;
-    --sidebar-foreground: 35 20% 14%;
-    --sidebar-primary: 199 72% 48%;
-    --sidebar-primary-foreground: 40 20% 97%;
-    --sidebar-accent: 215 16% 91%;
-    --sidebar-accent-foreground: 222 30% 12%;
-    --sidebar-border: 214 18% 86%;
-    --sidebar-ring: 152 28% 46%;
+    --sidebar-background: 252 18% 92%;
+    --sidebar-foreground: 230 14% 14%;
+    --sidebar-primary: 199 62% 44%;
+    --sidebar-primary-foreground: 252 18% 96%;
+    --sidebar-accent: 248 14% 89%;
+    --sidebar-accent-foreground: 230 14% 14%;
+    --sidebar-border: 248 14% 85%;
+    --sidebar-ring: 152 28% 44%;
   }
 
   .dark {
@@ -233,22 +233,44 @@
 
 /* ─── Elevation system ─── */
 .shadow-soft {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+  box-shadow:
+    0 1px 2px 0 rgb(0 0 0 / 0.05),
+    0 2px 6px -1px rgb(0 0 0 / 0.04),
+    0 0 0 1px rgb(0 0 0 / 0.02);
 }
 .shadow-elevated {
-  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  box-shadow:
+    0 2px 4px -1px rgb(0 0 0 / 0.04),
+    0 6px 20px -4px rgb(0 0 0 / 0.08),
+    0 12px 32px -8px rgb(0 0 0 / 0.05),
+    0 0 0 1px rgb(0 0 0 / 0.02);
 }
 .shadow-elevated-hover {
-  box-shadow: 0 8px 24px -4px rgb(0 0 0 / 0.08), 0 4px 8px -4px rgb(0 0 0 / 0.04);
+  box-shadow:
+    0 4px 8px -2px rgb(0 0 0 / 0.06),
+    0 12px 28px -6px rgb(0 0 0 / 0.1),
+    0 20px 48px -12px rgb(0 0 0 / 0.06),
+    0 0 0 1px rgb(0 0 0 / 0.03);
 }
 .dark .shadow-soft {
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.2), 0 1px 2px -1px rgb(0 0 0 / 0.15);
+  box-shadow:
+    0 1px 2px 0 rgb(0 0 0 / 0.25),
+    0 2px 6px -1px rgb(0 0 0 / 0.2),
+    0 0 0 1px rgb(255 255 255 / 0.04);
 }
 .dark .shadow-elevated {
-  box-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  box-shadow:
+    0 2px 4px -1px rgb(0 0 0 / 0.2),
+    0 6px 20px -4px rgb(0 0 0 / 0.35),
+    0 12px 32px -8px rgb(0 0 0 / 0.25),
+    0 0 0 1px rgb(255 255 255 / 0.04);
 }
 .dark .shadow-elevated-hover {
-  box-shadow: 0 8px 24px -4px rgb(0 0 0 / 0.4), 0 4px 8px -4px rgb(0 0 0 / 0.25);
+  box-shadow:
+    0 4px 8px -2px rgb(0 0 0 / 0.3),
+    0 12px 28px -6px rgb(0 0 0 / 0.45),
+    0 20px 48px -12px rgb(0 0 0 / 0.3),
+    0 0 0 1px rgb(255 255 255 / 0.05);
 }
 
 /* ═══════════════════════════════════════════

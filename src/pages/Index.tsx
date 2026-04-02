@@ -145,11 +145,19 @@ function LandingPage() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        {/* Soft multi-color gradient background */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sage-50 via-lavender-50 to-peach-50 dark:from-sage-50/30 dark:via-lavender-50/30 dark:to-peach-50/30" />
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,hsl(var(--primary)/0.08),transparent)]" />
+        {/* Warm cream base with soft sage & sky wash */}
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-sage-50/80 via-background to-sky-50/60 dark:from-sage-50/20 dark:via-background dark:to-sky-50/15" />
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,hsl(var(--sage-200)/0.15),transparent)]" />
 
-        <div className="mx-auto max-w-3xl px-5 pb-16 pt-20 md:pb-24 md:pt-28 text-center">
+        {/* Brain watermark — blend removes white bg */}
+        <img
+          src={logo}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 object-contain opacity-[0.18] mix-blend-multiply dark:opacity-[0.14] dark:mix-blend-screen dark:invert"
+        />
+
+        <div className="relative z-10 mx-auto max-w-3xl px-5 pb-16 pt-20 md:pb-24 md:pt-28 text-center">
           <motion.div {...fade(0)}>
             <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full bg-primary/8 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
               <Sparkles className="h-3.5 w-3.5" />
@@ -159,10 +167,10 @@ function LandingPage() {
 
           <motion.h1
             {...fade(0.1)}
-            className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-[3.25rem] leading-[1.15]"
+            className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl md:text-5xl lg:text-[3.25rem] leading-[1.15] [text-shadow:_1px_1px_0_rgba(255,255,255,0.7),_-1px_-1px_0_rgba(255,255,255,0.7),_1px_-1px_0_rgba(255,255,255,0.7),_-1px_1px_0_rgba(255,255,255,0.7),_0_2px_4px_rgba(0,0,0,0.08),_0_4px_8px_rgba(0,0,0,0.04)]"
           >
             Study smarter. Not harder.{" "}
-            <span className="bg-gradient-to-r from-primary via-lavender-400 to-peach-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-sage-400 via-primary to-sky-300 bg-clip-text text-transparent drop-shadow-[0_2px_3px_rgba(0,0,0,0.1)] [text-shadow:none]">
               Notes designed for how your brain actually works.
             </span>
           </motion.h1>
@@ -172,11 +180,11 @@ function LandingPage() {
             className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-lg leading-relaxed"
           >
             Automatically transform your lectures, PDFs, and YouTube videos into
-            personalized, brain-friendly study materials — powered by AI.
+            personalized, brain-friendly study materials.
           </motion.p>
 
           <motion.div {...fade(0.3)} className="mt-8">
-            <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-md hover:shadow-lg" asChild>
+            <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-elevated hover:shadow-elevated-hover hover:-translate-y-0.5 transition-all duration-200" asChild>
               <Link to="/auth">
                 Start Learning for Free
                 <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -190,7 +198,7 @@ function LandingPage() {
       </section>
 
       {/* ── How It Works ── */}
-      <section className="border-y border-border/40 bg-card/50">
+      <section className="border-y border-border/50 bg-card shadow-sm">
         <div className="mx-auto max-w-4xl px-5 py-16 md:py-20">
           <motion.h2
             {...fade(0)}
@@ -214,16 +222,16 @@ function LandingPage() {
                 icon: Sparkles,
                 title: "AI transforms it",
                 desc: "Our AI reformats your material with visual breaks, chunked sections, and your preferred fonts.",
-                color: "text-lavender-400",
-                bg: "bg-lavender-50 dark:bg-lavender-100",
+                color: "text-primary",
+                bg: "bg-sky-50 dark:bg-sky-100",
               },
               {
                 step: "3",
                 icon: BookOpen,
                 title: "Study your way",
                 desc: "Flash cards, mind maps, flow charts, quizzes — generated instantly from your notes.",
-                color: "text-peach-400",
-                bg: "bg-peach-50 dark:bg-peach-100",
+                color: "text-sage-400",
+                bg: "bg-sage-50 dark:bg-sage-100",
               },
             ].map((item, i) => (
               <motion.div
@@ -231,7 +239,7 @@ function LandingPage() {
                 {...fade(i * 0.1)}
                 className="flex flex-col items-center text-center"
               >
-                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl ${item.bg}`}>
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-elevated ${item.bg}`}>
                   <item.icon className={`h-6 w-6 ${item.color}`} />
                 </div>
                 <h3 className="text-sm font-bold text-foreground mb-1.5">{item.title}</h3>
@@ -265,9 +273,9 @@ function LandingPage() {
           {/* Card 1 — Sage */}
           <motion.div
             {...fade(0)}
-            className="group rounded-2xl border border-sage-200/60 dark:border-sage-200/30 bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-50/40 dark:to-sage-100/30 p-6 transition-shadow hover:shadow-elevated"
+            className="group rounded-2xl border border-sage-200/60 dark:border-sage-200/30 bg-gradient-to-br from-sage-50 to-sage-100 dark:from-sage-50/40 dark:to-sage-100/30 p-6 shadow-elevated transition-all duration-300 hover:shadow-elevated-hover hover:-translate-y-1"
           >
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-sage-100 dark:bg-sage-200/60">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-sage-100 dark:bg-sage-200/60 shadow-soft">
               <Eye className="h-5 w-5 text-sage-500 dark:text-sage-300" />
             </div>
             <h3 className="text-base font-bold text-foreground mb-2">Sensory-Safe UI</h3>
@@ -291,59 +299,59 @@ function LandingPage() {
             </ul>
           </motion.div>
 
-          {/* Card 2 — Lavender */}
+          {/* Card 2 — Sky */}
           <motion.div
             {...fade(0.1)}
-            className="group rounded-2xl border border-lavender-200/60 dark:border-lavender-200/30 bg-gradient-to-br from-lavender-50 to-lavender-100 dark:from-lavender-50/40 dark:to-lavender-100/30 p-6 transition-shadow hover:shadow-elevated"
+            className="group rounded-2xl border border-sky-200/60 dark:border-sky-200/30 bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-50/40 dark:to-sky-100/30 p-6 shadow-elevated transition-all duration-300 hover:shadow-elevated-hover hover:-translate-y-1"
           >
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-lavender-100 dark:bg-lavender-200/60">
-              <MessageCircle className="h-5 w-5 text-lavender-500 dark:text-lavender-300" />
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-sky-100 dark:bg-sky-200/60 shadow-soft">
+              <MessageCircle className="h-5 w-5 text-primary dark:text-sky-300" />
             </div>
             <h3 className="text-base font-bold text-foreground mb-2">Active Engagement</h3>
             <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-300" />
                 AI Socratic debates that challenge your thinking
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-300" />
                 Interactive flashcards with spaced repetition
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-300" />
                 Fill-in-the-blank and retention quizzes
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-lavender-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-300" />
                 Recall prompts and Feynman checks
               </li>
             </ul>
           </motion.div>
 
-          {/* Card 3 — Peach */}
+          {/* Card 3 — Teal */}
           <motion.div
             {...fade(0.15)}
-            className="group rounded-2xl border border-peach-200/60 dark:border-peach-200/30 bg-gradient-to-br from-peach-50 to-peach-100 dark:from-peach-50/40 dark:to-peach-100/30 p-6 transition-shadow hover:shadow-elevated"
+            className="group rounded-2xl border border-teal-200/60 dark:border-teal-200/30 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-50/40 dark:to-teal-100/30 p-6 shadow-elevated transition-all duration-300 hover:shadow-elevated-hover hover:-translate-y-1"
           >
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-peach-100 dark:bg-peach-200/60">
-              <Map className="h-5 w-5 text-peach-400 dark:text-peach-300" />
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-teal-100 dark:bg-teal-200/60 shadow-soft">
+              <Map className="h-5 w-5 text-teal-400 dark:text-teal-300" />
             </div>
             <h3 className="text-base font-bold text-foreground mb-2">Visual Learning</h3>
             <ul className="space-y-2 text-sm text-muted-foreground leading-relaxed">
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-teal-300" />
                 Auto-generated interactive mind maps
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-teal-300" />
                 Process flowcharts with click-to-expand detail
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-teal-300" />
                 Curated YouTube explainer videos per section
               </li>
               <li className="flex items-start gap-2">
-                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-peach-400" />
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-teal-300" />
                 Color-coded note sections for easy scanning
               </li>
             </ul>
@@ -352,7 +360,7 @@ function LandingPage() {
 
         {/* Bottom CTA */}
         <motion.div {...fade(0.1)} className="mt-14 text-center">
-          <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-md hover:shadow-lg" asChild>
+          <Button size="lg" className="rounded-xl px-8 text-base font-bold shadow-elevated hover:shadow-elevated-hover hover:-translate-y-0.5 transition-all duration-200" asChild>
             <Link to="/auth">
               Get Started — It's Free
               <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -539,50 +547,34 @@ function Workspace() {
 
   return (
     <Layout>
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-muted/40 to-transparent dark:from-muted/20">
-        <div className="container relative max-w-3xl py-8 md:py-12">
+      {/* Hero — compact, lets Layout watermark show through */}
+      <div className="relative overflow-hidden">
+        <div className="container relative max-w-3xl py-10 md:py-14">
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-            <motion.div
-              className="mx-auto mb-5 relative w-fit"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 24 }}
-            >
-              <img
-                src={logo}
-                alt="Brain-Friendly Notes"
-                className="h-20 w-20 md:h-24 md:w-24 rounded-2xl shadow-elevated ring-1 ring-border/40 relative z-10"
-              />
-            </motion.div>
-            <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full bg-primary/8 px-4 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/15">
-              Built for every kind of mind
-            </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl lg:text-4xl">
+            <h1 className="text-2xl font-extrabold tracking-tight text-foreground md:text-3xl lg:text-4xl [text-shadow:_1px_1px_0_rgba(255,255,255,0.5),_-1px_-1px_0_rgba(255,255,255,0.5),_1px_-1px_0_rgba(255,255,255,0.5),_-1px_1px_0_rgba(255,255,255,0.5),_0_2px_4px_rgba(0,0,0,0.06)]">
               Study notes that work{" "}
-              <span className="text-primary">
+              <span className="bg-gradient-to-r from-sage-400 via-primary to-sky-300 bg-clip-text text-transparent [text-shadow:none]">
                 with your brain
               </span>
             </h1>
-            <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground md:text-base">
+            <p className="mx-auto mt-2.5 max-w-lg text-sm text-muted-foreground md:text-base">
               Upload anything. Get notes tailored to how you actually learn.
             </p>
 
-            {showWizardBanner && (
-              <motion.button
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                onClick={() => navigate("/setup")}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-soft transition-all hover:shadow-elevated"
-              >
-                <Brain className="h-4 w-4 text-primary" />
-                Set up your learning profile
-                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-              </motion.button>
-            )}
-
-            <div className="mt-4 flex items-center justify-center gap-3">
+            <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
+              {showWizardBanner && (
+                <motion.button
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  onClick={() => navigate("/setup")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-elevated transition-all duration-200 hover:shadow-elevated-hover hover:-translate-y-0.5"
+                >
+                  <Brain className="h-4 w-4 text-primary" />
+                  Set up your learning profile
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                </motion.button>
+              )}
               {learningMode === LEARNING_MODE.DYSLEXIA && (
                 <DyslexiaSettings settings={dyslexiaSettings} onChange={setDyslexiaSettings} />
               )}
