@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FunFactProvider } from "@/hooks/useFunFacts";
 import { NotesProvider } from "@/hooks/useNotesContext";
 import { UserPreferencesProvider, useUserPreferences } from "@/hooks/useUserPreferences";
@@ -28,17 +28,20 @@ import { useTheme } from "next-themes";
 const queryClient = new QueryClient();
 
 const ThemePreferenceSync = () => {
+  const { user } = useAuth();
   const { preferences, loading } = useUserPreferences();
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
-    if (loading) return;
+    // Only sync DB preference → theme for authenticated users.
+    // Unauthenticated visitors control dark mode freely via the landing toggle.
+    if (!user || loading) return;
 
     const preferredTheme = preferences.default_dark_mode ? "dark" : "light";
     if (theme !== preferredTheme) {
       setTheme(preferredTheme);
     }
-  }, [loading, preferences.default_dark_mode, setTheme, theme]);
+  }, [user, loading, preferences.default_dark_mode, setTheme, theme]);
 
   return null;
 };
