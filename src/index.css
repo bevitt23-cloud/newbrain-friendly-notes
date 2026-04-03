@@ -316,24 +316,29 @@
   border-color: hsl(var(--section-amber-border));
 }
 
-/* Explicit data-section-color overrides */
-.generated-notes section[data-section-color="sage"] {
+/* Explicit data-section-color overrides — matches both <section> and <div> wrappers */
+.generated-notes section[data-section-color="sage"],
+.generated-notes div[data-section-color="sage"] {
   background: hsl(var(--section-sage-bg));
   border-color: hsl(var(--section-sage-border));
 }
-.generated-notes section[data-section-color="lavender"] {
+.generated-notes section[data-section-color="lavender"],
+.generated-notes div[data-section-color="lavender"] {
   background: hsl(var(--section-lavender-bg));
   border-color: hsl(var(--section-lavender-border));
 }
-.generated-notes section[data-section-color="peach"] {
+.generated-notes section[data-section-color="peach"],
+.generated-notes div[data-section-color="peach"] {
   background: hsl(var(--section-peach-bg));
   border-color: hsl(var(--section-peach-border));
 }
-.generated-notes section[data-section-color="sky"] {
+.generated-notes section[data-section-color="sky"],
+.generated-notes div[data-section-color="sky"] {
   background: hsl(var(--section-sky-bg));
   border-color: hsl(var(--section-sky-border));
 }
-.generated-notes section[data-section-color="amber"] {
+.generated-notes section[data-section-color="amber"],
+.generated-notes div[data-section-color="amber"] {
   background: hsl(var(--section-amber-bg));
   border-color: hsl(var(--section-amber-border));
 }

@@ -29,6 +29,7 @@ interface ContentUploaderProps {
     shouldSaveToLibrary: boolean;
     saveYouTubeVideo?: boolean;
     backgroundProcessingEnabled?: boolean;
+    images?: Array<{ data: string; mimeType: string } | File | Blob>;
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
@@ -120,12 +121,13 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
 
   const handleAnalyzeAndSubmit = async () => {
     const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: tagsInput.split(",").map(t => t.trim()).filter(Boolean), shouldSaveToLibrary };
+    const uploadedMedia = activeTab === "file" && files.length > 0 ? [files[0]] : undefined;
     
     // If they already selected chapters, generate them!
     if (detectedChapters) {
       const selected = detectedChapters.filter(c => selectedChapterIds.has(c.id));
       if (selected.length === 0) return toast.error("Select at least one chapter.");
-      onGenerate({ chapters: selected, ...common });
+      onGenerate({ chapters: selected, ...common, ...(uploadedMedia ? { images: uploadedMedia } : {}) });
       return;
     }
 
@@ -181,7 +183,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
             text: chunk,
           }));
 
-          onGenerate({ chapters, backgroundProcessingEnabled: true, ...common });
+          onGenerate({ chapters, backgroundProcessingEnabled: true, ...common, images: result.images });
           return;
         }
 
@@ -191,7 +193,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
           setDetectedChapters(chunks);
           setSelectedChapterIds(new Set(chunks.map((c) => c.id)));
         } else {
-          onGenerate({ chapters: chunks, ...common });
+          onGenerate({ chapters: chunks, ...common, images: result.images });
           }
       } catch (err) {
         toast.error("Failed to analyze file.");

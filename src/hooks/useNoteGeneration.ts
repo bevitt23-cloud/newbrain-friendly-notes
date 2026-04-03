@@ -24,7 +24,7 @@ export interface GenerateOptions {
   folder?: string;
   tags?: string[];
   shouldSaveToLibrary?: boolean;
-  images?: Array<{ data: string; mimeType: string }>;
+  images?: Array<{ data: string; mimeType: string } | File | Blob>;
 }
 
 /**
@@ -42,6 +42,49 @@ function toBase64(file: File | Blob): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function isUploadImageOrPdf(mimeType: string): boolean {
+  return mimeType.startsWith("image/") || mimeType === "application/pdf";
+}
+
+async function normalizeImages(
+  input: GenerateOptions["images"]
+): Promise<Array<{ data: string; mimeType: string }>> {
+  if (!input || input.length === 0) return [];
+
+  const normalized = await Promise.all(
+    input.map(async (item) => {
+      if (item instanceof File || item instanceof Blob) {
+        const mimeType = item.type || "application/octet-stream";
+        if (!isUploadImageOrPdf(mimeType)) return null;
+
+        return {
+          data: await toBase64(item),
+          mimeType,
+        };
+      }
+
+      if (
+        item &&
+        typeof item === "object" &&
+        "data" in item &&
+        typeof item.data === "string" &&
+        "mimeType" in item &&
+        typeof item.mimeType === "string" &&
+        isUploadImageOrPdf(item.mimeType)
+      ) {
+        return {
+          data: item.data,
+          mimeType: item.mimeType,
+        };
+      }
+
+      return null;
+    })
+  );
+
+  return normalized.filter((item): item is { data: string; mimeType: string } => Boolean(item));
 }
 
 export function useNoteGeneration() {
@@ -65,6 +108,9 @@ export function useNoteGeneration() {
     try {
       const { data: session } = await supabase.auth.getSession();
       const userId = session?.session?.user?.id;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const accessToken = session?.session?.access_token || anonKey;
+      const images = await normalizeImages(opts.images);
 
       if (opts.youtubeUrl || opts.websiteUrl) {
         setUploadProgress("Generating your notes...");
@@ -79,14 +125,17 @@ export function useNoteGeneration() {
           profilePrompt: opts.profilePrompt,
           age: opts.age ?? null,
           saveYouTubeVideo: opts.saveYouTubeVideo,
-          images: opts.images || [],
+          images,
         };
+
+        console.log('Sending payload:', payload);
 
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(payload),
         });
@@ -148,7 +197,8 @@ export function useNoteGeneration() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              apikey: anonKey,
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ notesHtml: finalHtml, age: ageRef.current }),
           })
@@ -180,14 +230,17 @@ export function useNoteGeneration() {
           instructions: opts.instructions,
           profilePrompt: opts.profilePrompt,
           age: opts.age,
-          images: opts.images || [],
+          images,
         };
+
+        console.log('Sending payload:', payload);
 
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(payload),
         });
@@ -241,7 +294,8 @@ export function useNoteGeneration() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              apikey: anonKey,
+              Authorization: `Bearer ${accessToken}`,
             },
             body: JSON.stringify({ notesHtml: cleanedFirstChapter, age: ageRef.current }),
           })
@@ -300,14 +354,17 @@ export function useNoteGeneration() {
           instructions: opts.instructions,
           profilePrompt: opts.profilePrompt,
           age: opts.age,
-          images: isFirstChapter ? (opts.images || []) : [],
+          images: isFirstChapter ? images : [],
         };
+
+        console.log('Sending payload:', payload);
 
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            apikey: anonKey,
+            Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify(payload),
         });

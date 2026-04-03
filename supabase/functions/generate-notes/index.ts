@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIStream } from "../_shared/callAI.ts";
-import { getAuthUser, unauthorizedResponse } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -221,17 +220,15 @@ async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string):
 }
 
 serve(async (req) => {
-  // FIX: Return CORS headers FIRST for OPTIONS requests to prevent 'Failed to fetch' error
+  // Handle CORS preflight before auth/body parsing.
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response("OK", { status: 200, headers: corsHeaders });
   }
 
   try {
-    const user = await getAuthUser(req);
-    if (!user) return unauthorizedResponse(corsHeaders);
-
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, images } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age } = body;
+    const { images } = body;
 
     const contentParts: any[] = [];
 

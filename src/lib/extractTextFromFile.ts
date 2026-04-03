@@ -7,6 +7,28 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+async function extractPdfPages(file: File): Promise<Array<{ data: string; mimeType: string }>> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const images: Array<{ data: string; mimeType: string }> = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) continue;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const base64 = canvas.toDataURL("image/jpeg", 0.75).split(",")[1];
+    if (base64) images.push({ data: base64, mimeType: "image/jpeg" });
+  }
+
+  console.log(`[PDF Extract] Rendered ${images.length} page image(s) for vision AI`);
+  return images;
+}
+
 async function extractPdfText(file: File): Promise<string> {
   console.log(`[PDF Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
   
@@ -57,6 +79,7 @@ async function extractPlainText(file: File): Promise<string> {
 export type ExtractionResult = {
   text: string;
   fileName: string;
+  images?: Array<{ data: string; mimeType: string }>;
 };
 
 export const MAX_FILE_SIZE_MB = 500;
@@ -82,9 +105,13 @@ export async function extractTextFromFile(
 
   try {
     let text = "";
+    let extractedImages: Array<{ data: string; mimeType: string }> | undefined;
 
     if (ext === "pdf") {
-      text = await extractPdfText(file);
+      [text, extractedImages] = await Promise.all([
+        extractPdfText(file),
+        extractPdfPages(file),
+      ]);
     } else if (ext === "docx" || ext === "doc") {
       text = await extractDocxText(file);
     } else if (["txt", "md", "csv"].includes(ext)) {
@@ -113,7 +140,7 @@ export async function extractTextFromFile(
       console.warn(`[Extract] Zero characters extracted from "${file.name}" — file may be scanned/image-based`);
     }
 
-    return { text, fileName: file.name };
+    return { text, fileName: file.name, images: extractedImages };
   } catch (err) {
     console.error(`[Extract] FAILED to extract text from "${file.name}":`, err);
     toast.error(

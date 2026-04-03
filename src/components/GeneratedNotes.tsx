@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useLayoutEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw, Save, Loader2, Sparkles, Download, Map, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -79,6 +79,7 @@ const GeneratedNotes = ({
   onSaveVideo,
 }: GeneratedNotesProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const notesBodyRef = useRef<HTMLDivElement>(null);
   const [videoQuery, setVideoQuery] = useState<string | null>(null);
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const [flowChartOpen, setFlowChartOpen] = useState(false);
@@ -208,7 +209,16 @@ const GeneratedNotes = ({
     }
   };
 
-  const processedHtml = sanitizeHtml(bionicEnabled ? applyBionic(html) : html);
+  // Write HTML directly to avoid React reconciliation flash on each streaming chunk.
+  // During streaming: raw write (fast). After: sanitize + bionic.
+  useLayoutEffect(() => {
+    const el = notesBodyRef.current;
+    if (!el) return;
+    el.innerHTML = isGenerating
+      ? html
+      : (html ? sanitizeHtml(bionicEnabled ? applyBionic(html) : html) : "");
+  }, [html, isGenerating, bionicEnabled]);
+
   const plainTextContext = html ? stripHtml(html) : undefined;
 
   // Build font styles from global preferences with prop fallback
@@ -360,8 +370,9 @@ const GeneratedNotes = ({
           ref={containerRef}
           onClick={handleNoteClick}
           className={`generated-notes max-w-none rounded-2xl border border-border p-6 md:p-8 shadow-sm select-text cursor-text bg-card${isGenerating ? ' generating' : ''}`}
-          style={dyslexiaStyles}
-          dangerouslySetInnerHTML={{ __html: processedHtml }} />
+          style={dyslexiaStyles}>
+          <div ref={notesBodyRef} />
+        </div>
         
       </div>
 

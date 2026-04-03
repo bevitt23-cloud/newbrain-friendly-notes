@@ -19,7 +19,7 @@ function splitByChapterHeadings(text: string): string[] {
 
 function splitByMajorHeadingGaps(text: string): string[] {
   // Split on large heading-style separators (double newlines before title-like lines).
-  const headingGapRegex = /\n{2,}(?=[A-Z][A-Z0-9\s:'"()\-]{6,}\n)/g;
+  const headingGapRegex = /\n{2,}(?=[A-Z][A-Z0-9\s:'"()-]{6,}\n)/g;
   const chunks = text
     .split(headingGapRegex)
     .map((chunk) => chunk.trim())

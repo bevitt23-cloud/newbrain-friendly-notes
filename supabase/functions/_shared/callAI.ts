@@ -25,6 +25,59 @@ interface CallAIStreamResult {
  * Handles image_url types by converting to Anthropic's media_type/base64 format.
  */
 function toClaudeMessages(messages: Array<{ role: string; content: string | any[] }>) {
+  const isLikelyBase64 = (value: string): boolean => /^[A-Za-z0-9+/=\s]+$/.test(value);
+
+  const buildClaudeMediaBlock = (mediaType: string, data: string) => {
+    const cleanData = data.replace(/\s+/g, "");
+
+    if (mediaType === "application/pdf") {
+      return {
+        type: "document" as const,
+        source: {
+          type: "base64" as const,
+          media_type: mediaType,
+          data: cleanData,
+        },
+      };
+    }
+
+    return {
+      type: "image" as const,
+      source: {
+        type: "base64" as const,
+        media_type: mediaType,
+        data: cleanData,
+      },
+    };
+  };
+
+  const toClaudeImageBlock = (part: any) => {
+    const urlValue =
+      typeof part?.image_url === "string"
+        ? part.image_url
+        : part?.image_url?.url;
+
+    if (typeof urlValue !== "string" || !urlValue) return null;
+
+    // Expected OpenAI-style multimodal image input: data:<mime>;base64,<data>
+    const dataUriMatch = urlValue.match(/^data:([^;,]+)(?:;[^,]*)?;base64,(.+)$/i);
+    if (dataUriMatch) {
+      const [, mediaType, base64Data] = dataUriMatch;
+      return buildClaudeMediaBlock(mediaType.toLowerCase(), base64Data);
+    }
+
+    // Support direct base64 payloads when metadata is provided separately.
+    const mediaTypeRaw =
+      part?.image_url?.media_type ||
+      part?.image_url?.mimeType ||
+      part?.image_url?.mime_type;
+    if (typeof mediaTypeRaw === "string" && isLikelyBase64(urlValue)) {
+      return buildClaudeMediaBlock(mediaTypeRaw.toLowerCase(), urlValue);
+    }
+
+    return null;
+  };
+
   return messages
     .filter((m) => m.role !== "system")
     .map((m) => {
@@ -37,23 +90,15 @@ function toClaudeMessages(messages: Array<{ role: string; content: string | any[
           }
           // Handle image_url by converting to Anthropic format
           if (part.type === "image_url") {
-            const url = part.image_url?.url || "";
-            // Check if it's a data URI (base64 embedded image)
-            if (url.startsWith("data:")) {
-              const match = url.match(/^data:([^;]+);base64,(.*)$/);
-              if (match) {
-                const mimeType = match[1];
-                const base64Data = match[2];
-                return {
-                  type: "image" as const,
-                  source: {
-                    type: "base64" as const,
-                    media_type: mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-                    data: base64Data,
-                  },
-                };
-              }
+            const imageBlock = toClaudeImageBlock(part);
+            if (imageBlock) {
+              return imageBlock;
             }
+
+            const url =
+              typeof part?.image_url === "string"
+                ? part.image_url
+                : part?.image_url?.url || "";
             // For non-data URIs, fall back to text representation (URLs not supported by Claude for images)
             return { type: "text" as const, text: `[Image: ${url}]` };
           }
@@ -159,6 +204,7 @@ export async function callAIStream(
 
   const GOOGLE_API_KEY = Deno.env.get("GEMINI_KEY");
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_KEY");
+  const GEMINI_STREAM_MODEL = "gemini-1.5-flash";
 
   // ── Attempt 1: Gemini streaming ──
   if (GOOGLE_API_KEY) {
@@ -177,7 +223,7 @@ export async function callAIStream(
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gemini-2.5-flash",
+            model: GEMINI_STREAM_MODEL,
             messages: allMessages,
             stream: true,
             ...(maxTokens ? { max_tokens: maxTokens } : {}),

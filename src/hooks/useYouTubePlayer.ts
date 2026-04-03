@@ -76,6 +76,7 @@ export function useYouTubePlayer(defaultPlaylistUrl: string): UseYouTubePlayerRe
       controls: 0,
       loop: 1,
       modestbranding: 1,
+      origin: window.location.origin,
     };
 
     if (listId) {
