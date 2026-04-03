@@ -23,15 +23,42 @@ interface CallAIStreamResult {
  * Convert OpenAI-style messages to Claude Messages API format.
  * Claude requires system to be a top-level param, not in messages.
  * Claude messages must alternate user/assistant and content must be string or content blocks.
+ * Handles image_url content parts by converting to Claude's native image format.
  */
 function toClaudeMessages(messages: Array<{ role: string; content: string | any[] }>) {
   return messages
     .filter((m) => m.role !== "system")
     .map((m) => {
-      // If content is an array of {type:"text", text:"..."} objects, convert to Claude text blocks
+      // If content is an array, convert each part to Claude format
       if (Array.isArray(m.content)) {
         const blocks = m.content.map((part: any) => {
-          if (part.type === "text") return { type: "text" as const, text: part.text };
+          if (part.type === "text") {
+            return { type: "text" as const, text: part.text };
+          }
+          // Convert OpenAI image_url format to Claude image format
+          if (part.type === "image_url" && part.image_url?.url) {
+            const url: string = part.image_url.url;
+            // Parse data URI: data:image/jpeg;base64,/9j/...
+            const dataUriMatch = url.match(/^data:(image\/[a-z+]+);base64,(.+)$/i);
+            if (dataUriMatch) {
+              return {
+                type: "image" as const,
+                source: {
+                  type: "base64" as const,
+                  media_type: dataUriMatch[1],
+                  data: dataUriMatch[2],
+                },
+              };
+            }
+            // External URL — Claude supports these too
+            return {
+              type: "image" as const,
+              source: {
+                type: "url" as const,
+                url,
+              },
+            };
+          }
           return { type: "text" as const, text: JSON.stringify(part) };
         });
         return { role: m.role === "assistant" ? "assistant" : "user", content: blocks };

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
+import { isImageFile, extractImages, injectImages, type EncodedImage } from "@/lib/imageUtils";
 
 export interface QuizQuestion {
   question: string;
@@ -59,14 +60,32 @@ export function useNoteGeneration() {
           ? opts.textContent
           : "";
 
-      // 2. Advanced Safe File Extraction
+      // 2. Advanced Safe File Extraction + Image Encoding
       const extractedTexts: string[] = [];
-      if (Array.isArray(opts.files) && opts.files.length > 0) {
-        for (let i = 0; i < opts.files.length; i++) {
-          const file = opts.files[i];
+      let encodedImages: EncodedImage[] = [];
 
-          if (opts.files.length > 1) {
-            setUploadProgress(`Extracting text locally from file ${i + 1} of ${opts.files.length}...`);
+      if (Array.isArray(opts.files) && opts.files.length > 0) {
+        // Separate image files from text-extractable files
+        const imageFiles = opts.files.filter(isImageFile);
+        const textFiles = opts.files.filter((f) => !isImageFile(f));
+
+        // Encode images for vision input
+        if (imageFiles.length > 0) {
+          setUploadProgress(`Encoding ${imageFiles.length} image${imageFiles.length > 1 ? "s" : ""}...`);
+          try {
+            encodedImages = await extractImages(imageFiles);
+            console.log(`[NoteGen] Encoded ${encodedImages.length} images for vision input`);
+          } catch (err) {
+            console.warn("[NoteGen] Image encoding failed:", err);
+          }
+        }
+
+        // Extract text from non-image files
+        for (let i = 0; i < textFiles.length; i++) {
+          const file = textFiles[i];
+
+          if (textFiles.length > 1) {
+            setUploadProgress(`Extracting text locally from file ${i + 1} of ${textFiles.length}...`);
           } else {
             setUploadProgress("Extracting text locally (this may take a minute for large files)...");
           }

@@ -336,9 +336,26 @@ serve(async (req) => {
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images } = body;
 
     const contentParts: any[] = [];
+
+    // ── Handle uploaded images (vision input) ──
+    const hasImages = Array.isArray(images) && images.length > 0;
+    if (hasImages) {
+      console.log(`[generate-notes] Received ${images.length} image(s) for vision processing`);
+      // Add each image as an image_url content part (OpenAI format — callAI converts for Claude)
+      for (const img of images.slice(0, 10)) {
+        if (img.data && img.mimeType) {
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: `data:${img.mimeType};base64,${img.data}`,
+            },
+          });
+        }
+      }
+    }
 
     // Handle YouTube URL
     if (youtubeUrl) {
@@ -875,6 +892,15 @@ SECTION TITLE RULES (CRITICAL — these appear in a Jump-to navigation bar):
 - ALWAYS use the specific subject matter: e.g., "Mitosis: Cell Division Stages", "Freud's Defense Mechanisms", "Supply & Demand Curves", "The Treaty of Versailles".
 - Titles should be immediately scannable — a student glancing at the navigation should know exactly what each section covers.
 
+IMAGE HANDLING RULES (when images are provided):
+If the user has uploaded images alongside text, you will see the images in the conversation.
+1. TRANSCRIBE all handwritten text, notes, or annotations visible in images.
+2. PRESERVE all charts, tables, graphs, and diagrams by referencing them in the notes where contextually appropriate.
+3. To embed an uploaded image in your notes, use this exact placeholder format: <figure data-image-index="N"><figcaption>Brief description of what the image shows</figcaption></figure> where N is the zero-based index of the image (0 for the first image, 1 for the second, etc.).
+4. Place image references where they contextually belong in the notes — next to the content they relate to.
+5. Write clear, descriptive figcaptions that help the student understand what the image shows.
+6. If an image contains a table or chart, transcribe its data into an HTML <table> in addition to embedding the image reference.
+
 CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
 1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node. 
@@ -905,9 +931,13 @@ Focus exclusively on the content provided for this chapter.`;
       }
     }
 
+    const imageInstruction = hasImages
+      ? ` The user has uploaded ${images.length} image(s). Examine each image carefully. Transcribe any text, describe charts/diagrams, and embed image references using <figure data-image-index="N"> placeholders where they contextually belong in the notes.`
+      : "";
+
     contentParts.unshift({
       type: "text",
-      text: `Transform ALL the content from the following material into brain-friendly study notes. Extract every piece of information.${chapterPrompt}`,
+      text: `Transform ALL the content from the following material into brain-friendly study notes. Extract every piece of information.${imageInstruction}${chapterPrompt}`,
     });
 
     const streamResult = await callAIStream({
