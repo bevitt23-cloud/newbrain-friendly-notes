@@ -163,8 +163,13 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
 
   const updatePreferences = useCallback(
     async (updates: Partial<UserPreferences>) => {
-      const newPrefs = { ...preferences, ...updates };
-      setPreferences(newPrefs);
+      // Use functional updater to avoid stale-closure issues when
+      // multiple calls happen before React re-renders.
+      let newPrefs!: UserPreferences;
+      setPreferences((prev) => {
+        newPrefs = { ...prev, ...updates };
+        return newPrefs;
+      });
 
       // Persist adhd_font to localStorage (not in DB schema)
       if ("adhd_font" in updates || "dyslexia_font" in updates) {
@@ -179,7 +184,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         .from("user_preferences" as any)
         .upsert({ user_id: user.id, ...dbPayload } as any, { onConflict: "user_id" });
     },
-    [user, preferences]
+    [user]
   );
 
   return (

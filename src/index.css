@@ -299,14 +299,13 @@
   border-style: solid;
 }
 
-/* Generating state — smooth content appearance */
+/* Generating state — stable bg prevents color-cycle flash as sections stream in.
+   dangerouslySetInnerHTML recreates all DOM nodes on each chunk,
+   so animations would replay and cause uncomfortable flashing. */
 .generated-notes.generating > section,
 .generated-notes.generating > div > section {
-  animation: section-fade-in 0.3s ease-out;
-}
-@keyframes section-fade-in {
-  from { opacity: 0.6; }
-  to { opacity: 1; }
+  background: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 
 /* ─── Section color cycle (uses CSS variables — instant theme switch) ─── */
