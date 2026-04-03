@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ContentUploader from "@/components/ContentUploader";
-
+import type { ChapterGenerateData } from "@/components/ContentUploader";
+import ChapterGenerationProgress from "@/components/ChapterGenerationProgress";
 import NoteExtras from "@/components/NoteExtras";
 import FloatingStudyBar from "@/components/FloatingStudyBar";
 import StudyToolsInline from "@/components/StudyToolsInline";
@@ -15,6 +16,7 @@ import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useNotesContext } from "@/hooks/useNotesContext";
+import { useChapterGeneration } from "@/hooks/useChapterGeneration";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import {
@@ -28,6 +30,7 @@ import { toast } from "sonner";
 import logo from "@/assets/logo.jpeg";
 import { LEARNING_MODE, DEFAULT_FOLDER } from "@/lib/constants";
 import { extractYouTubeVideoId } from "@/lib/youtube";
+import { buildFolderPath } from "@/lib/folderUtils";
 
 /* ═══════════════════════════════════════════════════════════════
    LANDING PAGE — shown to unauthenticated visitors
@@ -402,6 +405,14 @@ function Workspace() {
     savedNoteId, savedNoteTitle, setSavedNoteId, setSavedNoteTitle, autoSavedRef,
   } = useNotesContext();
 
+  const {
+    chapterStates, isRunning: isChapterRunning, currentIndex: chapterCurrentIndex,
+    completedCount: chapterCompletedCount, failedCount: chapterFailedCount,
+    totalCount: chapterTotalCount, startBackgroundGeneration, stopAfterCurrent,
+    resetChapterGeneration,
+  } = useChapterGeneration();
+  const [chapterBookTitle, setChapterBookTitle] = useState("");
+
   const learningMode = preferences.dyslexia_font ? LEARNING_MODE.DYSLEXIA : preferences.adhd_font ? LEARNING_MODE.ADHD : LEARNING_MODE.NEUROTYPICAL;
   const bionicEnabled = preferences.bionic_reading;
   const pendingMetaRef = useRef<{ folder: string; tags: string[]; shouldSaveToLibrary: boolean }>({ folder: DEFAULT_FOLDER, tags: [], shouldSaveToLibrary: true });
@@ -446,12 +457,13 @@ function Workspace() {
   ]);
 
   const handleGenerate = useCallback(
-    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean }) => {
+    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean; chapterData?: ChapterGenerateData }) => {
       autoSavedRef.current = false;
       setSavedNoteId(null);
       setSavedNoteTitle("");
       setStickyNotes([]);
       setSavedVideos([]);
+      resetChapterGeneration();
       pendingMetaRef.current = { folder: data.folder, tags: data.tags, shouldSaveToLibrary: data.shouldSaveToLibrary };
 
       // Save source YouTube video if checkbox was checked
@@ -471,6 +483,46 @@ function Workspace() {
         }
       }
 
+      // ── Chapter mode: first chapter displayed live, rest generated in background ──
+      if (data.chapterData) {
+        const cd = data.chapterData;
+        setChapterBookTitle(cd.bookTitle);
+
+        // Update folder to the book-level folder path for auto-save
+        pendingMetaRef.current.folder = buildFolderPath(data.folder, cd.bookTitle);
+
+        // Generate first chapter on the workspace (live stream)
+        generate({
+          textContent: cd.textContent,
+          instructions: data.instructions,
+          learningMode,
+          extras: activeExtras,
+          profilePrompt: profile.promptAppend || undefined,
+          age: profile.age,
+          folder: pendingMetaRef.current.folder,
+          tags: data.tags,
+          shouldSaveToLibrary: data.shouldSaveToLibrary,
+          chapterContext: cd.chapterContext,
+        });
+
+        // Kick off background chapters (chapters 1+)
+        if (cd.backgroundChapters.length > 0) {
+          startBackgroundGeneration({
+            allChapters: cd.allChapters,
+            backgroundChapters: cd.backgroundChapters,
+            bookTitle: cd.bookTitle,
+            parentFolder: data.folder,
+            tags: data.tags,
+            learningMode,
+            extras: activeExtras,
+            profilePrompt: profile.promptAppend || undefined,
+            age: profile.age,
+          });
+        }
+        return;
+      }
+
+      // ── Standard mode (existing flow) ──
       generate({
         ...data,
         learningMode: learningMode,
@@ -479,7 +531,7 @@ function Workspace() {
         age: profile.age,
       });
     },
-    [generate, learningMode, activeExtras, profile.promptAppend, profile.age]
+    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, startBackgroundGeneration, resetChapterGeneration]
   );
 
   // Auto-save notes when generated
@@ -625,6 +677,20 @@ function Workspace() {
             onSaveVideo={(video) => {
               setSavedVideos((prev) => (prev.some((v) => v.videoId === video.videoId) ? prev : [...prev, video]));
             }}
+          />
+        )}
+
+        {/* Background chapter generation progress */}
+        {chapterTotalCount > 0 && (
+          <ChapterGenerationProgress
+            chapterStates={chapterStates}
+            currentIndex={chapterCurrentIndex}
+            isRunning={isChapterRunning}
+            completedCount={chapterCompletedCount}
+            failedCount={chapterFailedCount}
+            totalCount={chapterTotalCount}
+            bookTitle={chapterBookTitle}
+            onStop={stopAfterCurrent}
           />
         )}
 

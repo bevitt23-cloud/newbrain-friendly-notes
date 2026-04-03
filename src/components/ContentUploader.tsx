@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
-import { Upload, Link2, FileText, X, Sparkles, Mic, MessageSquare, Loader2, Youtube, FolderPlus, Check, Save } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { Upload, Link2, FileText, X, Sparkles, Mic, MessageSquare, Loader2, Youtube, FolderPlus, Check, Save, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,6 +7,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
 import { DEFAULT_FOLDER } from "@/lib/constants";
+import { extractTextFromFile, isClientExtractable } from "@/lib/extractTextFromFile";
+import { detectChapters, shouldOfferChapterDetection } from "@/lib/chapterDetection";
+import type { DetectedChapter, ChapterDetectionResult } from "@/lib/chapterDetection";
+import ChapterPreview from "./ChapterPreview";
+
+export interface ChapterGenerateData {
+  /** First chapter text (displays on workspace) */
+  textContent: string;
+  /** Chapter context for the first chapter */
+  chapterContext: {
+    chapterTitle: string;
+    chapterIndex: number;
+    totalChapters: number;
+    bookTitle: string;
+  };
+  /** Remaining chapters to generate in background */
+  backgroundChapters: DetectedChapter[];
+  /** All selected chapters */
+  allChapters: DetectedChapter[];
+  /** Book title */
+  bookTitle: string;
+}
 
 interface ContentUploaderProps {
   onGenerate: (data: {
@@ -19,6 +41,8 @@ interface ContentUploaderProps {
     tags: string[];
     shouldSaveToLibrary: boolean;
     saveYouTubeVideo?: boolean;
+    /** Present when generating from detected chapters */
+    chapterData?: ChapterGenerateData;
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
@@ -40,6 +64,69 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [shouldSaveToLibrary, setShouldSaveToLibrary] = useState(true);
   const [saveYouTubeVideo, setSaveYouTubeVideo] = useState(true);
   const [libraryFolders, setLibraryFolders] = useState<string[]>([]);
+
+  // ── Chapter detection state ──
+  const [chapterDetection, setChapterDetection] = useState<ChapterDetectionResult | null>(null);
+  const [selectedChapterIndices, setSelectedChapterIndices] = useState<Set<number>>(new Set());
+  const [bookTitle, setBookTitle] = useState("");
+  const [isDetectingChapters, setIsDetectingChapters] = useState(false);
+  const lastDetectedFilesRef = useRef<string>("");
+
+  // Run chapter detection when files change
+  useEffect(() => {
+    if (activeTab !== "file" || files.length === 0) {
+      setChapterDetection(null);
+      setSelectedChapterIndices(new Set());
+      setBookTitle("");
+      lastDetectedFilesRef.current = "";
+      return;
+    }
+
+    // Only run for single extractable files (multi-file keeps existing flow)
+    if (files.length !== 1 || !isClientExtractable(files[0].name)) {
+      setChapterDetection(null);
+      return;
+    }
+
+    const fileKey = `${files[0].name}-${files[0].size}-${files[0].lastModified}`;
+    if (fileKey === lastDetectedFilesRef.current) return; // already detected
+    lastDetectedFilesRef.current = fileKey;
+
+    let cancelled = false;
+    (async () => {
+      setIsDetectingChapters(true);
+      try {
+        const result = await extractTextFromFile(files[0]);
+        if (cancelled || !result || !result.text) {
+          setIsDetectingChapters(false);
+          return;
+        }
+        if (!shouldOfferChapterDetection(result.text.length)) {
+          setChapterDetection(null);
+          setIsDetectingChapters(false);
+          return;
+        }
+        const detection = detectChapters(result.text, result.fileName);
+        if (cancelled) return;
+
+        if (detection.chapters.length >= 2) {
+          setChapterDetection(detection);
+          setSelectedChapterIndices(new Set(detection.chapters.map((_, i) => i)));
+          setBookTitle(detection.suggestedBookTitle);
+        } else {
+          setChapterDetection(null);
+        }
+      } catch (err) {
+        console.error("[Chapter Detection] Error:", err);
+        setChapterDetection(null);
+      }
+      if (!cancelled) setIsDetectingChapters(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [files, activeTab]);
+
+  const isChapterMode = chapterDetection !== null && selectedChapterIndices.size > 0;
 
   const DEFAULT_FOLDERS = [DEFAULT_FOLDER] as const;
 
@@ -149,6 +236,38 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
 
   const handleSubmit = () => {
     const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary };
+
+    // ── Chapter mode: split into first chapter (workspace) + background chapters ──
+    if (isChapterMode && chapterDetection) {
+      const sortedIndices = Array.from(selectedChapterIndices).sort((a, b) => a - b);
+      const selectedChapters = sortedIndices.map((i) => chapterDetection.chapters[i]);
+
+      if (selectedChapters.length === 0) {
+        toast.error("Select at least one chapter to generate notes.");
+        return;
+      }
+
+      const firstChapter = selectedChapters[0];
+      const backgroundChapters = selectedChapters.slice(1);
+
+      const chapterData: ChapterGenerateData = {
+        textContent: firstChapter.text,
+        chapterContext: {
+          chapterTitle: firstChapter.title,
+          chapterIndex: firstChapter.index,
+          totalChapters: selectedChapters.length,
+          bookTitle,
+        },
+        backgroundChapters,
+        allChapters: selectedChapters,
+        bookTitle,
+      };
+
+      onGenerate({ textContent: firstChapter.text, chapterData, ...common });
+      return;
+    }
+
+    // ── Standard mode (existing flow) ──
     if (activeTab === "text" && text.trim()) {
       onGenerate({ textContent: text.trim(), ...common });
     } else if (activeTab === "url" && url.trim()) {
@@ -257,6 +376,36 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
                   </motion.div>
                 ))}
               </div>
+            )}
+
+            {/* Chapter detection spinner */}
+            {isDetectingChapters && (
+              <div className="flex items-center gap-2.5 rounded-xl bg-lavender-50 dark:bg-lavender-500/10 px-4 py-3 ring-1 ring-lavender-200/60 dark:ring-lavender-400/20">
+                <Loader2 className="h-4 w-4 animate-spin text-lavender-500" />
+                <span className="text-sm text-muted-foreground">Detecting chapters…</span>
+              </div>
+            )}
+
+            {/* Chapter preview & selection */}
+            {isChapterMode && chapterDetection && (
+              <ChapterPreview
+                detection={chapterDetection}
+                selectedIndices={selectedChapterIndices}
+                onSelectionChange={setSelectedChapterIndices}
+                bookTitle={bookTitle}
+                onBookTitleChange={setBookTitle}
+                parentFolder={folder}
+              />
+            )}
+
+            {/* Option to skip chapter mode */}
+            {chapterDetection && chapterDetection.chapters.length >= 2 && (
+              <button
+                onClick={() => { setChapterDetection(null); setSelectedChapterIndices(new Set()); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
+                Generate as a single note instead
+              </button>
             )}
           </motion.div>
         )}
@@ -471,6 +620,11 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
           <>
             <Loader2 className="h-5 w-5 animate-spin" />
             {uploadProgress || "Generating Notes..."}
+          </>
+        ) : isChapterMode ? (
+          <>
+            <BookOpen className="h-5 w-5" />
+            Generate Notes for {selectedChapterIndices.size} Chapter{selectedChapterIndices.size !== 1 ? "s" : ""}
           </>
         ) : (
           <>
