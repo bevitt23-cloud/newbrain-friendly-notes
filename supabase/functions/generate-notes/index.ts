@@ -868,6 +868,13 @@ CRITICAL: Wrap EACH major section in a <section data-section-color="COLOR"> tag,
 Place the <h2> INSIDE the <section> (do NOT put data-section-color on the h2, put it on the section AND the h2).
 Wrap the entire output in a single <div>.
 
+SECTION TITLE RULES (CRITICAL — these appear in a Jump-to navigation bar):
+- Each <h2> MUST have a unique id attribute: id="section-1", id="section-2", etc.
+- Section titles in <h2> tags MUST be concise (under 8 words) and describe the SPECIFIC content of that section.
+- NEVER use generic titles like "Key Concepts", "Important Details", "Overview", "Main Points", or "Summary".
+- ALWAYS use the specific subject matter: e.g., "Mitosis: Cell Division Stages", "Freud's Defense Mechanisms", "Supply & Demand Curves", "The Treaty of Versailles".
+- Titles should be immediately scannable — a student glancing at the navigation should know exactly what each section covers.
+
 CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
 1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node. 

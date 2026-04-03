@@ -16,6 +16,8 @@ import FlowChart from "@/components/study-tools/FlowChart";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import InAppVideoModal from "@/components/InAppVideoModal";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
+import JumpToNav from "@/components/JumpToNav";
+import { useJumpToNav } from "@/hooks/useJumpToNav";
 
 interface GeneratedNotesProps {
   html: string;
@@ -196,6 +198,7 @@ const GeneratedNotes = ({
   }, [html]);
 
   useNotesInteractivity(containerRef, html);
+  const { sections: navSections, activeSectionId, scrollToSection } = useJumpToNav(containerRef, html);
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -360,8 +363,17 @@ const GeneratedNotes = ({
           className={`generated-notes max-w-none rounded-2xl border border-border p-6 md:p-8 shadow-sm select-text cursor-text bg-card${isGenerating ? ' generating' : ''}`}
           style={dyslexiaStyles}
           dangerouslySetInnerHTML={{ __html: processedHtml }} />
-        
+
       </div>
+
+      {/* Jump-to section navigation */}
+      {!isGenerating && navSections.length >= 2 && (
+        <JumpToNav
+          sections={navSections}
+          activeSectionId={activeSectionId}
+          onScrollTo={scrollToSection}
+        />
+      )}
 
       {isGenerating &&
       <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
