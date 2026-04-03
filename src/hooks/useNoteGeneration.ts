@@ -144,12 +144,21 @@ export function useNoteGeneration() {
         age: opts.age ?? null,
       };
 
+      // Add encoded images to payload for vision processing
+      if (encodedImages.length > 0) {
+        payload.images = encodedImages.map((img) => ({
+          data: img.data,
+          mimeType: img.mimeType,
+          fileName: img.fileName,
+        }));
+      }
+
       // Pass chapter context through to the edge function when present
       if (opts.chapterContext) {
         payload.chapterContext = opts.chapterContext;
       }
 
-      if (!payload.textContent && !payload.youtubeUrl && !payload.websiteUrl) {
+      if (!payload.textContent && !payload.youtubeUrl && !payload.websiteUrl && encodedImages.length === 0) {
         throw new Error("No valid content found to generate notes from. Please provide text, a file, or a URL.");
       }
 
@@ -240,7 +249,13 @@ export function useNoteGeneration() {
       if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
       if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
       
-      const finalHtml = cleaned.trim();
+      let finalHtml = cleaned.trim();
+
+      // Post-process: inject actual images into AI placeholder <figure> tags
+      if (encodedImages.length > 0) {
+        finalHtml = injectImages(finalHtml, encodedImages);
+      }
+
       setGeneratedHtml(finalHtml);
 
       // 5. Trigger Quiz Generation

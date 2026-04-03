@@ -580,6 +580,25 @@ body.dyslexia-active .generated-notes {
   box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
 }
 
+/* ── Embedded images (PIP thumbnails) ── */
+.generated-notes .note-image {
+  @apply my-4 mx-auto max-w-sm rounded-xl overflow-hidden border border-border/50 shadow-sm;
+  background: hsl(var(--muted) / 0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.generated-notes .note-image:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08);
+}
+.generated-notes .note-image-thumb {
+  @apply w-full cursor-pointer;
+  max-height: 280px;
+  object-fit: contain;
+}
+.generated-notes .note-image figcaption {
+  @apply px-3 py-2 text-xs text-muted-foreground text-center italic;
+}
+
 /* ═══════════════════════════════════════════
    PROSE / AI SECTIONS — LAYOUT & DARK MODE
    ═══════════════════════════════════════════ */

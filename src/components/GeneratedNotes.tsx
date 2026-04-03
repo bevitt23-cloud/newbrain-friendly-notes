@@ -18,6 +18,7 @@ import InAppVideoModal from "@/components/InAppVideoModal";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
 import JumpToNav from "@/components/JumpToNav";
 import { useJumpToNav } from "@/hooks/useJumpToNav";
+import FloatingImageViewer from "@/components/FloatingImageViewer";
 
 interface GeneratedNotesProps {
   html: string;
@@ -85,6 +86,7 @@ const GeneratedNotes = ({
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const [flowChartOpen, setFlowChartOpen] = useState(false);
   const [jargonTooltip, setJargonTooltip] = useState<JargonTooltipState | null>(null);
+  const [pipImage, setPipImage] = useState<{ src: string; alt: string } | null>(null);
   const { preferences } = useUserPreferences();
 
   // Toggle dyslexia-active body class from global preferences
@@ -202,11 +204,21 @@ const GeneratedNotes = ({
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
+
+    // Handle explainer video button clicks
     const btn = target.closest("button.watch-explainer") as HTMLElement | null;
     if (btn) {
       e.preventDefault();
       const query = btn.getAttribute("data-query");
       if (query) setVideoQuery(query);
+      return;
+    }
+
+    // Handle image clicks — open PIP viewer
+    if (target.tagName === "IMG" && target.closest(".note-image")) {
+      e.preventDefault();
+      const img = target as HTMLImageElement;
+      setPipImage({ src: img.src, alt: img.alt || "Image" });
       return;
     }
   };
@@ -401,6 +413,15 @@ const GeneratedNotes = ({
                 onSaveVideo={onSaveVideo}
               />
             )}
+
+      {/* PIP Image Viewer */}
+      {pipImage && (
+        <FloatingImageViewer
+          src={pipImage.src}
+          alt={pipImage.alt}
+          onClose={() => setPipImage(null)}
+        />
+      )}
 
       {/* Mind Map Dialog */}
       <Dialog open={mindMapOpen} onOpenChange={setMindMapOpen}>
