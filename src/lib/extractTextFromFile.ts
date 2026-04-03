@@ -7,7 +7,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-async function extractPdfText(file: File): Promise<string> {
+async function extractPdfText(file: File): Promise<{ text: string; pageCount: number }> {
   console.log(`[PDF Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
   
   const arrayBuffer = await file.arrayBuffer();
@@ -25,17 +25,20 @@ async function extractPdfText(file: File): Promise<string> {
       .map((item: any) => item.str)
       .join(" ");
     pages.push(pageText);
-    
+
     // Log progress every 10 pages for large documents
     if (i % 10 === 0 || i === pdf.numPages) {
       console.log(`[PDF Extract] Processed page ${i}/${pdf.numPages}`);
     }
   }
 
-  const fullText = pages.join("\n\n");
+  // Insert page markers between pages so chapter detection can correlate page numbers
+  const fullText = pages
+    .map((text, i) => (i > 0 ? `[PAGE_BREAK:${i + 1}]\n\n${text}` : text))
+    .join("\n\n");
   console.log(`[PDF Extract] Extraction complete: ${fullText.length} characters from ${pdf.numPages} pages`);
-  
-  return fullText;
+
+  return { text: fullText, pageCount: pdf.numPages };
 }
 
 async function extractDocxText(file: File): Promise<string> {
@@ -98,6 +101,8 @@ async function extractPlainText(file: File): Promise<string> {
 export type ExtractionResult = {
   text: string;
   fileName: string;
+  /** Total page count (PDF only) */
+  pageCount?: number;
 };
 
 /**
@@ -123,9 +128,12 @@ export async function extractTextFromFile(
 
   try {
     let text = "";
+    let pageCount: number | undefined;
 
     if (ext === "pdf") {
-      text = await extractPdfText(file);
+      const result = await extractPdfText(file);
+      text = result.text;
+      pageCount = result.pageCount;
     } else if (ext === "docx" || ext === "doc") {
       text = await extractDocxText(file);
     } else if (ext === "pptx" || ext === "ppt") {
@@ -156,7 +164,7 @@ export async function extractTextFromFile(
       console.warn(`[Extract] Zero characters extracted from "${file.name}" — file may be scanned/image-based`);
     }
 
-    return { text, fileName: file.name };
+    return { text, fileName: file.name, pageCount };
   } catch (err) {
     console.error(`[Extract] FAILED to extract text from "${file.name}":`, err);
     toast.error(

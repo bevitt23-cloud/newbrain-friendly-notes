@@ -28,3 +28,6 @@ export type FunFactMode = (typeof FUN_FACT_MODE)[keyof typeof FUN_FACT_MODE];
 
 /** Default folder name for uncategorized notes */
 export const DEFAULT_FOLDER = "Unsorted";
+
+/** Separator for nested folder paths (e.g. "Biology/Campbell Bio") */
+export const FOLDER_SEPARATOR = "/";
