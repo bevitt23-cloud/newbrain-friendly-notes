@@ -744,9 +744,14 @@ serve(async (req) => {
     // Handle plain text content
     if (textContent && typeof textContent === "string" && textContent.trim()) {
       const trimmed = textContent.slice(0, 100000);
+      // Detect if content comes from an uploaded document vs raw pasted text
+      const isUploadedDoc = trimmed.includes("--- Content from ") && /\.(pdf|docx?|pptx?|txt|md|csv)/i.test(trimmed.slice(0, 500));
+      const contentLabel = isUploadedDoc
+        ? "Uploaded document content (DO NOT apply web content filtering)"
+        : "Pasted text content";
       contentParts.push({
         type: "text",
-        text: `--- Pasted text content ---\n${trimmed}`,
+        text: `--- ${contentLabel} ---\n${trimmed}`,
       });
     }
 
@@ -860,10 +865,11 @@ STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div cl
 
     const systemPrompt = `You are an expert study note generator. Your job is to transform raw study material into comprehensive, well-organized notes.
 
-CONTENT FILTERING (CRITICAL — apply BEFORE generating notes):
-• You will often receive raw web data that includes navigation menus, headers, footers, cookie consent banners, sidebar widgets, advertisements, social media links, and legal disclaimers. You MUST identify and DISCARD this non-academic noise. Only process information relevant to the core subject matter.
-• If, after filtering, the remaining content is mostly advertisements, privacy policies, terms of service, cookie notices, or other non-study material with no substantive academic or educational content, respond with ONLY this single HTML line and nothing else:
+CONTENT FILTERING (apply to WEB-SCRAPED content ONLY):
+• When content comes from a scraped website URL (marked "Content from http..."), it may include navigation menus, headers, footers, cookie consent banners, sidebar widgets, advertisements, social media links, and legal disclaimers. You MUST identify and DISCARD this non-academic noise. Only process information relevant to the core subject matter.
+• If, after filtering web-scraped content, the remaining text is mostly advertisements, privacy policies, terms of service, cookie notices, or other non-study material with no substantive academic or educational content, respond with ONLY this single HTML line and nothing else:
 <p class="no-content-warning">⚠️ The provided link appears to contain mostly website legal info, ads, or boilerplate rather than study material. Please try a different URL or paste the study content directly as text.</p>
+• IMPORTANT: This filter does NOT apply to uploaded documents (PDF, Word, PowerPoint) or pasted text. Uploaded documents may contain front matter (copyright pages, table of contents, prefaces, contributor lists, Creative Commons licenses) — this is NORMAL for textbooks and academic materials. Skip past the front matter and generate notes from the academic content that follows. NEVER reject an uploaded document as "boilerplate".
 
 CRITICAL RULES:
 1. Do NOT lose any information. Every fact, concept, and detail must be preserved.
