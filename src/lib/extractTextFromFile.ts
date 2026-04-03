@@ -209,10 +209,18 @@ export async function extractTextFromFile(
     }
 
     if (text.length === 0) {
-      toast.error(
-        `Could not extract any text from "${file.name}". The file may be image-based or scanned. Try a text-based PDF instead.`,
-        { duration: 8000 }
-      );
+      // Don't alarm the user for PDFs — visual content will be extracted separately
+      if (ext === "pdf") {
+        toast.info(
+          `"${file.name}" has limited text. Visual content (charts, diagrams) will be analyzed by AI.`,
+          { duration: 8000 }
+        );
+      } else {
+        toast.error(
+          `Could not extract any text from "${file.name}". Try a different file format.`,
+          { duration: 8000 }
+        );
+      }
       console.warn(`[Extract] Zero characters extracted from "${file.name}" — file may be scanned/image-based`);
     }
 

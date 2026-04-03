@@ -1,0 +1,208 @@
+/**
+ * PDF Image Extraction — detects pages with embedded images, renders them
+ * as JPEG snapshots, and packages them as EncodedImage[] for the AI vision pipeline.
+ */
+import * as pdfjsLib from "pdfjs-dist";
+import { OPS } from "pdfjs-dist";
+import { createEncodedImage, type EncodedImage } from "@/lib/imageUtils";
+
+/** Opcodes that indicate a page contains an embedded raster image. */
+const IMAGE_OPS = new Set([
+  OPS.paintImageXObject,
+  OPS.paintInlineImageXObject,
+  OPS.paintImageMaskXObject,
+  OPS.paintImageXObjectRepeat,
+  OPS.paintInlineImageXObjectGroup,
+  OPS.paintImageMaskXObjectGroup,
+  OPS.paintImageMaskXObjectRepeat,
+]);
+
+export interface PdfImageExtractionOptions {
+  /** Max images to return (shared budget with standalone uploads). Default 10. */
+  maxImages?: number;
+  /** Constrain to pages within this 1-indexed range (inclusive). For chapter mode. */
+  pageRange?: { start: number; end: number };
+  /** Progress callback: (phase, current, total) */
+  onProgress?: (phase: string, current: number, total: number) => void;
+}
+
+const DEFAULT_MAX_DIM = 1024;
+const JPEG_QUALITY = 0.75;
+
+// ── Detection ──────────────────────────────────────────────────────
+
+/**
+ * Scan PDF pages and return 1-indexed page numbers that contain embedded images.
+ * Uses getOperatorList() which is fast — no rendering involved.
+ */
+async function detectPagesWithImages(
+  pdf: pdfjsLib.PDFDocumentProxy,
+  startPage: number,
+  endPage: number,
+  onProgress?: (current: number, total: number) => void,
+): Promise<number[]> {
+  const imagePages: number[] = [];
+  const total = endPage - startPage + 1;
+
+  for (let i = startPage; i <= endPage; i++) {
+    const page = await pdf.getPage(i);
+    const ops = await page.getOperatorList();
+
+    const hasImage = ops.fnArray.some((op: number) => IMAGE_OPS.has(op));
+    if (hasImage) {
+      imagePages.push(i);
+    }
+
+    // Yield every 50 pages to keep the UI responsive
+    if ((i - startPage + 1) % 50 === 0) {
+      onProgress?.(i - startPage + 1, total);
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  onProgress?.(total, total);
+  return imagePages;
+}
+
+// ── Selection ──────────────────────────────────────────────────────
+
+/**
+ * Pick which pages to render, respecting the maxImages budget.
+ * If more image pages exist than budget, distribute evenly across the range.
+ */
+function selectPages(imagePageNums: number[], maxImages: number): number[] {
+  if (imagePageNums.length <= maxImages) return imagePageNums;
+
+  // Evenly sample across the array
+  const selected: number[] = [];
+  const step = imagePageNums.length / maxImages;
+  for (let i = 0; i < maxImages; i++) {
+    selected.push(imagePageNums[Math.floor(i * step)]);
+  }
+  return selected;
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+
+/**
+ * Render a single PDF page to a JPEG base64 string.
+ * Scales the page so its longest edge fits within maxDim pixels.
+ */
+async function renderPageAsImage(
+  page: pdfjsLib.PDFPageProxy,
+  maxDim: number = DEFAULT_MAX_DIM,
+  quality: number = JPEG_QUALITY,
+): Promise<{ data: string; mimeType: string }> {
+  const baseViewport = page.getViewport({ scale: 1.0 });
+  const longest = Math.max(baseViewport.width, baseViewport.height);
+  const scale = longest > maxDim ? maxDim / longest : 1.0;
+  const viewport = page.getViewport({ scale });
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.floor(viewport.width);
+  canvas.height = Math.floor(viewport.height);
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Could not get 2D canvas context");
+
+  // White background so transparent areas don't render as black
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  const dataUrl = canvas.toDataURL("image/jpeg", quality);
+  const base64 = dataUrl.split(",")[1];
+
+  // Release canvas memory
+  canvas.width = 0;
+  canvas.height = 0;
+
+  return { data: base64, mimeType: "image/jpeg" };
+}
+
+// ── Orchestrator ───────────────────────────────────────────────────
+
+/**
+ * Extract images from a PDF file:
+ * 1. Detect which pages contain embedded images
+ * 2. Select up to maxImages pages
+ * 3. Render those pages as JPEG snapshots
+ * 4. Return as EncodedImage[] ready for the vision pipeline
+ *
+ * @param file       The PDF file to process
+ * @param startIndex The starting index for EncodedImage.index values
+ *                   (so PDF images don't collide with standalone image indices)
+ * @param options    Configuration options
+ */
+export async function extractPdfImages(
+  file: File,
+  startIndex: number,
+  options: PdfImageExtractionOptions = {},
+): Promise<EncodedImage[]> {
+  const { maxImages = 10, pageRange, onProgress } = options;
+
+  if (maxImages <= 0) return [];
+
+  // 1. Load PDF
+  onProgress?.("Scanning PDF for images…", 0, 1);
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  const startPage = pageRange?.start ?? 1;
+  const endPage = Math.min(pageRange?.end ?? pdf.numPages, pdf.numPages);
+
+  // 2. Detect pages with images
+  const imagePages = await detectPagesWithImages(
+    pdf,
+    startPage,
+    endPage,
+    (current, total) => onProgress?.("Scanning pages for images…", current, total),
+  );
+
+  if (imagePages.length === 0) {
+    console.log(`[PDF Images] No image pages found in "${file.name}" (pages ${startPage}-${endPage})`);
+    pdf.destroy();
+    return [];
+  }
+
+  console.log(
+    `[PDF Images] Found ${imagePages.length} pages with images in "${file.name}". Budget: ${maxImages}.`,
+  );
+
+  // 3. Select pages within budget
+  const selected = selectPages(imagePages, maxImages);
+  console.log(`[PDF Images] Rendering ${selected.length} pages: [${selected.join(", ")}]`);
+
+  // 4. Render selected pages
+  const results: EncodedImage[] = [];
+
+  for (let i = 0; i < selected.length; i++) {
+    const pageNum = selected[i];
+    onProgress?.("Rendering page images…", i + 1, selected.length);
+
+    try {
+      const page = await pdf.getPage(pageNum);
+      const { data, mimeType } = await renderPageAsImage(page);
+      results.push(
+        createEncodedImage(
+          data,
+          mimeType,
+          `${file.name} — Page ${pageNum}`,
+          startIndex + i,
+        ),
+      );
+    } catch (err) {
+      console.warn(`[PDF Images] Failed to render page ${pageNum}:`, err);
+    }
+
+    // Yield to main thread between renders
+    if (i % 3 === 2) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
+  }
+
+  pdf.destroy();
+  console.log(`[PDF Images] Extracted ${results.length} page images from "${file.name}"`);
+  return results;
+}

@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
-import { isImageFile, extractImages, injectImages, type EncodedImage } from "@/lib/imageUtils";
+import { isImageFile, extractImages, injectImages, MAX_IMAGES, type EncodedImage } from "@/lib/imageUtils";
+import { extractPdfImages } from "@/lib/pdfImageExtraction";
 
 export interface QuizQuestion {
   question: string;
@@ -111,6 +112,45 @@ export function useNoteGeneration() {
             }
           } else {
             extractedTexts.push(`[File "${file.name}" is a ${file.type || "binary"} file that cannot be extracted client-side. Please use PDF, DOCX, or TXT format.]`);
+          }
+        }
+
+        // Extract images from PDF pages (charts, diagrams, figures)
+        const pdfFiles = textFiles.filter(
+          (f) => f.name.split(".").pop()?.toLowerCase() === "pdf",
+        );
+        if (pdfFiles.length > 0) {
+          const remainingBudget = MAX_IMAGES - encodedImages.length;
+          if (remainingBudget > 0) {
+            for (const pdfFile of pdfFiles) {
+              const pdfBudget = Math.max(
+                1,
+                Math.floor(remainingBudget / pdfFiles.length),
+              );
+              try {
+                const pdfImages = await extractPdfImages(
+                  pdfFile,
+                  encodedImages.length,
+                  {
+                    maxImages: pdfBudget,
+                    onProgress: (phase, current, total) => {
+                      setUploadProgress(`${phase} (${current}/${total})`);
+                    },
+                  },
+                );
+                if (pdfImages.length > 0) {
+                  encodedImages = [...encodedImages, ...pdfImages];
+                  console.log(
+                    `[NoteGen] Extracted ${pdfImages.length} page images from "${pdfFile.name}"`,
+                  );
+                }
+              } catch (err) {
+                console.warn(
+                  `[NoteGen] PDF image extraction failed for "${pdfFile.name}":`,
+                  err,
+                );
+              }
+            }
           }
         }
       }

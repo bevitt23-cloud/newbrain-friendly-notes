@@ -146,6 +146,19 @@ export function toDataUri(data: string, mimeType: string): string {
 }
 
 /**
+ * Create an EncodedImage from raw base64 data (used by PDF page rendering
+ * which already produces correctly sized/compressed output).
+ */
+export function createEncodedImage(
+  data: string,
+  mimeType: string,
+  fileName: string,
+  index: number,
+): EncodedImage {
+  return { data, mimeType, fileName, index };
+}
+
+/**
  * Post-process generated HTML: replace AI image placeholders with actual images.
  *
  * The AI outputs: <figure data-image-index="N">...</figure>
