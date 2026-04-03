@@ -95,8 +95,22 @@ const PATTERNS: PatternDef[] = [
     minMatches: 3,
   },
   {
-    name: "Roman numeral heading",
+    // Bare numbered heading without period — common in academic textbooks
+    // e.g. "1  History of Consumer Psychology" or "23  Consumer Decision Making"
+    name: "Bare numbered heading (1  Title)",
+    regex: /^(\d{1,2})\s{2,}([A-Z][A-Za-z\s,&:—–-]{4,80})$/m,
+    minMatches: 4,
+  },
+  {
+    name: "Roman numeral heading (with period)",
     regex: /^((?:X{0,3})(?:IX|IV|V?I{0,3}))\.\s+([A-Z][A-Za-z\s,&:—–-]{4,80})$/m,
+    minMatches: 3,
+  },
+  {
+    // Roman numeral without period — common in textbook part divisions
+    // e.g. "I  Introduction" or "III  Motivation, Affect, and Consumer Decisions"
+    name: "Roman numeral heading (no period)",
+    regex: /^((?:X{0,3})(?:IX|IV|V?I{0,3}))\s{2,}([A-Z][A-Za-z\s,&:—–-]{4,80})$/m,
     minMatches: 3,
   },
   {
@@ -214,10 +228,176 @@ function guessBookTitle(text: string, fileName: string): string {
     .trim() || "Untitled Document";
 }
 
+/* ─── TOC-based detection ─── */
+
+/**
+ * Parse a Table of Contents to find chapter entries.
+ * Looks for numbered entries like "1  Title" or "Chapter 1: Title" in the TOC,
+ * then finds their locations in the full text.
+ */
+
+interface TocEntry {
+  number: number;
+  title: string;
+}
+
+function extractTocEntries(tocText: string): TocEntry[] {
+  const entries: TocEntry[] = [];
+  const lines = tocText.split("\n");
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.length < 3) continue;
+
+    // Match "N  Title" or "N. Title" or "Chapter N: Title" patterns
+    const m =
+      trimmed.match(/^(?:Chapter\s+)?(\d{1,2})\s{1,}([A-Z][A-Za-z\s,&:—–;'\-()]{3,120})/) ||
+      trimmed.match(/^(\d{1,2})\.\s+([A-Z][A-Za-z\s,&:—–;'\-()]{3,120})/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      // Clean: strip trailing page numbers, author names after long spaces, etc.
+      let title = m[2].trim()
+        .replace(/\s{3,}.*$/, "")         // strip anything after 3+ spaces (authors, page nums)
+        .replace(/\s+\d{1,4}\s*$/, "")    // strip trailing page numbers
+        .replace(/[.:—–-]+$/, "")          // strip trailing punctuation
+        .trim();
+      if (title.length >= 3 && num > 0 && num <= 100) {
+        entries.push({ number: num, title });
+      }
+    }
+  }
+
+  // Validate: entries should be mostly sequential
+  if (entries.length < 3) return [];
+  const sequential = entries.filter(
+    (e, i) => i === 0 || e.number > entries[i - 1].number
+  );
+  if (sequential.length < entries.length * 0.7) return []; // too many out-of-order
+
+  return entries;
+}
+
+function findTocSection(text: string): string | null {
+  // Find "Contents" or "Table of Contents" heading
+  const lines = text.split("\n");
+  let tocStart = -1;
+  let tocEnd = -1;
+
+  for (let i = 0; i < lines.length && i < 500; i++) {
+    const trimmed = lines[i].trim().toLowerCase();
+    if (
+      tocStart === -1 &&
+      (trimmed === "contents" ||
+        trimmed === "table of contents" ||
+        /^(table of\s+)?contents\s*$/i.test(trimmed))
+    ) {
+      tocStart = i;
+      continue;
+    }
+
+    // TOC ends at: Preface, Introduction, first chapter heading, or after ~200 lines
+    if (tocStart !== -1 && tocEnd === -1) {
+      if (
+        /^(preface|foreword|acknowledgement|about|introduction)\s*$/i.test(trimmed) &&
+        i - tocStart > 5
+      ) {
+        tocEnd = i;
+        break;
+      }
+      if (i - tocStart > 200) {
+        tocEnd = i;
+        break;
+      }
+    }
+  }
+
+  if (tocStart === -1) return null;
+  if (tocEnd === -1) tocEnd = Math.min(tocStart + 200, lines.length);
+
+  return lines.slice(tocStart, tocEnd).join("\n");
+}
+
+/**
+ * Find where a chapter title appears in the body text (after the TOC).
+ * Returns the character offset or -1 if not found.
+ */
+function findChapterInBody(
+  text: string,
+  title: string,
+  searchAfter: number
+): number {
+  // Search for the title appearing on its own (not inside the TOC)
+  // Use a flexible search: the title might have slightly different spacing
+  const normalizedTitle = title.replace(/\s+/g, "\\s+");
+  const regex = new RegExp(normalizedTitle, "i");
+  const searchText = text.slice(searchAfter);
+  const m = regex.exec(searchText);
+  return m ? searchAfter + m.index : -1;
+}
+
+function detectFromToc(
+  text: string,
+  pageIndex: Map<number, number>,
+  totalChars: number
+): DetectedChapter[] | null {
+  const tocSection = findTocSection(text);
+  if (!tocSection) return null;
+
+  const entries = extractTocEntries(tocSection);
+  if (entries.length < 3) return null;
+
+  console.log(`[Chapter Detection] TOC found with ${entries.length} entries`);
+
+  // Find the end of the TOC in the full text (skip past it for body search)
+  const tocEndOffset = text.indexOf(tocSection) + tocSection.length;
+
+  // Locate each chapter in the body text
+  const located: Array<{ entry: TocEntry; offset: number }> = [];
+  let searchFrom = tocEndOffset;
+
+  for (const entry of entries) {
+    const offset = findChapterInBody(text, entry.title, searchFrom);
+    if (offset !== -1) {
+      located.push({ entry, offset });
+      searchFrom = offset + entry.title.length;
+    }
+  }
+
+  // Need at least 50% of TOC entries found in body to trust this method
+  if (located.length < entries.length * 0.5 || located.length < 3) {
+    console.log(
+      `[Chapter Detection] TOC: Only ${located.length}/${entries.length} entries found in body — skipping`
+    );
+    return null;
+  }
+
+  // Build chapters from located entries
+  const chapters: DetectedChapter[] = [];
+  for (let i = 0; i < located.length; i++) {
+    const start = located[i].offset;
+    const end = i < located.length - 1 ? located[i + 1].offset : totalChars;
+    const chapterText = text.slice(start, end).trim();
+
+    if (chapterText.length < MIN_CHAPTER_LENGTH) continue;
+
+    chapters.push({
+      index: chapters.length,
+      title: located[i].entry.title,
+      startOffset: start,
+      endOffset: end,
+      text: chapterText,
+      startPage: getPageForOffset(start, pageIndex),
+    });
+  }
+
+  return chapters.length >= MIN_CHAPTERS ? chapters : null;
+}
+
 /* ─── Main detection function ─── */
 
 /**
- * Detect chapters in extracted document text using heuristic patterns.
+ * Detect chapters in extracted document text.
+ * Tries TOC-based detection first, then falls back to heuristic patterns.
  *
  * @param text     Full extracted text from the document
  * @param fileName Original file name (for title guessing)
@@ -245,7 +425,22 @@ export function detectChapters(
 
   const pageIndex = buildPageIndex(text);
 
-  // Try each pattern in priority order
+  // ─── Strategy 1: TOC-based detection (most reliable for textbooks) ───
+  const tocChapters = detectFromToc(text, pageIndex, totalChars);
+  if (tocChapters && tocChapters.length >= MIN_CHAPTERS) {
+    console.log(
+      `[Chapter Detection] TOC-based: found ${tocChapters.length} chapters in "${fileName}"`
+    );
+    return {
+      chapters: tocChapters,
+      method: "heuristic",
+      totalChars,
+      sourceFileName: fileName,
+      suggestedBookTitle,
+    };
+  }
+
+  // ─── Strategy 2: Line-based pattern matching ───
   for (const pattern of PATTERNS) {
     const rawMatches = scanForPattern(text, pattern);
 

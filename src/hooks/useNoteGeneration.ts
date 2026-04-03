@@ -96,9 +96,23 @@ export function useNoteGeneration() {
         }
       }
 
-      const combinedTextContent = [normalizedTextContent, extractedTexts.join("\n\n")]
+      let combinedTextContent = [normalizedTextContent, extractedTexts.join("\n\n")]
         .filter((chunk) => typeof chunk === "string" && chunk.trim().length > 0)
         .join("\n\n");
+
+      // Guard: truncate extremely large text to prevent AI token-limit cutoffs.
+      // ~200K chars ≈ 50K tokens, which is a reasonable input budget.
+      const MAX_TEXT_CHARS = 200_000;
+      if (combinedTextContent.length > MAX_TEXT_CHARS) {
+        console.warn(
+          `[NoteGen] Text too long (${combinedTextContent.length} chars), truncating to ${MAX_TEXT_CHARS}. Use chapter mode for large documents.`
+        );
+        toast.warning(
+          "This document is very large. Only the first portion will be used. For full coverage, re-upload and use the chapter selection feature.",
+          { duration: 10000 }
+        );
+        combinedTextContent = combinedTextContent.slice(0, MAX_TEXT_CHARS);
+      }
 
       const payload: Record<string, unknown> = {
         textContent: combinedTextContent || "",

@@ -9,25 +9,64 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 async function extractPdfText(file: File): Promise<{ text: string; pageCount: number }> {
   console.log(`[PDF Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
-  
+
   const arrayBuffer = await file.arrayBuffer();
   console.log(`[PDF Extract] ArrayBuffer loaded: ${arrayBuffer.byteLength} bytes`);
-  
+
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   console.log(`[PDF Extract] PDF loaded: ${pdf.numPages} pages`);
-  
+
   const pages: string[] = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items
-      .map((item: any) => item.str)
-      .join(" ");
-    pages.push(pageText);
 
-    // Log progress every 10 pages for large documents
-    if (i % 10 === 0 || i === pdf.numPages) {
+    // Preserve line structure by detecting Y-coordinate changes.
+    // PDF text items on the same line share similar Y positions.
+    // When Y changes significantly, insert a newline.
+    const items = textContent.items as any[];
+    if (items.length === 0) {
+      pages.push("");
+    } else {
+      const lines: string[] = [];
+      let currentLine: string[] = [];
+      let lastY: number | null = null;
+
+      for (const item of items) {
+        const y = item.transform ? item.transform[5] : null;
+        const str = item.str || "";
+
+        if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) {
+          // Y position changed — new line
+          lines.push(currentLine.join(" "));
+          currentLine = [];
+        }
+
+        if (str.trim()) {
+          currentLine.push(str);
+        } else if (currentLine.length > 0) {
+          // Whitespace-only item acts as a space separator
+          currentLine.push(" ");
+        }
+
+        if (y !== null) lastY = y;
+      }
+
+      if (currentLine.length > 0) {
+        lines.push(currentLine.join(" "));
+      }
+
+      pages.push(
+        lines
+          .map((l) => l.replace(/\s+/g, " ").trim())
+          .filter(Boolean)
+          .join("\n")
+      );
+    }
+
+    // Log progress every 50 pages for large documents
+    if (i % 50 === 0 || i === pdf.numPages) {
       console.log(`[PDF Extract] Processed page ${i}/${pdf.numPages}`);
     }
   }
