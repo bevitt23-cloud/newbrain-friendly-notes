@@ -288,7 +288,17 @@ export function useNoteGeneration() {
       if (cleaned.startsWith("```html")) cleaned = cleaned.slice(7);
       if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
       if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
-      
+
+      // Strip markdown bold/italic that leaked through (AI sometimes ignores HTML-only rule)
+      // **text** → <strong>text</strong>, *text* → <em>text</em>
+      // Only convert outside of existing HTML tags to avoid breaking attributes
+      cleaned = cleaned
+        .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(?<![<\w])\*([^*]+?)\*(?![>])/g, "<em>$1</em>");
+
+      // Strip any leading whitespace or stray newlines before the first tag
+      cleaned = cleaned.replace(/^[\s\n\r]+(?=<)/, "");
+
       let finalHtml = cleaned.trim();
 
       // Post-process: inject actual images into AI placeholder <figure> tags

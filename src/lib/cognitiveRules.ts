@@ -295,6 +295,175 @@ export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation
     : "";
 }
 
+// ─── Tool details for the Smart Checkout UI ───────────────
+
+export interface ToolDetail {
+  name: string;
+  explanation: string;
+  category: "ui" | "addon" | "study";
+}
+
+export const TOOL_DETAILS: Record<string, ToolDetail> = {
+  // UI Settings
+  dyslexia_font: {
+    name: "Dyslexia-Friendly Font",
+    explanation: "Switches to OpenDyslexic, a font with weighted bottoms that reduces letter swapping.",
+    category: "ui",
+  },
+  bionic_reading: {
+    name: "Bionic Reading",
+    explanation: "Bolds the first half of each word so your eye anchors faster and reads with less effort.",
+    category: "ui",
+  },
+  line_spacing: {
+    name: "Extra Line Spacing",
+    explanation: "Increases space between lines to prevent visual crowding and reduce re-reading.",
+    category: "ui",
+  },
+  audio_player: {
+    name: "Audio Player",
+    explanation: "Adds a text-to-speech player so you can listen to your notes instead of reading.",
+    category: "ui",
+  },
+  reduce_motion: {
+    name: "Reduce Motion",
+    explanation: "Turns off animations and transitions that can be distracting or cause discomfort.",
+    category: "ui",
+  },
+  minimalist_theme: {
+    name: "Minimalist Theme",
+    explanation: "Strips the UI to essentials — fewer colors, icons, and visual noise.",
+    category: "ui",
+  },
+  hide_red_x: {
+    name: "Hide Red X on Errors",
+    explanation: "Replaces harsh red error indicators with neutral, low-pressure feedback colors.",
+    category: "ui",
+  },
+  // Add-ons (AI writing extras)
+  tldr: {
+    name: "TL;DR Summary",
+    explanation: "Adds a 1-2 sentence bottom-line summary at the very top of your notes.",
+    category: "addon",
+  },
+  why_should_i_care: {
+    name: "Why Should I Care?",
+    explanation: "Adds a motivational intro connecting the topic to your real life.",
+    category: "addon",
+  },
+  recall_prompts: {
+    name: "Recall Prompts",
+    explanation: "Adds open-ended questions after each section to test what you remember.",
+    category: "addon",
+  },
+  retention_quiz: {
+    name: "Retention Quiz",
+    explanation: "Generates a multiple-choice quiz at the bottom of your notes.",
+    category: "addon",
+  },
+  write_this_down: {
+    name: "Write This Down",
+    explanation: "Adds a prompt telling you exactly what to jot down from each section.",
+    category: "addon",
+  },
+  feynman_check: {
+    name: "Feynman Check",
+    explanation: "Asks you to explain the concept in your own words — the ultimate comprehension test.",
+    category: "addon",
+  },
+  visual_data_anchors: {
+    name: "Visual Data Anchors",
+    explanation: "Converts abstract numbers into concrete, real-world size comparisons.",
+    category: "addon",
+  },
+  formula_translator: {
+    name: "Formula Translator",
+    explanation: "Makes math formulas clickable — tap to see a plain-English translation.",
+    category: "addon",
+  },
+  color_coded_variables: {
+    name: "Color-Coded Variables",
+    explanation: "Gives each math variable a unique color so you can track it across equations.",
+    category: "addon",
+  },
+  step_by_step_math: {
+    name: "Step-by-Step Math",
+    explanation: "Shows math solutions one step at a time with a plain-English explanation for each.",
+    category: "addon",
+  },
+  watch_explanation: {
+    name: "Watch Explainer Videos",
+    explanation: "Adds video search buttons so you can watch a visual explanation of each topic.",
+    category: "addon",
+  },
+  color_coded_tagging: {
+    name: "Color-Coded Tags",
+    explanation: "Highlights different types of information (definitions, examples, rules) in distinct colors.",
+    category: "addon",
+  },
+  transition_bridges: {
+    name: "Transition Bridges",
+    explanation: "Adds explicit connectors between sections explaining how topics relate.",
+    category: "addon",
+  },
+  visual_learner: {
+    name: "Visual Learner Mode",
+    explanation: "Adds explainer video buttons after each major section for visual reinforcement.",
+    category: "addon",
+  },
+  // Study Tools
+  mindmap: {
+    name: "Mind Map",
+    explanation: "Generates an interactive concept map showing how all key ideas connect.",
+    category: "study",
+  },
+  flowchart: {
+    name: "Flow Chart",
+    explanation: "Creates a step-by-step process diagram from sequences in your material.",
+    category: "study",
+  },
+  pomodoro: {
+    name: "Pomodoro Timer",
+    explanation: "Built-in focus timer with work/break cycles to prevent burnout.",
+    category: "study",
+  },
+  ambient_audio: {
+    name: "Ambient Audio",
+    explanation: "Background sounds (rain, lo-fi, white noise) to help maintain focus.",
+    category: "study",
+  },
+  flashcards: {
+    name: "Flashcards",
+    explanation: "Auto-generates flashcards from key terms and definitions in your notes.",
+    category: "study",
+  },
+  anchor: {
+    name: "Anchor Timer",
+    explanation: "A visible countdown that creates urgency to help with task initiation.",
+    category: "study",
+  },
+  socratic_chatbot: {
+    name: "Socratic Chatbot",
+    explanation: "An AI tutor that asks you leading questions instead of giving answers directly.",
+    category: "study",
+  },
+  knowledge_quest: {
+    name: "Knowledge Quest",
+    explanation: "Gamified quiz mode with points and streaks to make review feel like a game.",
+    category: "study",
+  },
+  xp_points: {
+    name: "XP Points",
+    explanation: "Earn experience points for completing study activities — tracks your progress.",
+    category: "study",
+  },
+  cloze_notes: {
+    name: "Cloze Notes",
+    explanation: "Blanks out key terms in your notes so you can practice filling them in.",
+    category: "study",
+  },
+};
+
 export function deriveTraitsFromAnswers(answers: Record<string, number>): CognitiveTrait[] {
   const traits: CognitiveTrait[] = [];
   for (const q of WIZARD_QUESTIONS) {
