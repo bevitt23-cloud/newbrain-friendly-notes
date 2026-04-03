@@ -48,22 +48,22 @@
 
     /* ─── Color palette: muted & comfortable ─── */
 
-    /* Sage greens — gentle focus */
-    --sage-50: 152 18% 95%;
-    --sage-100: 152 16% 89%;
-    --sage-200: 152 20% 76%;
-    --sage-300: 152 24% 52%;
-    --sage-400: 152 28% 40%;
-    --sage-500: 152 30% 32%;
-    --sage-600: 152 28% 24%;
-    --sage-700: 152 24% 18%;
+    /* Sage greens — gentle focus, boosted engagement */
+    --sage-50: 152 28% 94%;
+    --sage-100: 152 28% 87%;
+    --sage-200: 152 34% 72%;
+    --sage-300: 152 40% 48%;
+    --sage-400: 152 44% 36%;
+    --sage-500: 152 46% 28%;
+    --sage-600: 152 42% 22%;
+    --sage-700: 152 38% 16%;
 
-    /* Sky blue — calming */
-    --sky-50: 199 28% 96%;
-    --sky-100: 199 24% 90%;
-    --sky-200: 199 26% 78%;
-    --sky-300: 199 32% 54%;
-    --sky-400: 199 38% 42%;
+    /* Sky blue — calming, more vivid */
+    --sky-50: 199 40% 95%;
+    --sky-100: 199 38% 88%;
+    --sky-200: 199 42% 72%;
+    --sky-300: 199 48% 48%;
+    --sky-400: 199 52% 38%;
 
     /* Teal — bridging sage & sky */
     --teal-50: 174 22% 94%;
@@ -72,22 +72,22 @@
     --teal-300: 174 28% 44%;
     --teal-400: 174 32% 34%;
 
-    /* Lavender — soft accent */
-    --lavender-50: 262 22% 96%;
-    --lavender-100: 262 20% 90%;
-    --lavender-200: 262 22% 78%;
-    --lavender-300: 262 26% 58%;
-    --lavender-400: 262 28% 48%;
-    --lavender-500: 262 30% 40%;
-    --lavender-600: 262 28% 30%;
+    /* Lavender — rich accent */
+    --lavender-50: 262 34% 95%;
+    --lavender-100: 262 32% 88%;
+    --lavender-200: 262 36% 74%;
+    --lavender-300: 262 42% 54%;
+    --lavender-400: 262 44% 44%;
+    --lavender-500: 262 46% 36%;
+    --lavender-600: 262 42% 28%;
 
-    /* Peach — warm & inviting */
-    --peach-50: 16 36% 95%;
-    --peach-100: 16 30% 89%;
-    --peach-200: 16 28% 76%;
-    --peach-300: 16 30% 58%;
-    --peach-400: 16 34% 48%;
-    --peach-500: 16 36% 40%;
+    /* Peach — warm & inviting, vivid */
+    --peach-50: 16 52% 94%;
+    --peach-100: 16 46% 87%;
+    --peach-200: 16 44% 72%;
+    --peach-300: 16 48% 54%;
+    --peach-400: 16 52% 44%;
+    --peach-500: 16 54% 36%;
 
     /* Rose — soft warmth */
     --rose-50: 340 24% 96%;
@@ -102,21 +102,22 @@
     --mint-200: 162 20% 72%;
     --mint-300: 162 26% 50%;
 
-    /* Amber — warm pop */
-    --amber-400: 36 56% 50%;
-    --amber-500: 36 52% 40%;
+    /* Amber — warm pop, vivid */
+    --amber-400: 36 72% 50%;
+    --amber-500: 36 68% 40%;
 
     /* ─── Section colors (used in generated notes) ─── */
-    --section-sage-bg: 150 16% 94%;
-    --section-sage-border: 150 20% 80%;
-    --section-lavender-bg: 262 18% 94%;
-    --section-lavender-border: 262 20% 80%;
-    --section-peach-bg: 16 24% 94%;
-    --section-peach-border: 16 22% 80%;
-    --section-sky-bg: 198 22% 93%;
-    --section-sky-border: 198 24% 80%;
-    --section-amber-bg: 38 28% 94%;
-    --section-amber-border: 38 26% 80%;
+    /* Saturated & engaging — designed for neurodivergent visual comfort */
+    --section-sage-bg: 150 36% 90%;
+    --section-sage-border: 150 40% 70%;
+    --section-lavender-bg: 262 38% 92%;
+    --section-lavender-border: 262 40% 72%;
+    --section-peach-bg: 16 48% 91%;
+    --section-peach-border: 16 44% 72%;
+    --section-sky-bg: 198 44% 90%;
+    --section-sky-border: 198 48% 70%;
+    --section-amber-bg: 38 56% 90%;
+    --section-amber-border: 38 52% 68%;
 
     --sidebar-background: 252 18% 92%;
     --sidebar-foreground: 230 14% 14%;
@@ -197,17 +198,17 @@
     --teal-50: 174 22% 6%;
     --teal-100: 174 20% 11%;
 
-    /* Dark section colors */
-    --section-sage-bg: 152 18% 10%;
-    --section-sage-border: 152 20% 22%;
-    --section-lavender-bg: 250 16% 11%;
-    --section-lavender-border: 250 18% 24%;
-    --section-peach-bg: 18 18% 10%;
-    --section-peach-border: 18 20% 22%;
-    --section-sky-bg: 200 20% 10%;
-    --section-sky-border: 200 22% 24%;
-    --section-amber-bg: 36 18% 10%;
-    --section-amber-border: 36 20% 22%;
+    /* Dark section colors — richer tones for engagement */
+    --section-sage-bg: 152 32% 12%;
+    --section-sage-border: 152 36% 26%;
+    --section-lavender-bg: 250 30% 14%;
+    --section-lavender-border: 250 34% 28%;
+    --section-peach-bg: 18 34% 13%;
+    --section-peach-border: 18 36% 26%;
+    --section-sky-bg: 200 36% 12%;
+    --section-sky-border: 200 40% 26%;
+    --section-amber-bg: 36 36% 12%;
+    --section-amber-border: 36 40% 26%;
   }
 }
 
