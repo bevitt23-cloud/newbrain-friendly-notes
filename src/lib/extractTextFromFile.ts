@@ -59,6 +59,9 @@ export type ExtractionResult = {
   fileName: string;
 };
 
+export const MAX_FILE_SIZE_MB = 500;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 /**
  * Extracts text from a file client-side.
  * Supports: PDF, DOCX, DOC, TXT, MD, CSV
@@ -67,6 +70,14 @@ export type ExtractionResult = {
 export async function extractTextFromFile(
   file: File
 ): Promise<ExtractionResult | null> {
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    toast.error(
+      `"${file.name}" exceeds the ${MAX_FILE_SIZE_MB}MB upload limit.`,
+      { duration: 8000 }
+    );
+    return null;
+  }
+
   const ext = file.name.split(".").pop()?.toLowerCase() || "";
 
   try {

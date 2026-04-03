@@ -73,7 +73,7 @@ const Index = () => {
   ]);
 
   const handleGenerate = useCallback(
-    (data: { chapters: Array<{ id: string; title: string; text: string }>; youtubeUrl?: string; websiteUrl?: string; saveYouTubeVideo?: boolean; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean }) => {
+    (data: { chapters: Array<{ id: string; title: string; text: string }>; youtubeUrl?: string; websiteUrl?: string; saveYouTubeVideo?: boolean; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; backgroundProcessingEnabled?: boolean }) => {
       autoSavedRef.current = false;
       setSavedNoteId(null);
       setSavedNoteTitle("");

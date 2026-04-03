@@ -7,8 +7,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
 import { extractTextFromFile, isClientExtractable } from "@/lib/extractTextFromFile";
+import { chunkTextbook } from "@/lib/textChunker";
 
 const DEFAULT_FOLDER = "Unsorted";
+const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024;
 
 export interface ChapterChunk {
   id: string;
@@ -26,6 +28,7 @@ interface ContentUploaderProps {
     tags: string[];
     shouldSaveToLibrary: boolean;
     saveYouTubeVideo?: boolean;
+    backgroundProcessingEnabled?: boolean;
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
@@ -153,6 +156,11 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
       setIsAnalyzing(true);
       try {
         const file = files[0];
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast.error("File is too large. Maximum size is 500MB.");
+          return;
+        }
+
         if (!isClientExtractable(file.name)) {
           toast.error("This file type is not supported for local extraction. Please use PDF, DOCX, or TXT.");
           return;
@@ -161,6 +169,19 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         const result = await extractTextFromFile(file);
         if (!result?.text?.trim()) {
           toast.error("No readable text was found in this file.");
+          return;
+        }
+
+        const textbookChunks = chunkTextbook(result.text, instructions);
+        if (textbookChunks.length > 1) {
+          const baseTitle = file.name.split(".")[0] || "Uploaded Textbook";
+          const chapters: ChapterChunk[] = textbookChunks.map((chunk, index) => ({
+            id: `tb-${index + 1}`,
+            title: `${baseTitle} - Chapter ${index + 1}`,
+            text: chunk,
+          }));
+
+          onGenerate({ chapters, backgroundProcessingEnabled: true, ...common });
           return;
         }
 
@@ -285,7 +306,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
               />
               <div className="space-y-1">
                 <p className="text-sm font-medium">Drop one file here or click to browse</p>
-                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD</p>
+                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT, MD - 500MB each</p>
               </div>
             </div>
 

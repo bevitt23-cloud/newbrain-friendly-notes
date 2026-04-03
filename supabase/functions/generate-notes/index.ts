@@ -221,15 +221,17 @@ async function fetchYouTubeTranscript(videoId: string, scrapingBeeKey?: string):
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS")
-    return new Response(null, { headers: corsHeaders });
+  // FIX: Return CORS headers FIRST for OPTIONS requests to prevent 'Failed to fetch' error
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
 
   try {
     const user = await getAuthUser(req);
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, images } = body;
 
     const contentParts: any[] = [];
 
@@ -454,6 +456,25 @@ serve(async (req) => {
       });
     }
 
+    // Handle uploaded images
+    if (images && Array.isArray(images) && images.length > 0) {
+      console.log(`Processing ${images.length} uploaded image(s)`);
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        if (image.data && image.mimeType) {
+          // Convert to data URI format for Claude
+          const dataUri = `data:${image.mimeType};base64,${image.data}`;
+          contentParts.push({
+            type: "image_url",
+            image_url: {
+              url: dataUri,
+            },
+          });
+          console.log(`Added image ${i + 1}/${images.length} (type: ${image.mimeType})`);
+        }
+      }
+    }
+
     // Check if website scraping failed and no other content was provided
     if (
       websiteUrl &&
@@ -579,6 +600,7 @@ MICRO-CHUNKING RULE (MANDATORY):
 - You must still preserve ALL information when splitting — nothing may be lost or summarized away.
 4. For uploaded documents (PDF, Word, PowerPoint, images), extract ALL text content.
 5. For YouTube videos, use the provided transcript as the source material.
+6. For uploaded images in the material: analyze them carefully and extract all visual information. When you reference an image in the notes, insert a placeholder using the format <figure data-image-index="N">Image description: [detailed description of what the image shows]</figure> where N is the image's order (0-indexed). This allows the frontend to replace the placeholder with the actual image.
 
 ${modePrompt}
 

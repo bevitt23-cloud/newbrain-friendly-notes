@@ -15,6 +15,7 @@ export interface GenerateOptions {
   youtubeUrl?: string;
   websiteUrl?: string;
   saveYouTubeVideo?: boolean;
+  backgroundProcessingEnabled?: boolean;
   instructions?: string;
   learningMode?: string;
   extras?: string[];
@@ -23,6 +24,24 @@ export interface GenerateOptions {
   folder?: string;
   tags?: string[];
   shouldSaveToLibrary?: boolean;
+  images?: Array<{ data: string; mimeType: string }>;
+}
+
+/**
+ * Convert a File or blob to base64 string
+ */
+function toBase64(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Extract base64 part after "data:...;base64,"
+      const base64 = result.split(",")[1];
+      resolve(base64 || "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function useNoteGeneration() {
@@ -60,6 +79,7 @@ export function useNoteGeneration() {
           profilePrompt: opts.profilePrompt,
           age: opts.age ?? null,
           saveYouTubeVideo: opts.saveYouTubeVideo,
+          images: opts.images || [],
         };
 
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
@@ -149,7 +169,124 @@ export function useNoteGeneration() {
         throw new Error("No content provided to generate.");
       }
 
-      // --- SEQUENTIAL CHAPTER PROCESSING ---
+      if (opts.backgroundProcessingEnabled) {
+        const [firstChapter, ...remainingChapters] = opts.chapters;
+        setUploadProgress(`Generating chapter 1 of ${opts.chapters.length}: ${firstChapter.title}`);
+
+        const payload = {
+          textContent: firstChapter.text,
+          learningMode: opts.learningMode,
+          extras: Array.isArray(opts.extras) ? opts.extras : [],
+          instructions: opts.instructions,
+          profilePrompt: opts.profilePrompt,
+          age: opts.age,
+          images: opts.images || [],
+        };
+
+        const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!resp.ok) throw new Error("Failed to generate chapter 1.");
+        if (!resp.body) throw new Error("No response body");
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
+        let firstChapterContent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          sseBuffer += decoder.decode(value, { stream: true });
+          let newlineIndex: number;
+          while ((newlineIndex = sseBuffer.indexOf("\n")) !== -1) {
+            let line = sseBuffer.slice(0, newlineIndex);
+            sseBuffer = sseBuffer.slice(newlineIndex + 1);
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+
+            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+              try {
+                const parsed = JSON.parse(line.slice(6));
+                const delta = parsed.choices?.[0]?.delta?.content || "";
+                firstChapterContent += delta;
+                setGeneratedHtml(firstChapterContent);
+              } catch {
+                sseBuffer = `${line}\n${sseBuffer}`;
+                break;
+              }
+            }
+          }
+        }
+
+        const cleanedFirstChapter = firstChapterContent
+          .replace(/^```html\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```\s*$/i, "")
+          .trim();
+
+        setGeneratedHtml(cleanedFirstChapter);
+        setUploadProgress("");
+
+        const shouldQuiz = (opts.extras || []).includes("retention_quiz");
+        if (shouldQuiz && cleanedFirstChapter.length > 100) {
+          setIsGeneratingQuiz(true);
+          fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-retention-quiz`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({ notesHtml: cleanedFirstChapter, age: ageRef.current }),
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              if (data?.questions && Array.isArray(data.questions)) {
+                setQuizQuestions(data.questions as QuizQuestion[]);
+              }
+            })
+            .catch(() => {})
+            .finally(() => setIsGeneratingQuiz(false));
+        }
+
+        if (remainingChapters.length > 0 && opts.shouldSaveToLibrary) {
+          if (!userId) {
+            throw new Error("You must be signed in to queue background jobs.");
+          }
+
+          const queueRows = remainingChapters.map((chapter) => ({
+            user_id: userId,
+            status: "pending",
+            content_chunk: chapter.text,
+            folder: opts.folder || "Unsorted",
+            tags: opts.tags || [],
+            instructions: typeof opts.instructions === "string" ? opts.instructions : null,
+            learning_mode: opts.learningMode || "adhd",
+            extras: Array.isArray(opts.extras) ? opts.extras : [],
+            profile_prompt: opts.profilePrompt || null,
+            age: typeof opts.age === "number" ? opts.age : null,
+          }));
+
+          const { error: queueError } = await supabase
+            .from("background_jobs")
+            .insert(queueRows);
+
+          if (queueError) {
+            throw new Error(queueError.message || "Failed to queue background jobs.");
+          }
+
+          toast.success("Chapter 1 is generating now. The rest of the textbook is processing in the background and will appear in your Library soon.");
+        }
+
+        return;
+      }
+
       for (let i = 0; i < opts.chapters.length; i++) {
         const chapter = opts.chapters[i];
         const isFirstChapter = i === 0;
@@ -159,10 +296,11 @@ export function useNoteGeneration() {
         const payload = {
           textContent: chapter.text,
           learningMode: opts.learningMode,
-          extras: isFirstChapter ? opts.extras : [], // Don't duplicate mindmaps on background notes
+          extras: isFirstChapter ? opts.extras : [],
           instructions: opts.instructions,
           profilePrompt: opts.profilePrompt,
           age: opts.age,
+          images: isFirstChapter ? (opts.images || []) : [],
         };
 
         const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-notes`, {
@@ -210,7 +348,6 @@ export function useNoteGeneration() {
           }
         }
 
-        // Format cleanup
         if (chunkContent.startsWith("```html")) chunkContent = chunkContent.slice(7);
         if (chunkContent.endsWith("```")) chunkContent = chunkContent.slice(0, -3);
 

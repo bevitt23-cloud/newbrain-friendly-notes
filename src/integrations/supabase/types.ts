@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      background_jobs: {
+        Row: {
+          age: number | null
+          content_chunk: string
+          created_at: string
+          error_message: string | null
+          extras: string[]
+          folder: string
+          id: string
+          instructions: string | null
+          learning_mode: string | null
+          profile_prompt: string | null
+          status: string
+          tags: string[]
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          content_chunk: string
+          created_at?: string
+          error_message?: string | null
+          extras?: string[]
+          folder: string
+          id?: string
+          instructions?: string | null
+          learning_mode?: string | null
+          profile_prompt?: string | null
+          status?: string
+          tags?: string[]
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          content_chunk?: string
+          created_at?: string
+          error_message?: string | null
+          extras?: string[]
+          folder?: string
+          id?: string
+          instructions?: string | null
+          learning_mode?: string | null
+          profile_prompt?: string | null
+          status?: string
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string | null
@@ -393,6 +441,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_next_background_job: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          age: number | null
+          content_chunk: string
+          created_at: string
+          extras: string[]
+          folder: string
+          id: string
+          instructions: string | null
+          learning_mode: string | null
+          profile_prompt: string | null
+          tags: string[]
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
