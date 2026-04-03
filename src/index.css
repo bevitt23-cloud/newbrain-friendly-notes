@@ -299,13 +299,14 @@
   border-style: solid;
 }
 
-/* Generating state — neutral bg prevents nth-of-type color shifting as sections stream in.
-   NO animation here — dangerouslySetInnerHTML recreates all DOM nodes on each chunk,
-   which would replay animations and cause dark mode flash. */
-.generated-notes.generating > section:not([data-section-color]),
-.generated-notes.generating > div > section:not([data-section-color]) {
-  background: hsl(var(--card));
-  border-color: hsl(var(--border));
+/* Generating state — smooth content appearance */
+.generated-notes.generating > section,
+.generated-notes.generating > div > section {
+  animation: section-fade-in 0.3s ease-out;
+}
+@keyframes section-fade-in {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
 }
 
 /* ─── Section color cycle (uses CSS variables — instant theme switch) ─── */
@@ -663,7 +664,7 @@ body.dyslexia-active .generated-notes {
 /* ═══════════════════════════════════════════
    YOUTUBE EXPLAINER BUTTON
    ═══════════════════════════════════════════ */
-.generated-notes button.watch-explainer {
+.prose button.watch-explainer {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -678,12 +679,12 @@ body.dyslexia-active .generated-notes {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.15s;
 }
-.generated-notes button.watch-explainer:hover {
+.prose button.watch-explainer:hover {
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   transform: translateY(-1px);
 }
-.dark .generated-notes button.watch-explainer {
+.dark .prose button.watch-explainer {
   background-color: hsl(var(--primary) / 0.15);
   border-color: hsl(var(--primary) / 0.25);
 }

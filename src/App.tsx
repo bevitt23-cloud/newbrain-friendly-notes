@@ -25,6 +25,8 @@ import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import { useTheme } from "next-themes";
 
+const ADMIN_EMAIL = "adhdnotemodifier@gmail.com";
+
 const queryClient = new QueryClient();
 
 const ThemePreferenceSync = () => {
@@ -69,7 +71,7 @@ const App = () => (
               <Route path="/library/study" element={<ProtectedRoute><LibraryStudySession /></ProtectedRoute>} />
               <Route path="/library/review" element={<ProtectedRoute><StudyReview /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
-              <Route path="/admin/research" element={<ProtectedRoute adminOnly><AdminResearch /></ProtectedRoute>} />
+              <Route path="/admin/research" element={<ProtectedRoute adminOnly adminEmail={ADMIN_EMAIL}><AdminResearch /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
