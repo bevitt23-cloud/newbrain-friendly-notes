@@ -10,6 +10,13 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+export interface ChapterContext {
+  chapterTitle: string;
+  chapterIndex: number;
+  totalChapters: number;
+  bookTitle: string;
+}
+
 export interface GenerateOptions {
   textContent?: string;
   files?: File[];
@@ -23,6 +30,8 @@ export interface GenerateOptions {
   folder?: string;
   tags?: string[];
   shouldSaveToLibrary?: boolean;
+  /** When generating notes for a single chapter of a larger document */
+  chapterContext?: ChapterContext;
 }
 
 export function useNoteGeneration() {
@@ -91,7 +100,7 @@ export function useNoteGeneration() {
         .filter((chunk) => typeof chunk === "string" && chunk.trim().length > 0)
         .join("\n\n");
 
-      const payload = {
+      const payload: Record<string, unknown> = {
         textContent: combinedTextContent || "",
         youtubeUrl: typeof opts.youtubeUrl === "string" ? opts.youtubeUrl : undefined,
         websiteUrl: typeof opts.websiteUrl === "string" ? opts.websiteUrl : undefined,
@@ -101,6 +110,11 @@ export function useNoteGeneration() {
         profilePrompt: typeof opts.profilePrompt === "string" ? opts.profilePrompt : undefined,
         age: opts.age ?? null,
       };
+
+      // Pass chapter context through to the edge function when present
+      if (opts.chapterContext) {
+        payload.chapterContext = opts.chapterContext;
+      }
 
       if (!payload.textContent && !payload.youtubeUrl && !payload.websiteUrl) {
         throw new Error("No valid content found to generate notes from. Please provide text, a file, or a URL.");

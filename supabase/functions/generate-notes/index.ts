@@ -336,7 +336,7 @@ serve(async (req) => {
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext } = body;
 
     const contentParts: any[] = [];
 
@@ -871,9 +871,33 @@ If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily pe
 2. NEVER leave "detailed_info" blank. NEVER use generic placeholders like "Details go here."
 3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${extrasStr}${instructionsStr}${profileStr}${ageStr}`;
 
+    // ── Chapter-aware generation ──
+    // When chapterContext is provided, the AI is generating notes for one
+    // specific chapter of a larger book/document.  The <h1> title MUST
+    // match the chapter title so users can find it in their library.
+    let chapterPrompt = "";
+    if (chapterContext && typeof chapterContext === "object") {
+      const { chapterTitle, chapterIndex, totalChapters, bookTitle } = chapterContext as {
+        chapterTitle?: string;
+        chapterIndex?: number;
+        totalChapters?: number;
+        bookTitle?: string;
+      };
+      if (chapterTitle) {
+        chapterPrompt = `\n\nCHAPTER CONTEXT (CRITICAL):
+You are generating notes for a specific chapter of a larger document.
+Book/Document: "${bookTitle || "Unknown"}"
+Chapter ${(chapterIndex ?? 0) + 1} of ${totalChapters || "?"}: "${chapterTitle}"
+
+TITLE RULE: Your <h1> tag MUST be exactly: "${chapterTitle}"
+Do NOT title the notes after the whole book. Do NOT use a generic title.
+Focus exclusively on the content provided for this chapter.`;
+      }
+    }
+
     contentParts.unshift({
       type: "text",
-      text: "Transform ALL the content from the following material into brain-friendly study notes. Extract every piece of information.",
+      text: `Transform ALL the content from the following material into brain-friendly study notes. Extract every piece of information.${chapterPrompt}`,
     });
 
     const streamResult = await callAIStream({
