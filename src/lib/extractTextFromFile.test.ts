@@ -49,12 +49,12 @@ describe("isClientExtractable", () => {
 });
 
 describe("extractTextFromFile - file size limit", () => {
-  it("rejects files over 20MB", async () => {
+  it("rejects files over 500MB", async () => {
     const { toast } = await import("sonner");
     const { extractTextFromFile } = await import("./extractTextFromFile");
 
     const bigFile = new File(["x"], "huge.pdf", { type: "application/pdf" });
-    Object.defineProperty(bigFile, "size", { value: 25 * 1024 * 1024 }); // 25MB
+    Object.defineProperty(bigFile, "size", { value: 550 * 1024 * 1024 }); // 550MB
 
     const result = await extractTextFromFile(bigFile);
     expect(result).toBeNull();

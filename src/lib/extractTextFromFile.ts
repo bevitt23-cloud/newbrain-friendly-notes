@@ -7,7 +7,16 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-async function extractPdfText(file: File): Promise<{ text: string; pageCount: number }> {
+/** Optional progress callback: receives (pagesProcessed, totalPages) */
+export type ExtractionProgressCallback = (
+  processed: number,
+  total: number
+) => void;
+
+async function extractPdfText(
+  file: File,
+  onProgress?: ExtractionProgressCallback
+): Promise<{ text: string; pageCount: number }> {
   console.log(`[PDF Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
 
   const arrayBuffer = await file.arrayBuffer();
@@ -65,9 +74,12 @@ async function extractPdfText(file: File): Promise<{ text: string; pageCount: nu
       );
     }
 
-    // Log progress every 50 pages for large documents
-    if (i % 50 === 0 || i === pdf.numPages) {
+    // Report progress and yield to the UI thread every 25 pages
+    if (i % 25 === 0 || i === pdf.numPages) {
       console.log(`[PDF Extract] Processed page ${i}/${pdf.numPages}`);
+      onProgress?.(i, pdf.numPages);
+      // Yield to the main thread so the UI can update (progress spinners, etc.)
+      await new Promise((r) => setTimeout(r, 0));
     }
   }
 
@@ -149,11 +161,12 @@ export type ExtractionResult = {
  * Supports: PDF, DOCX, DOC, PPTX, PPT, TXT, MD, CSV
  * Returns null for unsupported types (images, video, etc.)
  */
-const MAX_FILE_SIZE_MB = 20;
+const MAX_FILE_SIZE_MB = 500;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export async function extractTextFromFile(
-  file: File
+  file: File,
+  onProgress?: ExtractionProgressCallback
 ): Promise<ExtractionResult | null> {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     toast.error(
@@ -170,7 +183,7 @@ export async function extractTextFromFile(
     let pageCount: number | undefined;
 
     if (ext === "pdf") {
-      const result = await extractPdfText(file);
+      const result = await extractPdfText(file, onProgress);
       text = result.text;
       pageCount = result.pageCount;
     } else if (ext === "docx" || ext === "doc") {

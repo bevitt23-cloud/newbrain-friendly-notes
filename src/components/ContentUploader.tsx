@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
 import { DEFAULT_FOLDER } from "@/lib/constants";
-import { extractTextFromFile, isClientExtractable } from "@/lib/extractTextFromFile";
+import { extractTextFromFile, isClientExtractable, type ExtractionProgressCallback } from "@/lib/extractTextFromFile";
 import { detectChapters, shouldOfferChapterDetection } from "@/lib/chapterDetection";
 import type { DetectedChapter, ChapterDetectionResult } from "@/lib/chapterDetection";
 import ChapterPreview from "./ChapterPreview";
@@ -70,6 +70,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [selectedChapterIndices, setSelectedChapterIndices] = useState<Set<number>>(new Set());
   const [bookTitle, setBookTitle] = useState("");
   const [isDetectingChapters, setIsDetectingChapters] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState("");
   const lastDetectedFilesRef = useRef<string>("");
 
   // Run chapter detection when files change
@@ -95,17 +96,28 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
     let cancelled = false;
     (async () => {
       setIsDetectingChapters(true);
+      setExtractionProgress("Loading file…");
       try {
-        const result = await extractTextFromFile(files[0]);
+        const progressCb: ExtractionProgressCallback = (processed, total) => {
+          if (!cancelled) {
+            setExtractionProgress(
+              `Reading pages… ${processed.toLocaleString()} / ${total.toLocaleString()}`
+            );
+          }
+        };
+        const result = await extractTextFromFile(files[0], progressCb);
         if (cancelled || !result || !result.text) {
           setIsDetectingChapters(false);
+          setExtractionProgress("");
           return;
         }
         if (!shouldOfferChapterDetection(result.text.length)) {
           setChapterDetection(null);
           setIsDetectingChapters(false);
+          setExtractionProgress("");
           return;
         }
+        setExtractionProgress("Detecting chapters…");
         const detection = detectChapters(result.text, result.fileName);
         if (cancelled) return;
 
@@ -120,7 +132,10 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         console.error("[Chapter Detection] Error:", err);
         setChapterDetection(null);
       }
-      if (!cancelled) setIsDetectingChapters(false);
+      if (!cancelled) {
+        setIsDetectingChapters(false);
+        setExtractionProgress("");
+      }
     })();
 
     return () => { cancelled = true; };
@@ -282,9 +297,9 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         onGenerate({ websiteUrl: normalizedWebsiteUrl, ...common });
       }
     } else if (activeTab === "file" && files.length > 0) {
-      const oversized = files.find((f) => f.size > 100 * 1024 * 1024);
+      const oversized = files.find((f) => f.size > 500 * 1024 * 1024);
       if (oversized) {
-        toast.error(`${oversized.name} is too large (max 100MB per file)`);
+        toast.error(`${oversized.name} is too large (max 500MB per file)`);
         return;
       }
       onGenerate({ files, ...common });
@@ -352,7 +367,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
               </div>
               <p className="text-sm font-medium text-foreground">Drop files here or click to browse</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                PDF, Word, PowerPoint, images, video — up to 5 files (100MB each)
+                PDF, Word, PowerPoint, images, video — up to 5 files (500MB each)
               </p>
             </div>
 
@@ -382,7 +397,9 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
             {isDetectingChapters && (
               <div className="flex items-center gap-2.5 rounded-xl bg-lavender-50 dark:bg-lavender-500/10 px-4 py-3 ring-1 ring-lavender-200/60 dark:ring-lavender-400/20">
                 <Loader2 className="h-4 w-4 animate-spin text-lavender-500" />
-                <span className="text-sm text-muted-foreground">Detecting chapters…</span>
+                <span className="text-sm text-muted-foreground">
+                  {extractionProgress || "Detecting chapters…"}
+                </span>
               </div>
             )}
 
