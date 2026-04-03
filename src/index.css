@@ -608,6 +608,82 @@ body.dyslexia-active .generated-notes {
   display: none !important;
 }
 
+/* ── Math & Dyscalculia Tools ──────────────────────────── */
+
+/* Math variable color palette */
+:root {
+  --math-x: #e74c3c;
+  --math-y: #3498db;
+  --math-z: #2ecc71;
+  --math-a: #9b59b6;
+  --math-b: #e67e22;
+  --math-c: #1abc9c;
+  --math-n: #e84393;
+  --math-m: #00b894;
+  --math-t: #6c5ce7;
+  --math-r: #fd79a8;
+  --math-p: #0984e3;
+  --math-q: #fdcb6e;
+}
+
+/* Formula translator — clickable formula spans */
+.generated-notes .math-formula {
+  @apply relative inline-block cursor-pointer px-1.5 py-0.5 rounded-lg font-mono text-sm;
+  background: hsl(var(--primary) / 0.08);
+  border: 1px dashed hsl(var(--primary) / 0.3);
+  transition: background 0.15s, border-color 0.15s;
+}
+.generated-notes .math-formula:hover {
+  background: hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.5);
+}
+.generated-notes .math-formula.formula-loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+.generated-notes .math-formula::after {
+  content: "🔍";
+  font-size: 0.65em;
+  margin-left: 0.3em;
+  vertical-align: super;
+  opacity: 0.5;
+}
+
+/* Formula tooltip — appears below the formula on click */
+.generated-notes .formula-tooltip {
+  @apply absolute left-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)];
+  @apply rounded-xl border border-border bg-popover px-4 py-3 shadow-xl shadow-black/10;
+  @apply text-sm leading-relaxed text-popover-foreground;
+  font-family: inherit;
+  animation: formulaFadeIn 0.2s ease-out;
+}
+@keyframes formulaFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Color-coded variables inside formulas */
+.generated-notes .math-var {
+  @apply font-bold;
+  font-family: 'Courier New', monospace;
+}
+
+/* Math stepper — cascading reveal container */
+.generated-notes .math-stepper {
+  @apply my-5 space-y-3;
+}
+.generated-notes .math-step {
+  @apply rounded-xl border border-border/50 p-4 transition-all duration-300;
+  background: hsl(var(--card));
+}
+.generated-notes .math-step .math-step-equation {
+  @apply font-mono text-base font-semibold mb-2;
+  color: hsl(var(--primary));
+}
+.generated-notes .math-step .math-step-explain {
+  @apply text-sm text-muted-foreground leading-relaxed;
+}
+
 /* Base layout for prose sections — NO transition */
 .prose section {
   padding: 1.5rem 2rem !important;

@@ -165,7 +165,7 @@ const TRAIT_RULES: Record<CognitiveTrait, Partial<ProfileSettings>> = {
     learningMode: "adhd",
   },
   dyscalculia: {
-    addOns: ["visual_data_anchors"],
+    addOns: ["visual_data_anchors", "formula_translator", "color_coded_variables", "step_by_step_math"],
     studyTools: ["flowchart"],
   },
   dysgraphia_motor: {
@@ -202,7 +202,7 @@ const TRAIT_RULES: Record<CognitiveTrait, Partial<ProfileSettings>> = {
   },
   high_cognitive_load: {
     uiSettings: ["audio_player"],
-    addOns: ["tldr"],
+    addOns: ["tldr", "watch_explanation"],
     studyTools: ["mindmap"],
   },
   sensory_hypo: {
@@ -257,9 +257,15 @@ const TRAIT_PROMPTS: Partial<Record<CognitiveTrait, string>> = {
   rsd:
     'When the user answers incorrectly, utilize Unconditional Positive Regard. Depersonalize the error. Never say "You got this wrong." Say "This specific concept is notoriously tricky because [X]." Frame failures as neutral, temporary data points in a low-stakes game.',
   interest_based:
-    "The user requires extreme novelty to engage executive function. Explain the target concept entirely through the lens of their registered hyper-fixation. Map the academic variables directly to elements of their interest.",
+    "The user requires extreme novelty to engage executive function. Explain the target concept entirely through the lens of their registered hyper-fixation. Map the academic variables directly to elements of their interest. RULE OF MECHANICAL ALIGNMENT (CRITICAL GUARDRAIL): The underlying mechanics of the academic concept MUST logically match the rules of the hyper-fixation. Every analogy must be a mathematically sound 1-to-1 mapping where the cause-effect relationships, proportions, and constraints mirror each other. If a logical, mechanically accurate mapping is impossible for a given concept, you MUST opt-out of the hyper-fixation lens and use a standard, highly visual real-world example instead. Never force a broken analogy — accuracy is non-negotiable.",
   dyscalculia:
-    "The user struggles with abstract numbers and timelines. Every statistic, percentage, formula, or date must be accompanied by a concrete, real-world visual analogy. What does this number physically look like?",
+    `The user struggles with abstract numbers and timelines. Every statistic, percentage, formula, or date must be accompanied by a concrete, real-world visual analogy. What does this number physically look like?
+
+FORMULA TRANSLATOR RULE: Whenever you write a mathematical equation, formula, or complex expression, wrap it in <span class="math-formula" data-formula="THE_RAW_FORMULA">displayed formula</span>. The data-formula attribute must contain the raw symbolic expression (e.g. "E = mc^2") so the UI can generate a plain-English tooltip.
+
+COLOR-CODED VARIABLES RULE: Inside formulas, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> where VAR_NAME is a lowercase identifier. Use consistent colors for the same variable throughout the notes. This helps the user visually track which symbol means what.
+
+STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container. Inside it, place each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation here</div><div class="math-step-explain">plain English explanation of what just happened</div></div>. Number steps sequentially starting at 1. The UI will render these with cascading reveal.`,
   asd:
     "Rewrite concepts using literal, precise language. Remove all idioms, sarcasm, and abstract metaphors. Create strict 'If X, then Y' logical sequences.",
   dyslexia:

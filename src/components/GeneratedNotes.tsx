@@ -19,6 +19,7 @@ import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
 import JumpToNav from "@/components/JumpToNav";
 import { useJumpToNav } from "@/hooks/useJumpToNav";
 import FloatingImageViewer from "@/components/FloatingImageViewer";
+import { useMathSteppers } from "@/hooks/useMathSteppers";
 
 interface GeneratedNotesProps {
   html: string;
@@ -200,6 +201,7 @@ const GeneratedNotes = ({
   }, [html]);
 
   useNotesInteractivity(containerRef, html);
+  useMathSteppers(containerRef, html, isGenerating);
   const { sections: navSections, activeSectionId, scrollToSection } = useJumpToNav(containerRef, html);
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {

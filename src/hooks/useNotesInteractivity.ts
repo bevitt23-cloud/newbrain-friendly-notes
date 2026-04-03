@@ -14,6 +14,43 @@ export function useNotesInteractivity(containerRef: React.RefObject<HTMLDivEleme
   const handleClick = useCallback(async (e: MouseEvent) => {
     const target = e.target as HTMLElement;
 
+    // Math formula tooltip — translate to plain English on click
+    const formulaEl = target.closest(".math-formula") as HTMLElement;
+    if (formulaEl && !formulaEl.classList.contains("formula-loading")) {
+      e.preventDefault();
+      const formula = formulaEl.getAttribute("data-formula") || formulaEl.textContent || "";
+      if (!formula.trim()) return;
+
+      // If tooltip already exists, toggle it off
+      const existingTooltip = formulaEl.querySelector(".formula-tooltip");
+      if (existingTooltip) {
+        existingTooltip.remove();
+        return;
+      }
+
+      // Show loading state
+      formulaEl.classList.add("formula-loading");
+      const tooltip = document.createElement("div");
+      tooltip.className = "formula-tooltip";
+      tooltip.textContent = "Translating…";
+      formulaEl.appendChild(tooltip);
+
+      try {
+        const result = await getAIFeedback(
+          `You are a plain-English math translator for students with dyscalculia. Translate this formula into a single conversational sentence that explains what it physically means in the real world. No jargon, no symbols — just what happens.
+
+Formula: ${formula}
+
+Respond with ONLY the plain-English sentence. No preamble, no "This formula means…" — just the explanation.`
+        );
+        tooltip.innerHTML = sanitizeHtml(result);
+      } catch {
+        tooltip.textContent = "Could not translate formula.";
+      }
+      formulaEl.classList.remove("formula-loading");
+      return;
+    }
+
     // Recall submit
     if (target.classList.contains("recall-submit")) {
       const wrapper = target.closest(".recall-prompt") as HTMLElement;

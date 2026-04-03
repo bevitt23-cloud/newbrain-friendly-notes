@@ -837,7 +837,13 @@ Format for a reader with ADHD:
     const cognitiveRules: string[] = [];
 
     if (profileLower.includes("dyscalculia")) {
-      cognitiveRules.push("COGNITIVE MODIFIER (Dyscalculia): Whenever presenting statistics, percentages, or abstract numbers, you MUST immediately translate them into a concrete, visual, real-world analogy (e.g., instead of '20%', say '2 out of every 10 people, or the size of a small classroom'). Do not leave numbers isolated.");
+      cognitiveRules.push(`COGNITIVE MODIFIER (Dyscalculia): Whenever presenting statistics, percentages, or abstract numbers, you MUST immediately translate them into a concrete, visual, real-world analogy (e.g., instead of '20%', say '2 out of every 10 people, or the size of a small classroom'). Do not leave numbers isolated.
+
+FORMULA TRANSLATOR: Whenever you write a mathematical equation or formula, wrap it in <span class="math-formula" data-formula="RAW_FORMULA">displayed formula</span>. The data-formula attribute must contain the raw symbolic expression so the UI can generate a plain-English tooltip.
+
+COLOR-CODED VARIABLES: Inside formulas, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> using consistent colors for the same variable throughout.
+
+STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container with each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation</div><div class="math-step-explain">plain English explanation</div></div>.`);
     }
 
     if (profileLower.includes("working memory") || profileLower.includes("executive function")) {
