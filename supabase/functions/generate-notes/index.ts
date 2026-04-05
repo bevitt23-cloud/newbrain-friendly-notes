@@ -1023,7 +1023,7 @@ Focus exclusively on the content provided for this chapter.`;
 
     contentParts.unshift({
       type: "text",
-      text: `Transform ALL the content from the following material into brain-friendly study notes. Extract every piece of information.${imageInstruction}${chapterPrompt}`,
+      text: `Transform the following study material into brain-friendly notes. Your job is not just to reformat — it is to make the content genuinely understandable for a student who learns differently. Follow these priorities in order: First, explain concepts clearly before showing formulas or procedures. Second, work out example problems completely step by step — never show just an answer. Third, reconstruct any math or content that was corrupted or lost during PDF extraction using the surrounding context and your knowledge of the subject. Fourth, do not reproduce raw answer key lists — instead, select representative problems and work them out fully. Fifth, if a section heading exists but its content is missing or garbled, fill the gap using your subject knowledge and mark it with the gap-filled class. The goal is notes a student can actually learn from, not a reformatted copy of the source.${imageInstruction}${chapterPrompt}`,
     });
 
     const streamResult = await callAIStream({
