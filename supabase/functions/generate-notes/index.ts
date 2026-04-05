@@ -921,6 +921,46 @@ MICRO-CHUNKING RULE (MANDATORY):
 4. For uploaded documents (PDF, Word, PowerPoint, images), extract ALL text content.
 5. For YouTube videos, use the provided transcript as the source material.
 
+STEM & MATHEMATICS CONTENT RULES (apply when source material contains equations, formulas, proofs, or worked problems):
+
+CONTENT TYPE AWARENESS:
+Before generating notes, identify what type of material you are reading. If the source contains mathematical notation, equations, numbered exercises, or formulas, activate ALL of the following rules. You are not just reformatting — you are TRANSLATING mathematical language into human-readable understanding.
+
+BROKEN OR MISSING MATH RECOVERY RULE (CRITICAL):
+PDF extraction frequently corrupts or destroys mathematical expressions. They may appear as "[fraction]", "[value]", blank spaces, garbled symbols, or be missing entirely. When you encounter corrupted math:
+1. Use the surrounding context (the topic, the section, the adjacent equations) to reconstruct what the expression SHOULD be.
+2. Render the reconstructed expression using your knowledge of the subject.
+3. NEVER write "[fraction]", "[value]", "[polynomial expression]", or any placeholder. Always provide the real content.
+4. If you genuinely cannot reconstruct an expression, write: "⚠️ Note: This equation was unreadable in the source. The concept it represents is: [explain the concept in plain English]."
+
+EXERCISE ANSWER KEY RULE (CRITICAL):
+Raw answer keys (e.g. "Exercise 5: 81, Exercise 7: 243...") with no accompanying question are USELESS for studying. When you encounter a list of exercise answers without the questions:
+- DO NOT reproduce the raw answer list.
+- Instead, SELECT 2-3 representative problems from the set, reconstruct the full question from context, and work them out completely using the WORKED EXAMPLE RULE below.
+- Then write: "The remaining exercises in this set follow the same pattern. Try working them using the steps above."
+
+WORKED EXAMPLE RULE (CRITICAL):
+When the source material contains example problems — whether fully shown or only partially extracted — you MUST work them out completely. Do not summarize. Do not show only the answer. Every worked example must include:
+1. The full problem statement in plain English (rewrite it if the PDF garbled it)
+2. What concept this problem is testing (one sentence)
+3. The full solution shown step by step using the math-stepper format:
+<div class="math-stepper" data-total-steps="N">
+  <div class="math-step" data-step="1">
+    <div class="math-step-equation">the equation or expression at this stage</div>
+    <div class="math-step-explain">plain English: what did we just do and WHY</div>
+  </div>
+</div>
+4. A "Common Mistake" callout after the solution: <div class="common-mistake"><strong>⚠️ Common Mistake:</strong> [what students typically get wrong on this type of problem and why]</div>
+
+CONCEPT-FIRST RULE:
+Before showing any formula or procedure, always explain WHAT it is and WHY it exists in one or two plain-English sentences. A student should understand the purpose before they see the mechanics. Example: before showing the quadratic formula, explain that it is a shortcut for finding where a parabola crosses the x-axis, and that we use it when factoring is too difficult or impossible.
+
+KNOWLEDGE GAP FILLING RULE:
+If the PDF extraction has clearly dropped a concept (the notes reference something that was never explained, or a section title has no content beneath it), use your own knowledge to fill the gap accurately. Label it clearly: <div class="gap-filled"><strong>📚 From the textbook's context:</strong> [your explanation]</div>. Never leave a gap empty. Never hallucinate — only fill gaps where you are confident in the content based on the subject matter and surrounding context.
+
+TABLE AND CLASSIFICATION RULE:
+When the source contains a classification table (e.g. number sets, properties of operations, truth tables), reconstruct it as a complete, accurate HTML table. Do not write "implied specific number" or leave cells empty. Use your knowledge of the subject to fill in what the PDF failed to extract. Every cell must have real content.
+
 ${modePrompt}
 
 OUTPUT FORMAT:

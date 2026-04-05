@@ -750,6 +750,42 @@ body.dyslexia-active .generated-notes {
   color: hsl(var(--foreground)) !important;
 }
 
+/* Common Mistake callout — STEM content */
+.generated-notes .common-mistake {
+  @apply mt-3 rounded-xl p-4 text-sm;
+  background: hsl(0 70% 95%);
+  border: 1px solid hsl(0 60% 85%);
+  border-left: 4px solid hsl(0 65% 55%);
+}
+.dark .generated-notes .common-mistake {
+  background: hsl(0 40% 14%);
+  border-color: hsl(0 40% 30%);
+}
+.generated-notes .common-mistake strong {
+  color: hsl(0 65% 45%);
+}
+.dark .generated-notes .common-mistake strong {
+  color: hsl(0 60% 65%);
+}
+
+/* Knowledge Gap Fill callout — STEM content */
+.generated-notes .gap-filled {
+  @apply mt-3 rounded-xl p-4 text-sm;
+  background: hsl(210 60% 95%);
+  border: 1px solid hsl(210 50% 85%);
+  border-left: 4px solid hsl(210 60% 50%);
+}
+.dark .generated-notes .gap-filled {
+  background: hsl(210 30% 14%);
+  border-color: hsl(210 30% 30%);
+}
+.generated-notes .gap-filled strong {
+  color: hsl(210 60% 40%);
+}
+.dark .generated-notes .gap-filled strong {
+  color: hsl(210 50% 65%);
+}
+
 /* Hide accidental AI-generated mind map/flow chart lists */
 .prose ul.mindmap-data,
 .prose ul.flowchart-data {
