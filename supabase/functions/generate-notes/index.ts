@@ -367,8 +367,8 @@ serve(async (req) => {
     // ── Handle uploaded images (vision input) ──
     const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
     const MAX_IMAGE_BASE64_LEN = 10 * 1024 * 1024; // ~7.5MB decoded
-    const hasImages = Array.isArray(images) && images.length > 0;
-    if (hasImages) {
+    let validImageCount = 0;
+    if (Array.isArray(images) && images.length > 0) {
       console.log(`[generate-notes] Received ${images.length} image(s) for vision processing`);
       for (const img of images.slice(0, 10)) {
         if (!img.data || typeof img.data !== "string") continue;
@@ -387,8 +387,11 @@ serve(async (req) => {
             url: `data:${mime};base64,${img.data}`,
           },
         });
+        validImageCount++;
       }
+      console.log(`[generate-notes] ${validImageCount} of ${images.length} image(s) passed validation`);
     }
+    const hasImages = validImageCount > 0;
 
     // Handle YouTube URL
     if (youtubeUrl) {
@@ -1052,7 +1055,7 @@ Focus exclusively on the content provided for this chapter.`;
     }
 
     const imageInstruction = hasImages
-      ? ` The user has uploaded ${images.length} image(s). Examine each image carefully. Transcribe any text, describe charts/diagrams, and embed image references using <figure data-image-index="N"> placeholders where they contextually belong in the notes.`
+      ? ` The user has uploaded ${validImageCount} image(s). Examine each image carefully. Transcribe any text, describe charts/diagrams, and embed image references using <figure data-image-index="N"> placeholders where they contextually belong in the notes. Valid image indices are 0 through ${validImageCount - 1} — do NOT reference any index outside this range.`
       : "";
 
     contentParts.unshift({
