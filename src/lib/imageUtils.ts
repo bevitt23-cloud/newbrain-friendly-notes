@@ -194,3 +194,51 @@ export function injectImages(
     },
   );
 }
+
+/**
+ * After injectImages runs, check which image indices the AI actually referenced.
+ * Append any unreferenced images in a "Source Material" section at the end
+ * so no uploaded visual is ever lost.
+ */
+export function appendUnreferencedImages(
+  html: string,
+  images: EncodedImage[],
+): string {
+  if (!images.length) return html;
+
+  // Find which indices are already in the HTML
+  const referenced = new Set<number>();
+  const refRegex = /data-image-index="(\d+)"/gi;
+  let m: RegExpExecArray | null;
+  while ((m = refRegex.exec(html)) !== null) {
+    referenced.add(parseInt(m[1], 10));
+  }
+
+  const missing = images.filter((img) => !referenced.has(img.index));
+  if (missing.length === 0) return html;
+
+  // Build a "Source Material" section with all missing images
+  const figures = missing
+    .map((img) => {
+      const dataUri = toDataUri(img.data, img.mimeType);
+      return `<figure class="note-image" data-image-index="${img.index}">
+        <img src="${dataUri}" alt="${img.fileName}" class="note-image-thumb" loading="lazy" />
+        <figcaption>${img.fileName}</figcaption>
+      </figure>`;
+    })
+    .join("\n");
+
+  const section = `
+<section data-section-color="sky">
+  <h2 data-section-color="sky" id="section-source-material">Source Material</h2>
+  <p>The following visuals from the uploaded document were not placed inline above. Click any image to expand it.</p>
+  ${figures}
+</section>`;
+
+  // Insert before the closing </div> if present, otherwise append
+  if (html.includes("</div>")) {
+    const lastDiv = html.lastIndexOf("</div>");
+    return html.slice(0, lastDiv) + section + html.slice(lastDiv);
+  }
+  return html + section;
+}

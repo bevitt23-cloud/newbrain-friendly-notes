@@ -1054,9 +1054,23 @@ Focus exclusively on the content provided for this chapter.`;
       }
     }
 
-    const imageInstruction = hasImages
-      ? ` The user has uploaded ${validImageCount} image(s). Examine each image carefully. Transcribe any text, describe charts/diagrams, and embed image references using <figure data-image-index="N"> placeholders where they contextually belong in the notes. Valid image indices are 0 through ${validImageCount - 1} — do NOT reference any index outside this range.`
-      : "";
+    let imageInstruction = "";
+    if (hasImages) {
+      // Build a manifest so the AI knows exactly which images it received
+      const manifest = images
+        .slice(0, 10)
+        .filter((img: any) => img.data && typeof img.data === "string" && typeof img.mimeType === "string")
+        .map((img: any, i: number) => `  Image ${i}: "${img.fileName || "unknown"}"`)
+        .slice(0, validImageCount)
+        .join("\n");
+
+      imageInstruction = `
+
+IMAGE MANIFEST — you received ${validImageCount} image(s). Here is what each one is:
+${manifest}
+
+INSTRUCTIONS: You MUST reference every image that contains educational content (graphs, charts, diagrams, tables, worked examples). Use <figure data-image-index="N"> where N is the image number from the manifest above. Valid indices are 0 through ${validImageCount - 1}. Do NOT skip images that contain visual learning content. For text-only or decorative pages, you may skip them.`;
+    }
 
     contentParts.unshift({
       type: "text",

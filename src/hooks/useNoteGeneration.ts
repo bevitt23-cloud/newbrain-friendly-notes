@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
-import { isImageFile, extractImages, injectImages, MAX_IMAGES, type EncodedImage } from "@/lib/imageUtils";
+import { isImageFile, extractImages, injectImages, appendUnreferencedImages, MAX_IMAGES, type EncodedImage } from "@/lib/imageUtils";
 import { extractPdfImages } from "@/lib/pdfImageExtraction";
 
 export interface QuizQuestion {
@@ -344,9 +344,11 @@ export function useNoteGeneration() {
 
       let finalHtml = cleaned.trim();
 
-      // Post-process: inject actual images into AI placeholder <figure> tags
+      // Post-process: inject actual images into AI placeholder <figure> tags,
+      // then append any images the AI failed to reference
       if (encodedImages.length > 0) {
         finalHtml = injectImages(finalHtml, encodedImages);
+        finalHtml = appendUnreferencedImages(finalHtml, encodedImages);
       }
 
       setGeneratedHtml(finalHtml);
