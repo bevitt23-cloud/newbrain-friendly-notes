@@ -128,6 +128,29 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
     }
   }, []);
 
+  // Proactively strip invalid math-formula pills on render so they never appear visually
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const pills = container.querySelectorAll(".math-formula");
+    for (const el of pills) {
+      const formula = (el.getAttribute("data-formula") || el.textContent || "").trim();
+      const f = formula.toLowerCase();
+      const isInvalid =
+        !formula ||
+        formula.length < 3 ||
+        /^(raw_formula|the_raw_formula|the_actual_equation|formula|equation|value|expression|number|placeholder)/i.test(f) ||
+        /^[\d.,\s%$#]+$/.test(f) ||
+        !/[=+\-*/^()√∑∫≤≥≠≈]/.test(f);
+
+      if (isInvalid) {
+        el.classList.remove("math-formula");
+        el.removeAttribute("data-formula");
+      }
+    }
+  }, [containerRef, html]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
