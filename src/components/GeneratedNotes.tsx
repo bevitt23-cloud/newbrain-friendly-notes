@@ -216,11 +216,14 @@ const GeneratedNotes = ({
       return;
     }
 
-    // Handle image clicks — open PIP viewer
-    if (target.tagName === "IMG" && target.closest(".note-image")) {
+    // Handle image clicks — open PIP viewer (clicking anywhere on the figure)
+    const noteImage = target.closest(".note-image") as HTMLElement;
+    if (noteImage) {
       e.preventDefault();
-      const img = target as HTMLImageElement;
-      setPipImage({ src: img.src, alt: img.alt || "Image" });
+      const img = noteImage.querySelector("img") as HTMLImageElement;
+      if (img) {
+        setPipImage({ src: img.src, alt: img.alt || "Image" });
+      }
       return;
     }
   };

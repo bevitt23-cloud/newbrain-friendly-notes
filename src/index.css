@@ -580,15 +580,35 @@ body.dyslexia-active .generated-notes {
   box-shadow: 0 2px 8px hsl(var(--primary) / 0.1);
 }
 
-/* ── Embedded images (PIP thumbnails) ── */
+/* ── Embedded images (expandable thumbnails) ── */
 .generated-notes .note-image {
-  @apply my-4 mx-auto max-w-sm rounded-xl overflow-hidden border border-border/50 shadow-sm;
+  @apply my-4 mx-auto max-w-sm rounded-xl overflow-hidden border border-border/50 shadow-sm relative;
   background: hsl(var(--muted) / 0.3);
   transition: transform 0.15s, box-shadow 0.15s;
+  cursor: pointer;
 }
 .generated-notes .note-image:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px hsl(var(--foreground) / 0.08);
+}
+/* Expand icon overlay */
+.generated-notes .note-image::after {
+  content: "🔍 Click to expand";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 0.65rem;
+  font-style: normal;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: hsl(var(--foreground) / 0.7);
+  color: hsl(var(--background));
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.generated-notes .note-image:hover::after {
+  opacity: 1;
 }
 .generated-notes .note-image-thumb {
   @apply w-full cursor-pointer;
