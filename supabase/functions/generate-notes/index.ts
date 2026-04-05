@@ -978,45 +978,48 @@ SECTION TITLE RULES (CRITICAL — these appear in a Jump-to navigation bar):
 - ALWAYS use the specific subject matter: e.g., "Mitosis: Cell Division Stages", "Freud's Defense Mechanisms", "Supply & Demand Curves", "The Treaty of Versailles".
 - Titles should be immediately scannable — a student glancing at the navigation should know exactly what each section covers.
 
-IMAGE HANDLING RULES (CRITICAL — when images are provided alongside text):
+IMAGE HANDLING RULES (CRITICAL — when images are provided):
 
-You will receive images as part of the content. Before doing anything with an image, identify which of these types it is:
+Each image you receive is a full-page screenshot of a PDF page. The fileName tells you exactly which page it came from, e.g. "textbook.pdf — Page 14". Use this page number to connect each image to the correct place in the notes.
 
-TYPE 1 — DIAGRAM or CHART (flowchart, graph, labeled illustration, scientific diagram):
-- Embed it using: <figure data-image-index="N"><figcaption>...</figcaption></figure>
-- Place it immediately after the paragraph of text it relates to — not at the end
-- Write a figcaption that explains: what the image shows, what the student should notice, and how it connects to the concept being explained. Minimum 2 sentences.
-- Also write a short paragraph BEFORE the figure that introduces what the student is about to see
+STEP 1 — PAGE MAPPING (do this first, before writing any notes):
+Read all the image fileNames you received. Make a mental map of which page number corresponds to which image index (0, 1, 2...). As you generate notes for content that came from that page, place the figure placeholder in the right section.
 
-TYPE 2 — TABLE (data table, comparison table, classification table):
-- Embed it using the figure placeholder AND recreate the full data as an HTML <table> with proper <thead> and <tbody> directly below the figure
-- The HTML table is the primary learning tool — the image is a backup reference
-- If the table was corrupted in PDF extraction, reconstruct it from your knowledge of the subject
+STEP 2 — IDENTIFY WHAT IS EDUCATIONALLY USEFUL ON THE PAGE:
+Each screenshot is a full page — it may contain text, graphs, diagrams, tables, charts, worked examples, or decorative elements. You must decide what on that page is worth surfacing as a visual aid. Ask yourself: would a student benefit from seeing this image alongside the notes? If the page is mostly text the student already has, skip the image. If the page contains a graph, diagram, chart, or visual that adds meaning beyond the text, embed it.
 
-TYPE 3 — IMAGE OF MATH, FORMULA, OR WORKED EXAMPLE:
-- Transcribe every equation and expression you can see into proper HTML
-- Work through the problem completely using the math-stepper format
-- Embed the image using the figure placeholder as a visual reference
-- figcaption should read: "Source material: [brief description of what the image shows]"
+STEP 3 — CLASSIFY AND HANDLE:
 
-TYPE 4 — SCREENSHOT OF TEXT or HANDWRITTEN NOTES:
-- Transcribe the full text content first
-- Then embed the image using the figure placeholder
-- figcaption should describe what kind of text it is (e.g. "Handwritten definition from source material")
+GRAPH or DIAGRAM (axes, plotted lines, labeled illustrations, scientific figures):
+- Write a lead-in sentence before the figure: "The graph below shows [what it depicts and why it matters for this concept]."
+- Embed: <figure data-image-index="N"><figcaption>[2 sentence caption: what the visual shows AND what the student should take away from it]</figcaption></figure>
+- After the figure, write 1-2 sentences connecting what they just saw back to the concept in the notes
 
-TYPE 5 — DECORATIVE IMAGE (stock photo, purely aesthetic, no educational content):
-- Skip entirely. Do not use a figure placeholder for decorative images.
-- Do not mention that you skipped it.
+CHART or TABLE (data comparison, classification, results):
+- Embed the figure placeholder
+- Recreate the data as a proper HTML <table> with <thead> and <tbody> directly below the figure
+- If the table was corrupted or missing in the text extraction, reconstruct it from your knowledge of the subject and the page image
+- Caption should explain what the table is comparing or showing
 
-FIGCAPTION RULES (apply to all types):
-- Never write generic captions like "Figure 1" or "Image showing..."
-- Always explain what the student should understand FROM the image
-- Connect it explicitly to the concept in the surrounding text
+WORKED EXAMPLE or MATH (image shows equations, solutions, or step-by-step work):
+- Transcribe every equation visible into proper HTML
+- Work through it completely using the math-stepper format
+- Embed the figure as a reference: <figure data-image-index="N"><figcaption>Source material: worked example from page [N]</figcaption></figure>
 
-PLACEMENT RULE:
-- Place each figure placeholder in the exact location within the notes where it is most contextually relevant
+DECORATIVE or TEXT-ONLY PAGE (stock photo, purely aesthetic, or page with no visual content beyond what text extraction already covered):
+- Skip entirely. Do not use a figure placeholder. Do not mention it.
+
+STEP 4 — PLACEMENT:
+- Place each figure at the exact point in the notes where it is most relevant — next to the concept it illustrates
 - Never dump all figures at the end of a section
-- If you cannot determine where an image belongs, place it at the start of the section most related to its content
+- Never place a figure before you have introduced the concept it relates to
+- If a page image spans multiple concepts, place it at the start of the first concept it relates to
+
+CAPTION RULES:
+- Never write "Figure 1" or "Image showing..." as a caption
+- Always explain what the student should understand FROM looking at the image
+- Connect it explicitly to the surrounding concept
+- Minimum 2 sentences per caption
 
 CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
