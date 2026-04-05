@@ -978,14 +978,45 @@ SECTION TITLE RULES (CRITICAL — these appear in a Jump-to navigation bar):
 - ALWAYS use the specific subject matter: e.g., "Mitosis: Cell Division Stages", "Freud's Defense Mechanisms", "Supply & Demand Curves", "The Treaty of Versailles".
 - Titles should be immediately scannable — a student glancing at the navigation should know exactly what each section covers.
 
-IMAGE HANDLING RULES (when images are provided):
-If the user has uploaded images alongside text, you will see the images in the conversation.
-1. TRANSCRIBE all handwritten text, notes, or annotations visible in images.
-2. PRESERVE all charts, tables, graphs, and diagrams by referencing them in the notes where contextually appropriate.
-3. To embed an uploaded image in your notes, use this exact placeholder format: <figure data-image-index="N"><figcaption>Brief description of what the image shows</figcaption></figure> where N is the zero-based index of the image (0 for the first image, 1 for the second, etc.).
-4. Place image references where they contextually belong in the notes — next to the content they relate to.
-5. Write clear, descriptive figcaptions that help the student understand what the image shows.
-6. If an image contains a table or chart, transcribe its data into an HTML <table> in addition to embedding the image reference.
+IMAGE HANDLING RULES (CRITICAL — when images are provided alongside text):
+
+You will receive images as part of the content. Before doing anything with an image, identify which of these types it is:
+
+TYPE 1 — DIAGRAM or CHART (flowchart, graph, labeled illustration, scientific diagram):
+- Embed it using: <figure data-image-index="N"><figcaption>...</figcaption></figure>
+- Place it immediately after the paragraph of text it relates to — not at the end
+- Write a figcaption that explains: what the image shows, what the student should notice, and how it connects to the concept being explained. Minimum 2 sentences.
+- Also write a short paragraph BEFORE the figure that introduces what the student is about to see
+
+TYPE 2 — TABLE (data table, comparison table, classification table):
+- Embed it using the figure placeholder AND recreate the full data as an HTML <table> with proper <thead> and <tbody> directly below the figure
+- The HTML table is the primary learning tool — the image is a backup reference
+- If the table was corrupted in PDF extraction, reconstruct it from your knowledge of the subject
+
+TYPE 3 — IMAGE OF MATH, FORMULA, OR WORKED EXAMPLE:
+- Transcribe every equation and expression you can see into proper HTML
+- Work through the problem completely using the math-stepper format
+- Embed the image using the figure placeholder as a visual reference
+- figcaption should read: "Source material: [brief description of what the image shows]"
+
+TYPE 4 — SCREENSHOT OF TEXT or HANDWRITTEN NOTES:
+- Transcribe the full text content first
+- Then embed the image using the figure placeholder
+- figcaption should describe what kind of text it is (e.g. "Handwritten definition from source material")
+
+TYPE 5 — DECORATIVE IMAGE (stock photo, purely aesthetic, no educational content):
+- Skip entirely. Do not use a figure placeholder for decorative images.
+- Do not mention that you skipped it.
+
+FIGCAPTION RULES (apply to all types):
+- Never write generic captions like "Figure 1" or "Image showing..."
+- Always explain what the student should understand FROM the image
+- Connect it explicitly to the concept in the surrounding text
+
+PLACEMENT RULE:
+- Place each figure placeholder in the exact location within the notes where it is most contextually relevant
+- Never dump all figures at the end of a section
+- If you cannot determine where an image belongs, place it at the start of the section most related to its content
 
 CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
