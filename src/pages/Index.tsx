@@ -491,6 +491,18 @@ function Workspace() {
         // Update folder to the book-level folder path for auto-save
         pendingMetaRef.current.folder = buildFolderPath(data.folder, cd.bookTitle);
 
+        // Compute page range for image extraction from chapter boundaries
+        const firstChapterObj = cd.allChapters[0];
+        const secondChapterObj = cd.allChapters.length > 1 ? cd.allChapters[1] : null;
+        const chapterPageRange = firstChapterObj?.startPage
+          ? {
+              start: firstChapterObj.startPage,
+              end: secondChapterObj?.startPage
+                ? secondChapterObj.startPage - 1
+                : firstChapterObj.startPage + 50, // fallback: ~50 pages
+            }
+          : undefined;
+
         // Generate first chapter on the workspace (live stream)
         generate({
           textContent: cd.textContent,
@@ -503,6 +515,8 @@ function Workspace() {
           tags: data.tags,
           shouldSaveToLibrary: data.shouldSaveToLibrary,
           chapterContext: cd.chapterContext,
+          sourceFile: cd.sourceFile,
+          chapterPageRange,
         });
 
         // Kick off background chapters (chapters 1+)

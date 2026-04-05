@@ -34,6 +34,10 @@ export interface GenerateOptions {
   shouldSaveToLibrary?: boolean;
   /** When generating notes for a single chapter of a larger document */
   chapterContext?: ChapterContext;
+  /** Original PDF file for chapter-mode image extraction */
+  sourceFile?: File;
+  /** Page range to constrain image extraction (1-indexed, inclusive) */
+  chapterPageRange?: { start: number; end: number };
 }
 
 export function useNoteGeneration() {
@@ -151,6 +155,35 @@ export function useNoteGeneration() {
                 );
               }
             }
+          }
+        }
+      }
+
+      // Chapter mode: extract images from the source PDF for the chapter's page range
+      if (opts.sourceFile && encodedImages.length === 0) {
+        const remainingBudget = MAX_IMAGES - encodedImages.length;
+        if (remainingBudget > 0) {
+          try {
+            setUploadProgress("Scanning chapter pages for images...");
+            const pdfImages = await extractPdfImages(
+              opts.sourceFile,
+              encodedImages.length,
+              {
+                maxImages: remainingBudget,
+                pageRange: opts.chapterPageRange,
+                onProgress: (phase, current, total) => {
+                  setUploadProgress(`${phase} (${current}/${total})`);
+                },
+              },
+            );
+            if (pdfImages.length > 0) {
+              encodedImages = [...encodedImages, ...pdfImages];
+              console.log(
+                `[NoteGen] Extracted ${pdfImages.length} chapter page images from "${opts.sourceFile.name}"`,
+              );
+            }
+          } catch (err) {
+            console.warn("[NoteGen] Chapter image extraction failed:", err);
           }
         }
       }

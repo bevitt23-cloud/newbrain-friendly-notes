@@ -28,6 +28,8 @@ export interface ChapterGenerateData {
   allChapters: DetectedChapter[];
   /** Book title */
   bookTitle: string;
+  /** Original PDF file for image extraction */
+  sourceFile: File;
 }
 
 interface ContentUploaderProps {
@@ -276,6 +278,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         backgroundChapters,
         allChapters: selectedChapters,
         bookTitle,
+        sourceFile: files[0],
       };
 
       onGenerate({ textContent: firstChapter.text, chapterData, ...common });
