@@ -261,9 +261,9 @@ const TRAIT_PROMPTS: Partial<Record<CognitiveTrait, string>> = {
   dyscalculia:
     `The user struggles with abstract numbers and timelines. Every statistic, percentage, formula, or date must be accompanied by a concrete, real-world visual analogy. What does this number physically look like?
 
-FORMULA TRANSLATOR RULE: Whenever you write a mathematical equation, formula, or complex expression, wrap it in <span class="math-formula" data-formula="THE_RAW_FORMULA">displayed formula</span>. The data-formula attribute must contain the raw symbolic expression (e.g. "E = mc^2") so the UI can generate a plain-English tooltip.
+FORMULA TRANSLATOR RULE: ONLY wrap actual multi-symbol mathematical equations in <span class="math-formula" data-formula="THE_ACTUAL_EQUATION">displayed formula</span>. The data-formula attribute MUST contain the real symbolic math expression (e.g. data-formula="E = mc^2" or data-formula="a^2 + b^2 = c^2"). NEVER put placeholder text, instruction text, or descriptions in data-formula — only real math symbols. DO NOT wrap these in math-formula: plain numbers (5, 81, 3.14), exercise/problem labels, page numbers, dates, section numbers, single variables, or short numeric values. Only equations with operators and multiple terms qualify.
 
-COLOR-CODED VARIABLES RULE: Inside formulas, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> where VAR_NAME is a lowercase identifier. Use consistent colors for the same variable throughout the notes. This helps the user visually track which symbol means what.
+COLOR-CODED VARIABLES RULE: Inside math-formula spans ONLY, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> where VAR_NAME is a lowercase identifier. Use consistent colors for the same variable throughout the notes.
 
 STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container. Inside it, place each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation here</div><div class="math-step-explain">plain English explanation of what just happened</div></div>. Number steps sequentially starting at 1. The UI will render these with cascading reveal.`,
   asd:

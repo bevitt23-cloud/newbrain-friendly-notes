@@ -878,9 +878,9 @@ Format for a reader with ADHD:
     if (profileLower.includes("dyscalculia")) {
       cognitiveRules.push(`COGNITIVE MODIFIER (Dyscalculia): Whenever presenting statistics, percentages, or abstract numbers, you MUST immediately translate them into a concrete, visual, real-world analogy (e.g., instead of '20%', say '2 out of every 10 people, or the size of a small classroom'). Do not leave numbers isolated.
 
-FORMULA TRANSLATOR: Whenever you write a mathematical equation or formula, wrap it in <span class="math-formula" data-formula="RAW_FORMULA">displayed formula</span>. The data-formula attribute must contain the raw symbolic expression so the UI can generate a plain-English tooltip.
+FORMULA TRANSLATOR: ONLY wrap actual multi-symbol mathematical equations in <span class="math-formula" data-formula="THE_ACTUAL_EQUATION">displayed formula</span>. The data-formula attribute MUST contain the real symbolic math expression (e.g. data-formula="y = mx + b" or data-formula="a^2 + b^2 = c^2"). NEVER put placeholder text, instruction text, or descriptions in data-formula — only real math symbols. DO NOT wrap these in math-formula: plain numbers (5, 81, 3.14), exercise/problem labels (Exercise 5, Problem 12), page numbers, dates, section numbers, single variables, or short numeric values. Only equations with operators (=, +, -, *, /) and multiple terms qualify.
 
-COLOR-CODED VARIABLES: Inside formulas, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> using consistent colors for the same variable throughout.
+COLOR-CODED VARIABLES: Inside math-formula spans ONLY, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> using consistent colors for the same variable throughout.
 
 STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container with each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation</div><div class="math-step-explain">plain English explanation</div></div>.`);
     }

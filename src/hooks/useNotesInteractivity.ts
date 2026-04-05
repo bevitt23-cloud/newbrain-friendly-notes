@@ -21,6 +21,20 @@ export function useNotesInteractivity(containerRef: React.RefObject<HTMLDivEleme
       const formula = formulaEl.getAttribute("data-formula") || formulaEl.textContent || "";
       if (!formula.trim()) return;
 
+      // Guard: skip if data-formula is placeholder text, instruction text, or not a real equation
+      const f = formula.trim().toLowerCase();
+      if (
+        f.length < 3 ||
+        /^(raw_formula|the_raw_formula|the_actual_equation|formula|equation|value|expression)/i.test(f) ||
+        /^[\d.,\s]+$/.test(f) || // plain numbers like "81" or "3.14"
+        !/[=+\-*/^()√∑∫]/.test(f) // no math operators = not a real equation
+      ) {
+        // Not a real formula — strip the pill styling instead of showing tooltip
+        formulaEl.classList.remove("math-formula");
+        formulaEl.removeAttribute("data-formula");
+        return;
+      }
+
       // If tooltip already exists, toggle it off
       const existingTooltip = formulaEl.querySelector(".formula-tooltip");
       if (existingTooltip) {
