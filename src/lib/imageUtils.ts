@@ -14,7 +14,7 @@ const IMAGE_MIME_TYPES = new Set([
 ]);
 
 /** Max images per generation request (Claude supports up to 20) */
-export const MAX_IMAGES = 10;
+export const MAX_IMAGES = 20;
 
 /** Max dimension in pixels for the longest edge */
 const MAX_DIMENSION = 1024;

@@ -39,14 +39,17 @@ const TEXT_OPS = new Set([
 ]);
 
 /**
- * Minimum ratio of vector draw ops to text ops for a page to qualify as
- * "vector-heavy" (likely contains a graph/diagram drawn with paths).
- * A page with 50 draw ops and 10 text ops has ratio 5.0 → qualifies.
- * A page with 5 draw ops and 100 text ops has ratio 0.05 → text-heavy, skip.
+ * A page qualifies as having visuals if EITHER condition is met:
+ * 1. High absolute vector ops (≥ VECTOR_ABS_THRESHOLD) — the page has
+ *    substantial drawing regardless of text. Catches math pages with
+ *    a graph + lots of surrounding explanation text.
+ * 2. High vector-to-text ratio (≥ VECTOR_RATIO_THRESHOLD) with at least
+ *    MIN_VECTOR_OPS — the page is mostly drawing. Catches full-page
+ *    diagrams with minimal text labels.
  */
-const VECTOR_RATIO_THRESHOLD = 0.8;
-/** Minimum absolute vector ops to avoid false-positiving on simple borders/lines. */
-const MIN_VECTOR_OPS = 20;
+const VECTOR_ABS_THRESHOLD = 30;
+const VECTOR_RATIO_THRESHOLD = 0.3;
+const MIN_VECTOR_OPS = 15;
 
 export interface PdfImageExtractionOptions {
   /** Max images to return (shared budget with standalone uploads). Default 10. */
@@ -89,7 +92,7 @@ async function detectPagesWithVisuals(
         continue; // no need to check vectors — already qualifies
       }
 
-      // Check 2: page is vector-heavy (likely a graph/diagram/chart)
+      // Check 2: page has meaningful vector drawing (graphs, diagrams, charts)
       let vectorOps = 0;
       let textOps = 0;
       for (const op of ops.fnArray) {
@@ -97,8 +100,14 @@ async function detectPagesWithVisuals(
         else if (TEXT_OPS.has(op)) textOps++;
       }
 
-      if (vectorOps >= MIN_VECTOR_OPS) {
-        // Ratio check: high vector-to-text ratio means the page is mostly drawing
+      // Condition A: high absolute vector ops — page has substantial drawing
+      // even if there's also lots of text (e.g., algebra page with a graph
+      // and a full paragraph of explanation)
+      if (vectorOps >= VECTOR_ABS_THRESHOLD) {
+        visualPages.push(i);
+      }
+      // Condition B: moderate vectors with high ratio — page is mostly drawing
+      else if (vectorOps >= MIN_VECTOR_OPS) {
         const ratio = textOps > 0 ? vectorOps / textOps : vectorOps;
         if (ratio >= VECTOR_RATIO_THRESHOLD) {
           visualPages.push(i);
