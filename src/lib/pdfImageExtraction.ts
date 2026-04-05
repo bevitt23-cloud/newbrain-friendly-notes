@@ -7,7 +7,7 @@ import { OPS } from "pdfjs-dist";
 import { createEncodedImage, type EncodedImage } from "@/lib/imageUtils";
 
 /** Opcodes that indicate a page contains an embedded raster image. */
-const IMAGE_OPS = new Set([
+const RASTER_IMAGE_OPS = new Set([
   OPS.paintImageXObject,
   OPS.paintInlineImageXObject,
   OPS.paintImageMaskXObject,
@@ -16,6 +16,37 @@ const IMAGE_OPS = new Set([
   OPS.paintImageMaskXObjectGroup,
   OPS.paintImageMaskXObjectRepeat,
 ]);
+
+/** Opcodes for vector drawing — graphs, diagrams, shapes drawn with paths. */
+const VECTOR_DRAW_OPS = new Set([
+  OPS.constructPath,
+  OPS.stroke,
+  OPS.closeStroke,
+  OPS.fill,
+  OPS.eoFill,
+  OPS.fillStroke,
+  OPS.eoFillStroke,
+  OPS.closeFillStroke,
+  OPS.closeEOFillStroke,
+]);
+
+/** Opcodes for text rendering. */
+const TEXT_OPS = new Set([
+  OPS.showText,
+  OPS.showSpacedText,
+  OPS.nextLineShowText,
+  OPS.nextLineSetSpacingShowText,
+]);
+
+/**
+ * Minimum ratio of vector draw ops to text ops for a page to qualify as
+ * "vector-heavy" (likely contains a graph/diagram drawn with paths).
+ * A page with 50 draw ops and 10 text ops has ratio 5.0 → qualifies.
+ * A page with 5 draw ops and 100 text ops has ratio 0.05 → text-heavy, skip.
+ */
+const VECTOR_RATIO_THRESHOLD = 0.8;
+/** Minimum absolute vector ops to avoid false-positiving on simple borders/lines. */
+const MIN_VECTOR_OPS = 20;
 
 export interface PdfImageExtractionOptions {
   /** Max images to return (shared budget with standalone uploads). Default 10. */
@@ -32,16 +63,18 @@ const JPEG_QUALITY = 0.75;
 // ── Detection ──────────────────────────────────────────────────────
 
 /**
- * Scan PDF pages and return 1-indexed page numbers that contain embedded images.
+ * Scan PDF pages and return 1-indexed page numbers that contain visual content.
+ * Detects both raster images (embedded PNGs/JPEGs) AND vector-heavy pages
+ * (graphs, diagrams, charts drawn with PDF path operators).
  * Uses getOperatorList() which is fast — no rendering involved.
  */
-async function detectPagesWithImages(
+async function detectPagesWithVisuals(
   pdf: pdfjsLib.PDFDocumentProxy,
   startPage: number,
   endPage: number,
   onProgress?: (current: number, total: number) => void,
 ): Promise<number[]> {
-  const imagePages: number[] = [];
+  const visualPages: number[] = [];
   const total = endPage - startPage + 1;
 
   for (let i = startPage; i <= endPage; i++) {
@@ -49,12 +82,29 @@ async function detectPagesWithImages(
       const page = await pdf.getPage(i);
       const ops = await page.getOperatorList();
 
-      const hasImage = ops.fnArray.some((op: number) => IMAGE_OPS.has(op));
-      if (hasImage) {
-        imagePages.push(i);
+      // Check 1: page has raster images
+      const hasRasterImage = ops.fnArray.some((op: number) => RASTER_IMAGE_OPS.has(op));
+      if (hasRasterImage) {
+        visualPages.push(i);
+        continue; // no need to check vectors — already qualifies
+      }
+
+      // Check 2: page is vector-heavy (likely a graph/diagram/chart)
+      let vectorOps = 0;
+      let textOps = 0;
+      for (const op of ops.fnArray) {
+        if (VECTOR_DRAW_OPS.has(op)) vectorOps++;
+        else if (TEXT_OPS.has(op)) textOps++;
+      }
+
+      if (vectorOps >= MIN_VECTOR_OPS) {
+        // Ratio check: high vector-to-text ratio means the page is mostly drawing
+        const ratio = textOps > 0 ? vectorOps / textOps : vectorOps;
+        if (ratio >= VECTOR_RATIO_THRESHOLD) {
+          visualPages.push(i);
+        }
       }
     } catch (err) {
-      // Skip corrupted/unreadable pages instead of aborting the entire scan
       console.warn(`[PDF Images] Skipping page ${i} (getOperatorList failed):`, err);
     }
 
@@ -66,7 +116,7 @@ async function detectPagesWithImages(
   }
 
   onProgress?.(total, total);
-  return imagePages;
+  return visualPages;
 }
 
 // ── Selection ──────────────────────────────────────────────────────
@@ -161,7 +211,7 @@ export async function extractPdfImages(
     const endPage = Math.min(pageRange?.end ?? pdf.numPages, pdf.numPages);
 
     // 2. Detect pages with images
-    const imagePages = await detectPagesWithImages(
+    const imagePages = await detectPagesWithVisuals(
       pdf,
       startPage,
       endPage,
@@ -169,12 +219,12 @@ export async function extractPdfImages(
     );
 
     if (imagePages.length === 0) {
-      console.log(`[PDF Images] No image pages found in "${file.name}" (pages ${startPage}-${endPage})`);
+      console.log(`[PDF Images] No visual pages found in "${file.name}" (pages ${startPage}-${endPage})`);
       return [];
     }
 
     console.log(
-      `[PDF Images] Found ${imagePages.length} pages with images in "${file.name}". Budget: ${maxImages}.`,
+      `[PDF Images] Found ${imagePages.length} pages with visuals in "${file.name}". Budget: ${maxImages}.`,
     );
 
     // 3. Select pages within budget
