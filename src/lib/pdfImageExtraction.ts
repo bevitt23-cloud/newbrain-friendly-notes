@@ -45,12 +45,17 @@ async function detectPagesWithImages(
   const total = endPage - startPage + 1;
 
   for (let i = startPage; i <= endPage; i++) {
-    const page = await pdf.getPage(i);
-    const ops = await page.getOperatorList();
+    try {
+      const page = await pdf.getPage(i);
+      const ops = await page.getOperatorList();
 
-    const hasImage = ops.fnArray.some((op: number) => IMAGE_OPS.has(op));
-    if (hasImage) {
-      imagePages.push(i);
+      const hasImage = ops.fnArray.some((op: number) => IMAGE_OPS.has(op));
+      if (hasImage) {
+        imagePages.push(i);
+      }
+    } catch (err) {
+      // Skip corrupted/unreadable pages instead of aborting the entire scan
+      console.warn(`[PDF Images] Skipping page ${i} (getOperatorList failed):`, err);
     }
 
     // Yield every 50 pages to keep the UI responsive
@@ -102,23 +107,25 @@ async function renderPageAsImage(
   canvas.width = Math.floor(viewport.width);
   canvas.height = Math.floor(viewport.height);
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not get 2D canvas context");
+  try {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not get 2D canvas context");
 
-  // White background so transparent areas don't render as black
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // White background so transparent areas don't render as black
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({ canvasContext: ctx, viewport }).promise;
 
-  const dataUrl = canvas.toDataURL("image/jpeg", quality);
-  const base64 = dataUrl.split(",")[1];
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    const base64 = dataUrl.split(",")[1];
 
-  // Release canvas memory
-  canvas.width = 0;
-  canvas.height = 0;
-
-  return { data: base64, mimeType: "image/jpeg" };
+    return { data: base64, mimeType: "image/jpeg" };
+  } finally {
+    // Always release canvas memory
+    canvas.width = 0;
+    canvas.height = 0;
+  }
 }
 
 // ── Orchestrator ───────────────────────────────────────────────────
@@ -149,60 +156,63 @@ export async function extractPdfImages(
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-  const startPage = pageRange?.start ?? 1;
-  const endPage = Math.min(pageRange?.end ?? pdf.numPages, pdf.numPages);
+  try {
+    const startPage = pageRange?.start ?? 1;
+    const endPage = Math.min(pageRange?.end ?? pdf.numPages, pdf.numPages);
 
-  // 2. Detect pages with images
-  const imagePages = await detectPagesWithImages(
-    pdf,
-    startPage,
-    endPage,
-    (current, total) => onProgress?.("Scanning pages for images…", current, total),
-  );
+    // 2. Detect pages with images
+    const imagePages = await detectPagesWithImages(
+      pdf,
+      startPage,
+      endPage,
+      (current, total) => onProgress?.("Scanning pages for images…", current, total),
+    );
 
-  if (imagePages.length === 0) {
-    console.log(`[PDF Images] No image pages found in "${file.name}" (pages ${startPage}-${endPage})`);
+    if (imagePages.length === 0) {
+      console.log(`[PDF Images] No image pages found in "${file.name}" (pages ${startPage}-${endPage})`);
+      return [];
+    }
+
+    console.log(
+      `[PDF Images] Found ${imagePages.length} pages with images in "${file.name}". Budget: ${maxImages}.`,
+    );
+
+    // 3. Select pages within budget
+    const selected = selectPages(imagePages, maxImages);
+    console.log(`[PDF Images] Rendering ${selected.length} pages: [${selected.join(", ")}]`);
+
+    // 4. Render selected pages
+    const results: EncodedImage[] = [];
+
+    for (let i = 0; i < selected.length; i++) {
+      const pageNum = selected[i];
+      onProgress?.("Rendering page images…", i + 1, selected.length);
+
+      try {
+        const page = await pdf.getPage(pageNum);
+        const { data, mimeType } = await renderPageAsImage(page);
+        results.push(
+          createEncodedImage(
+            data,
+            mimeType,
+            `${file.name} — Page ${pageNum}`,
+            startIndex + i,
+          ),
+        );
+      } catch (err) {
+        console.warn(`[PDF Images] Failed to render page ${pageNum}:`, err);
+      }
+
+      // Yield to main thread between renders
+      if (i % 3 === 2) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+    }
+
+    console.log(`[PDF Images] Extracted ${results.length} page images from "${file.name}"`);
+    return results;
+  } finally {
+    // Always destroy PDF document to prevent memory leaks
     pdf.destroy();
-    return [];
   }
-
-  console.log(
-    `[PDF Images] Found ${imagePages.length} pages with images in "${file.name}". Budget: ${maxImages}.`,
-  );
-
-  // 3. Select pages within budget
-  const selected = selectPages(imagePages, maxImages);
-  console.log(`[PDF Images] Rendering ${selected.length} pages: [${selected.join(", ")}]`);
-
-  // 4. Render selected pages
-  const results: EncodedImage[] = [];
-
-  for (let i = 0; i < selected.length; i++) {
-    const pageNum = selected[i];
-    onProgress?.("Rendering page images…", i + 1, selected.length);
-
-    try {
-      const page = await pdf.getPage(pageNum);
-      const { data, mimeType } = await renderPageAsImage(page);
-      results.push(
-        createEncodedImage(
-          data,
-          mimeType,
-          `${file.name} — Page ${pageNum}`,
-          startIndex + i,
-        ),
-      );
-    } catch (err) {
-      console.warn(`[PDF Images] Failed to render page ${pageNum}:`, err);
-    }
-
-    // Yield to main thread between renders
-    if (i % 3 === 2) {
-      await new Promise((r) => setTimeout(r, 0));
-    }
-  }
-
-  pdf.destroy();
-  console.log(`[PDF Images] Extracted ${results.length} page images from "${file.name}"`);
-  return results;
 }

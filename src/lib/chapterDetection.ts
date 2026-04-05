@@ -256,7 +256,7 @@ function extractTocEntries(tocText: string): TocEntry[] {
     if (m) {
       const num = parseInt(m[1], 10);
       // Clean: strip trailing page numbers, author names after long spaces, etc.
-      let title = m[2].trim()
+      const title = m[2].trim()
         .replace(/\s{3,}.*$/, "")         // strip anything after 3+ spaces (authors, page nums)
         .replace(/\s+\d{1,4}\s*$/, "")    // strip trailing page numbers
         .replace(/[.:—–-]+$/, "")          // strip trailing punctuation

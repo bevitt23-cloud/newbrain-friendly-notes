@@ -125,14 +125,19 @@ const CognitiveWizard = () => {
         studyTools: selectedStudyTools,
       },
     };
-    await supabase
+    const { error: prefsError } = await supabase
       .from("cognitive_profiles" as any)
       .update({ wizard_answers: checkoutPrefs })
       .eq("user_id", user.id);
 
+    if (prefsError) {
+      console.error("[Wizard] Failed to save checkout preferences:", prefsError);
+      toast.warning("Profile saved, but some preferences could not be stored.");
+    }
+
     // 3. Insert welcome note into saved_notes
     const welcomeHtml = ONBOARDING_VARIANTS[activeVariantKey] || ONBOARDING_VARIANTS.standard;
-    const { data: noteData } = await supabase
+    const { data: noteData, error: noteError } = await supabase
       .from("saved_notes")
       .insert({
         user_id: user.id,
@@ -145,10 +150,14 @@ const CognitiveWizard = () => {
       .select("id")
       .single();
 
+    if (noteError) {
+      console.error("[Wizard] Failed to save welcome note:", noteError);
+    }
+
     setSaving(false);
     toast.success("Profile saved! Opening your welcome note...");
 
-    // 4. Redirect to the welcome note
+    // 4. Redirect to the welcome note (or home if note save failed)
     if (noteData?.id) {
       navigate("/library/study", {
         state: { notesHtml: welcomeHtml, noteTitle: "Welcome to Brain-Friendly Notes" },

@@ -327,7 +327,7 @@ const GeneratedNotes = ({
               <style>
                 body { max-width: 720px; margin: 40px auto; padding: 0 24px; }
                 @media print { body { margin: 0; } section { break-inside: avoid; } }
-              </style></head><body><div class="generated-notes">${html}</div></body></html>`);
+              </style></head><body><div class="generated-notes">${processedHtml}</div></body></html>`);
             printWindow.document.close();
             setTimeout(() => printWindow.print(), 500);
           }}>

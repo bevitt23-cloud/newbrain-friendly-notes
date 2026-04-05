@@ -5,7 +5,7 @@ import { getAuthUser, unauthorizedResponse } from "../_shared/auth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 function getYouTubeVideoId(url: string): string | null {
@@ -117,6 +117,30 @@ function normalizeWebsiteUrl(input: string): string | null {
     if (!["http:", "https:"].includes(parsed.protocol)) return null;
     if (!parsed.hostname) return null;
     if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") return null;
+
+    // SSRF protection: block private/internal IP ranges and cloud metadata endpoints
+    const h = parsed.hostname.toLowerCase();
+    if (
+      h === "localhost" ||
+      h === "[::1]" ||
+      h.endsWith(".internal") ||
+      h.endsWith(".local") ||
+      h === "metadata.google.internal" ||
+      /^127\./.test(h) ||
+      /^10\./.test(h) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(h) ||
+      /^192\.168\./.test(h) ||
+      /^169\.254\./.test(h) ||
+      /^0\./.test(h) ||
+      h === "metadata" ||
+      h === "metadata.google" ||
+      h.startsWith("fd") || // IPv6 private
+      h.startsWith("fe80") // IPv6 link-local
+    ) {
+      console.warn(`[SSRF] Blocked private/internal URL: ${h}`);
+      return null;
+    }
+
     return parsed.toString();
   } catch {
     return null;
@@ -341,19 +365,28 @@ serve(async (req) => {
     const contentParts: any[] = [];
 
     // ── Handle uploaded images (vision input) ──
+    const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+    const MAX_IMAGE_BASE64_LEN = 10 * 1024 * 1024; // ~7.5MB decoded
     const hasImages = Array.isArray(images) && images.length > 0;
     if (hasImages) {
       console.log(`[generate-notes] Received ${images.length} image(s) for vision processing`);
-      // Add each image as an image_url content part (OpenAI format — callAI converts for Claude)
       for (const img of images.slice(0, 10)) {
-        if (img.data && img.mimeType) {
-          contentParts.push({
-            type: "image_url",
-            image_url: {
-              url: `data:${img.mimeType};base64,${img.data}`,
-            },
-          });
+        if (!img.data || typeof img.data !== "string") continue;
+        if (img.data.length > MAX_IMAGE_BASE64_LEN) {
+          console.warn(`[generate-notes] Skipping oversized image (${(img.data.length / 1024 / 1024).toFixed(1)}MB)`);
+          continue;
         }
+        const mime = typeof img.mimeType === "string" ? img.mimeType.toLowerCase() : "";
+        if (!ALLOWED_IMAGE_MIMES.has(mime)) {
+          console.warn(`[generate-notes] Skipping image with invalid MIME: ${mime}`);
+          continue;
+        }
+        contentParts.push({
+          type: "image_url",
+          image_url: {
+            url: `data:${mime};base64,${img.data}`,
+          },
+        });
       }
     }
 
@@ -744,8 +777,9 @@ serve(async (req) => {
     // Handle plain text content
     if (textContent && typeof textContent === "string" && textContent.trim()) {
       const trimmed = textContent.slice(0, 100000);
-      // Detect if content comes from an uploaded document vs raw pasted text
-      const isUploadedDoc = trimmed.includes("--- Content from ") && /\.(pdf|docx?|pptx?|txt|md|csv)/i.test(trimmed.slice(0, 500));
+      // Detect if content comes from an uploaded document vs raw pasted text.
+      // Check specifically for the client-side extraction marker at the START of the text.
+      const isUploadedDoc = /^--- Content from .+\.(pdf|docx?|pptx?|txt|md|csv) ---/im.test(trimmed.slice(0, 300));
       const contentLabel = isUploadedDoc
         ? "Uploaded document content (DO NOT apply web content filtering)"
         : "Pasted text content";

@@ -74,11 +74,10 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
           wrapper.appendChild(feedbackDiv);
         }
         feedbackDiv.innerHTML = sanitizeHtml(feedback);
+        target.textContent = "Check Again";
       } catch {
         target.textContent = "Check";
-        target.removeAttribute("disabled");
       }
-      target.textContent = "Check Again";
       target.removeAttribute("disabled");
     }
 
@@ -107,11 +106,10 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
           wrapper.appendChild(feedbackDiv);
         }
         feedbackDiv.innerHTML = sanitizeHtml(feedback);
+        target.textContent = "Try Again";
       } catch {
         target.textContent = "Check My Understanding";
-        target.removeAttribute("disabled");
       }
-      target.textContent = "Try Again";
       target.removeAttribute("disabled");
     }
   }, []);
