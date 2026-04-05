@@ -582,7 +582,7 @@ body.dyslexia-active .generated-notes {
 
 /* ── Embedded images (expandable thumbnails) ── */
 .generated-notes .note-image {
-  @apply my-4 mx-auto max-w-sm rounded-xl overflow-hidden border border-border/50 shadow-sm relative;
+  @apply my-4 mx-auto max-w-2xl rounded-xl overflow-hidden border border-border/50 shadow-sm relative;
   background: hsl(var(--muted) / 0.3);
   transition: transform 0.15s, box-shadow 0.15s;
   cursor: pointer;
@@ -612,7 +612,7 @@ body.dyslexia-active .generated-notes {
 }
 .generated-notes .note-image-thumb {
   @apply w-full cursor-pointer;
-  max-height: 280px;
+  max-height: 420px;
   object-fit: contain;
 }
 .generated-notes .note-image figcaption {

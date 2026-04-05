@@ -57,7 +57,7 @@ export interface PdfImageExtractionOptions {
   onProgress?: (phase: string, current: number, total: number) => void;
 }
 
-const DEFAULT_MAX_DIM = 1024;
+const DEFAULT_MAX_DIM = 1536;
 const JPEG_QUALITY = 0.75;
 
 // ── Detection ──────────────────────────────────────────────────────
