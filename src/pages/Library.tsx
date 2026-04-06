@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Folder, Star, FileText, BookOpen, Search, MoreVertical, Trash2,
+  Folder, Star, FileText, BookOpen, MoreVertical, Trash2,
   Eye, RotateCcw, GraduationCap, CheckSquare, Square, Sparkles, ExternalLink,
-  Map, GitBranch, Layers, MessageCircle, FolderOpen, MoveRight,
-  CheckCheck, FolderPlus, Plus, Pencil,
+  Map, GitBranch, Layers, MessageCircle, MoveRight,
+  CheckCheck, Menu,
 } from "lucide-react";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
 import {
@@ -21,9 +21,14 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFunFacts } from "@/hooks/useFunFacts";
 import { DEFAULT_FOLDER } from "@/lib/constants";
+import { matchesFolderOrDescendant } from "@/lib/folderUtils";
+import FolderTree from "@/components/library/FolderTree";
+import LibraryHeader from "@/components/library/LibraryHeader";
+import NoteCard from "@/components/library/NoteCard";
 
 interface SavedNote {
   id: string;
@@ -61,6 +66,15 @@ const Library = () => {
   const [search, setSearch] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    return (localStorage.getItem("library-view-mode") as "grid" | "list") || "grid";
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleViewModeChange = (mode: "grid" | "list") => {
+    setViewMode(mode);
+    localStorage.setItem("library-view-mode", mode);
+  };
 
   const PAGE_SIZE = 20;
   const [visibleNoteCount, setVisibleNoteCount] = useState(PAGE_SIZE);
@@ -175,7 +189,7 @@ const Library = () => {
       const matchTag = !search || (item.tags || []).some((t) => t.toLowerCase().includes(searchLower.replace(/^#/, "")));
       const matchSearch = matchTitle || matchTag;
       const matchFavorite = !showFavoritesOnly || item.is_favorite;
-      const matchFolder = !selectedFolder || item.folder === selectedFolder;
+      const matchFolder = matchesFolderOrDescendant(item.folder || "", selectedFolder);
       return matchSearch && matchFavorite && matchFolder;
     });
   };
@@ -192,6 +206,18 @@ const Library = () => {
   // Derive folders dynamically from saved notes (excluding placeholder metadata records)
   const usedFolders = Array.from(new Set(notes.map((n) => n.folder).filter(Boolean)));
   const allFolders = usedFolders.includes(DEFAULT_FOLDER) ? usedFolders : [DEFAULT_FOLDER, ...usedFolders];
+
+  // Build folder counts for the tree component
+  const folderCounts: Record<string, number> = {};
+  for (const n of notes) {
+    if (n.title === ".folder_metadata") {
+      // Ensure empty folders appear in the tree
+      if (!folderCounts[n.folder]) folderCounts[n.folder] = 0;
+    } else {
+      folderCounts[n.folder] = (folderCounts[n.folder] || 0) + 1;
+    }
+  }
+  const totalNoteCount = notes.filter((n) => n.title !== ".folder_metadata").length;
 
   // Bulk action handlers
   const handleBulkDelete = async () => {
@@ -355,54 +381,49 @@ const Library = () => {
 
   if (authLoading) return null;
 
+  const folderSidebarContent = (
+    <FolderTree
+      folderCounts={folderCounts}
+      totalNoteCount={totalNoteCount}
+      selectedFolder={selectedFolder}
+      onSelect={(f) => { setSelectedFolder(f); setSidebarOpen(false); }}
+      onRename={(oldName) => {
+        setRenameFolderOldName(oldName);
+        setRenameFolderNewName(oldName);
+        setRenameFolderDialogOpen(true);
+      }}
+      onDelete={(name) => {
+        setDeleteFolderTarget(name);
+        setDeleteFolderDialogOpen(true);
+      }}
+      onCreate={() => setNewFolderDialogOpen(true)}
+    />
+  );
+
   return (
     <Layout>
-      <div className="container max-w-5xl py-8">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">My Library</h1>
-            <p className="text-sm text-muted-foreground">Your saved notes & study materials</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="library-search"
-                name="librarySearch"
-                placeholder="Search by title or #tag..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 w-48"
-              />
-            </div>
-            <Button
-              variant={showFavoritesOnly ? "default" : "outline"}
-              size="icon"
-              onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-              title="Favorites"
-              className="bg-teal-50 dark:bg-muted"
-            >
-              <Star className={`h-4 w-4 ${showFavoritesOnly ? "fill-current" : ""}`} />
-            </Button>
-            <Button
-              variant={selectMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-              setSelectMode(!selectMode);
-              setSelectStep("notes");
-              setSelectedTools(new Set());
-              if (selectMode) {
-                setSelectedNoteIds(new Set());
-                setSelectedMaterialIds(new Set());
-              }
-              }}
-              className="gap-1.5"
-            >
-              <CheckSquare className="h-4 w-4" />
-              {selectMode ? "Cancel" : "Select"}
-            </Button>
-          </div>
-        </div>
+      <div className="container max-w-6xl py-6">
+        <LibraryHeader
+          selectedFolder={selectedFolder}
+          onFolderClick={setSelectedFolder}
+          search={search}
+          onSearchChange={setSearch}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          showFavoritesOnly={showFavoritesOnly}
+          onFavoritesToggle={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          selectMode={selectMode}
+          onSelectModeToggle={() => {
+            setSelectMode(!selectMode);
+            setSelectStep("notes");
+            setSelectedTools(new Set());
+            if (selectMode) {
+              setSelectedNoteIds(new Set());
+              setSelectedMaterialIds(new Set());
+            }
+          }}
+          selectedCount={totalSelected}
+        />
 
         {/* Bulk Action Toolbar */}
         <AnimatePresence>
@@ -497,76 +518,25 @@ const Library = () => {
         </AnimatePresence>
 
         <div className="flex gap-6 flex-col lg:flex-row">
-          {/* Sidebar: Folders */}
-          <aside className="w-full lg:w-56 shrink-0">
-            <div className="rounded-xl border border-border p-4 bg-sage-200 dark:bg-sage-500/15">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Folders</span>
-              <div className="space-y-1">
-                <button
-                  onClick={() => setSelectedFolder(null)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                    !selectedFolder ? "bg-sage-100 text-sage-700 font-medium dark:bg-sage-500/20 dark:text-sage-300" : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  All Folders
-                  <span className="ml-auto text-xs text-muted-foreground">{notes.filter((n) => n.title !== ".folder_metadata").length + materials.length}</span>
-                </button>
-                {allFolders.map((f) => {
-                  const count = notes.filter((n) => n.folder === f && n.title !== ".folder_metadata").length;
-                  const isDefault = f === DEFAULT_FOLDER;
-                  return (
-                    <div key={f} className="group relative flex items-center">
-                      <button
-                        onClick={() => setSelectedFolder(f)}
-                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                          selectedFolder === f ? "bg-sage-100 text-sage-700 font-medium dark:bg-sage-500/20 dark:text-sage-300" : "text-muted-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <Folder className="h-4 w-4" />
-                        <span className="truncate">{f}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{count}</span>
-                      </button>
-                      {!isDefault && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground transition-all">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => {
-                              setRenameFolderOldName(f);
-                              setRenameFolderNewName(f);
-                              setRenameFolderDialogOpen(true);
-                            }}>
-                              <Pencil className="mr-2 h-3.5 w-3.5" /> Rename
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                setDeleteFolderTarget(f);
-                                setDeleteFolderDialogOpen(true);
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
-                  );
-                })}
-                <button
-                  onClick={() => setNewFolderDialogOpen(true)}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  <FolderPlus className="h-4 w-4" />
-                  <span>New Folder</span>
-                </button>
-              </div>
+          {/* Sidebar: Folder Tree — hidden on mobile, shown in sheet */}
+          <aside className="hidden lg:block w-56 shrink-0">
+            <div className="sticky top-20 rounded-xl border border-border/50 bg-card p-3">
+              {folderSidebarContent}
             </div>
           </aside>
+
+          {/* Mobile sidebar toggle */}
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetTrigger asChild>
+              <button className="lg:hidden flex items-center gap-2 rounded-xl border border-border/50 bg-card px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <Menu className="h-4 w-4" />
+                {selectedFolder || "All Folders"}
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-4 pt-10">
+              {folderSidebarContent}
+            </SheetContent>
+          </Sheet>
 
           {/* Main content */}
           <div className="flex-1 min-w-0">
@@ -600,28 +570,39 @@ const Library = () => {
                 {filteredNotes.length === 0 ? (
                   <EmptyState type="notes" />
                 ) : (
-                  <div className="grid gap-3">
+                  <div className={viewMode === "grid"
+                    ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+                    : "flex flex-col gap-2"
+                  }>
                     <AnimatePresence>
                       {filteredNotes.slice(0, visibleNoteCount).map((note) => (
-                        <NoteCard
+                        <motion.div
                           key={note.id}
-                          note={note}
-                          onToggleFavorite={() => toggleNoteFavorite(note)}
-                          onDelete={() => deleteNote(note.id)}
-                          onView={() => viewNote(note)}
-                          onMoveToFolder={(folder) => moveNoteToFolder(note.id, folder)}
-                          allFolders={allFolders}
-                          selectMode={selectMode}
-                          isSelected={selectedNoteIds.has(note.id)}
-                          onToggleSelect={() => toggleNoteSelect(note.id)}
-                        />
+                          layout
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                        >
+                          <NoteCard
+                            note={note}
+                            viewMode={viewMode}
+                            onView={() => viewNote(note)}
+                            onFavorite={() => toggleNoteFavorite(note)}
+                            onDelete={() => deleteNote(note.id)}
+                            onMove={(id, folder) => moveNoteToFolder(id, folder)}
+                            selectMode={selectMode}
+                            selected={selectedNoteIds.has(note.id)}
+                            onToggleSelect={() => toggleNoteSelect(note.id)}
+                            folders={allFolders}
+                          />
+                        </motion.div>
                       ))}
                     </AnimatePresence>
                     {filteredNotes.length > visibleNoteCount && (
                       <Button
                         variant="outline"
                         onClick={() => setVisibleNoteCount((c) => c + PAGE_SIZE)}
-                        className="w-full mt-2"
+                        className={`mt-2 ${viewMode === "grid" ? "col-span-full" : ""}`}
                       >
                         Load more ({filteredNotes.length - visibleNoteCount} remaining)
                       </Button>
@@ -852,97 +833,6 @@ const EmptyState = ({ type }: { type: "notes" | "materials" }) => (
       {type === "notes" ? "Generate notes from the home page to see them here" : "Create flashcards or quizzes to see them here"}
     </p>
   </div>
-);
-
-interface NoteCardProps {
-  note: SavedNote;
-  onToggleFavorite: () => void;
-  onDelete: () => void;
-  onView: () => void;
-  onMoveToFolder: (folder: string) => void;
-  allFolders: string[];
-  selectMode: boolean;
-  isSelected: boolean;
-  onToggleSelect: () => void;
-}
-
-const NoteCard = ({ note, onToggleFavorite, onDelete, onView, onMoveToFolder, allFolders, selectMode, isSelected, onToggleSelect }: NoteCardProps) => (
-  <motion.div
-    layout
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, scale: 0.95 }}
-    className={`group rounded-xl border bg-sage-200 dark:bg-card p-4 shadow-sm hover:shadow-md transition-all ${
-      isSelected ? "border-primary/30 ring-1 ring-primary/20" : "border-border"
-    }`}
-  >
-    <div className="flex items-start justify-between gap-3">
-      {selectMode && (
-        <button onClick={onToggleSelect} className="mt-1 shrink-0">
-          {isSelected ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5 text-muted-foreground" />}
-        </button>
-      )}
-      <div className="min-w-0 flex-1 cursor-pointer" onClick={onView}>
-        <div className="flex items-center gap-2 mb-1">
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{note.learning_mode}</span>
-          {note.folder && note.folder !== DEFAULT_FOLDER && (
-            <span className="rounded-full bg-sage-50 dark:bg-sage-500/10 border border-sage-200 dark:border-sage-200/30 px-2 py-0.5 text-[10px] font-medium text-sage-600 dark:text-sage-300">
-              {note.folder}
-            </span>
-          )}
-        </div>
-        <h3 className="font-semibold text-foreground truncate">{note.title}</h3>
-        {note.content && (
-          <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{note.content.replace(/<[^>]+>/g, "").slice(0, 120)}</p>
-        )}
-        {note.tags && note.tags.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {note.tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-lavender-50 dark:bg-lavender-500/10 border border-lavender-200 dark:border-lavender-200/30 px-2 py-0.5 text-[10px] font-medium text-lavender-500 dark:text-lavender-300">
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-        <p className="mt-2 text-xs text-muted-foreground/60">
-          {new Date(note.updated_at).toLocaleDateString()}
-        </p>
-      </div>
-      <div className="flex items-center gap-1">
-        <button onClick={onView} className="rounded-md p-1.5 text-muted-foreground hover:text-foreground transition-colors" title="View">
-          <Eye className="h-4 w-4" />
-        </button>
-        <button onClick={onToggleFavorite} className="rounded-md p-1.5 text-muted-foreground hover:text-amber-500 transition-colors">
-          <Star className={`h-4 w-4 ${note.is_favorite ? "fill-amber-400 text-amber-400" : ""}`} />
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="rounded-md p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-              <MoreVertical className="h-4 w-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <MoveRight className="mr-2 h-3.5 w-3.5" /> Move to Folder
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                {allFolders.filter((f) => f !== note.folder).map((f) => (
-                  <DropdownMenuItem key={f} onClick={() => onMoveToFolder(f)}>
-                    <Folder className="mr-2 h-3.5 w-3.5" /> {f}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive">
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  </motion.div>
 );
 
 interface MaterialCardProps {
