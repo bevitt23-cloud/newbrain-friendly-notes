@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye } from "lucide-react";
 import { WIZARD_QUESTIONS, deriveTraitsFromAnswers, deriveProfileSettings, TOOL_DETAILS, type CognitiveTrait } from "@/lib/cognitiveRules";
-import { WRITING_STYLE_LABELS, ONBOARDING_VARIANTS, getActiveVariantKey, type WritingStyleKey } from "@/lib/onboardingTemplate";
+import { WRITING_STYLE_LABELS, getActiveVariantKey, buildTutorialNotes, type WritingStyleKey } from "@/lib/onboardingTemplate";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { supabase } from "@/integrations/supabase/client";
 import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
@@ -87,14 +87,19 @@ const CognitiveWizard = () => {
     });
   };
 
-  // Live preview HTML based on selected writing style
+  // Live preview HTML — dynamically assembled from traits + selected add-ons
   const activeVariantKey = useMemo(
     () => getActiveVariantKey(selectedWritingStyles),
     [selectedWritingStyles],
   );
   const activePreviewHtml = useMemo(
-    () => sanitizeHtml(ONBOARDING_VARIANTS[activeVariantKey] || ONBOARDING_VARIANTS.standard),
-    [activeVariantKey],
+    () => sanitizeHtml(buildTutorialNotes({
+      writingStyle: activeVariantKey,
+      traits,
+      addOns: selectedAddOns,
+      uiSettings: selectedUiSettings,
+    })),
+    [activeVariantKey, traits, selectedAddOns, selectedUiSettings],
   );
 
   // Preview CSS classes based on selected UI settings
@@ -149,7 +154,12 @@ const CognitiveWizard = () => {
     }
 
     // 3. Insert welcome note into saved_notes
-    const welcomeHtml = ONBOARDING_VARIANTS[activeVariantKey] || ONBOARDING_VARIANTS.standard;
+    const welcomeHtml = buildTutorialNotes({
+      writingStyle: activeVariantKey,
+      traits,
+      addOns: selectedAddOns,
+      uiSettings: selectedUiSettings,
+    });
     const { data: noteData, error: noteError } = await supabase
       .from("saved_notes")
       .insert({

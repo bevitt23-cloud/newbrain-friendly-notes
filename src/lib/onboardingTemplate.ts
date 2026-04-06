@@ -1,8 +1,19 @@
 /**
- * Pre-written tutorial note variants keyed by AI writing style.
- * The Smart Checkout live preview renders whichever variant(s) the user enables.
- * Each variant uses the same section-color and study-tool markup as real notes.
+ * Modular tutorial note system.
+ *
+ * Instead of 5 static variants, we assemble tutorial notes dynamically from
+ * small HTML blocks based on the user's detected traits, selected add-ons,
+ * writing style, and UI settings. The Smart Checkout live preview calls
+ * `buildTutorialNotes()` so the preview updates instantly when toggles change.
+ *
+ * The tutorial uses "How Memory Works" as a universal demo topic — it has
+ * processes (for flowcharts), numbers (for dyscalculia), vocabulary (for
+ * jargon tooltips), and real-world relevance (for "Why Should I Care").
  */
+
+import type { CognitiveTrait } from "./cognitiveRules";
+
+// ─── Writing styles (kept for backwards compat) ─────────────────
 
 export type WritingStyleKey =
   | "standard"
@@ -34,153 +45,6 @@ export const WRITING_STYLE_LABELS: Record<WritingStyleKey, { name: string; descr
   },
 };
 
-export const ONBOARDING_VARIANTS: Record<WritingStyleKey, string> = {
-  standard: `<div>
-<h1>Welcome to Brain-Friendly Notes</h1>
-
-<section data-section-color="sage">
-  <h2 data-section-color="sage" id="section-1">How Your Notes Work</h2>
-  <p>Every note you generate is <strong>reformatted by AI</strong> into a structure designed for how your brain actually processes information. The colors, spacing, and layout aren't decoration — they're engineered to reduce cognitive load.</p>
-  <p>You'll notice each section has a <strong>distinct background color</strong> that cycles through sage, lavender, peach, sky, and amber. This creates a <span class="jargon" data-definition="A mental reset that happens when your eyes encounter a new visual pattern, helping you stay focused longer">visual reset</span> between topics so your brain doesn't zone out.</p>
-</section>
-
-<section data-section-color="lavender">
-  <h2 data-section-color="lavender" id="section-2">The Text Selection Menu</h2>
-  <p><strong>Highlight any text</strong> in your notes to open the selection menu. From there you can dive deeper into a concept, create a sticky note, or ask the AI to explain it differently.</p>
-  <p>This is your primary interaction point — think of it as a right-click menu for learning.</p>
-</section>
-
-<section data-section-color="peach">
-  <h2 data-section-color="peach" id="section-3">Study Tools at the Bottom</h2>
-  <p>Scroll below your notes to find <strong>retention quizzes</strong>, mind maps, and flow charts. These are generated alongside your notes and test you on the material you just read.</p>
-  <div class="write-this-down"><strong>Write This Down:</strong> <p>The most effective study strategy is to read a section, then immediately test yourself on it before moving on.</p></div>
-</section>
-</div>`,
-
-  bulleted: `<div>
-<h1>Welcome to Brain-Friendly Notes</h1>
-
-<section data-section-color="sage">
-  <h2 data-section-color="sage" id="section-1">How Your Notes Work</h2>
-  <ul>
-    <li><strong>AI-powered formatting</strong> — your material is restructured for how your brain processes info</li>
-    <li><strong>Color-coded sections</strong> — sage, lavender, peach, sky, amber create <span class="jargon" data-definition="A mental reset triggered by new visual patterns that helps sustain focus">visual resets</span></li>
-    <li><strong>Spacing is intentional</strong> — white space reduces cognitive overload</li>
-  </ul>
-</section>
-
-<section data-section-color="lavender">
-  <h2 data-section-color="lavender" id="section-2">The Text Selection Menu</h2>
-  <ul>
-    <li><strong>Highlight any text</strong> to open the action menu</li>
-    <li><strong>Dive Deeper</strong> — get an AI explanation of a concept</li>
-    <li><strong>Sticky Notes</strong> — pin your own thoughts to any passage</li>
-    <li><strong>Ask AI</strong> — rephrase, simplify, or expand on a section</li>
-  </ul>
-</section>
-
-<section data-section-color="peach">
-  <h2 data-section-color="peach" id="section-3">Study Tools at the Bottom</h2>
-  <ul>
-    <li><strong>Retention Quiz</strong> — auto-generated questions from your notes</li>
-    <li><strong>Mind Map</strong> — visual overview of all key concepts</li>
-    <li><strong>Flow Chart</strong> — step-by-step process diagrams</li>
-  </ul>
-  <div class="write-this-down"><strong>Write This Down:</strong> <p>Read a section, then quiz yourself immediately — this is the most effective study loop.</p></div>
-</section>
-</div>`,
-
-  literal: `<div>
-<h1>Welcome to Brain-Friendly Notes</h1>
-
-<section data-section-color="sage">
-  <h2 data-section-color="sage" id="section-1">How Your Notes Work</h2>
-  <p>When you upload a file or paste text, the AI reads it and creates a new version. The new version has the same information but with different formatting. The formatting includes colored backgrounds, bold key words, and short paragraphs.</p>
-  <p>Each topic section has a different background color. The colors rotate through five options: sage (green), lavender (purple), peach (orange), sky (blue), and amber (yellow). The color change tells your brain that a new topic has started.</p>
-</section>
-
-<section data-section-color="lavender">
-  <h2 data-section-color="lavender" id="section-2">The Text Selection Menu</h2>
-  <p>Use your mouse cursor to select text inside your notes. Click and drag across the words you want to select. When you release the mouse button, a small menu will appear near the selected text.</p>
-  <p>The menu has several buttons. Each button does one specific thing. For example, one button asks the AI to explain the selected text in more detail. Another button creates a note you can attach to that spot.</p>
-</section>
-
-<section data-section-color="peach">
-  <h2 data-section-color="peach" id="section-3">Study Tools at the Bottom</h2>
-  <p>After the AI finishes generating your notes, scroll down past all the text. Below the notes you will see additional study tools. These tools are generated from the same material as your notes.</p>
-  <p>The tools include a quiz with multiple-choice questions, a mind map that shows how concepts connect, and a flow chart that shows sequences of steps.</p>
-</section>
-</div>`,
-
-  bulleted_literal: `<div>
-<h1>Welcome to Brain-Friendly Notes</h1>
-
-<section data-section-color="sage">
-  <h2 data-section-color="sage" id="section-1">How Your Notes Work</h2>
-  <ul>
-    <li>You upload a file or paste text into the app</li>
-    <li>The AI reads it and creates a new formatted version</li>
-    <li>The new version has colored backgrounds, bold words, and short paragraphs</li>
-    <li>Each topic section has a different color so your brain knows when a new topic starts</li>
-  </ul>
-</section>
-
-<section data-section-color="lavender">
-  <h2 data-section-color="lavender" id="section-2">The Text Selection Menu</h2>
-  <ul>
-    <li>Click and drag your mouse across text to select it</li>
-    <li>A small menu appears near the selected text</li>
-    <li>One button asks the AI to explain the text in more detail</li>
-    <li>Another button creates a note you can pin to that spot</li>
-  </ul>
-</section>
-
-<section data-section-color="peach">
-  <h2 data-section-color="peach" id="section-3">Study Tools at the Bottom</h2>
-  <ul>
-    <li>Scroll below your notes to find the study tools</li>
-    <li>There is a quiz with multiple-choice questions about your material</li>
-    <li>There is a mind map showing how the concepts connect</li>
-    <li>There is a flow chart showing step-by-step sequences</li>
-  </ul>
-</section>
-</div>`,
-
-  procedural: `<div>
-<h1>Welcome to Brain-Friendly Notes</h1>
-
-<section data-section-color="sage">
-  <h2 data-section-color="sage" id="section-1">Step 1: Upload Your Material</h2>
-  <h3>Prerequisites</h3>
-  <p>You need a PDF, Word document, or text you want to study.</p>
-  <h3>Action</h3>
-  <p>Click the <strong>Upload File</strong> tab. Drag your file into the upload zone, or click the zone to open a file browser. Select your file. The app will read it automatically.</p>
-  <h3>Result</h3>
-  <p>Your file name appears below the upload zone with a checkmark.</p>
-</section>
-
-<section data-section-color="lavender">
-  <h2 data-section-color="lavender" id="section-2">Step 2: Generate Your Notes</h2>
-  <h3>Prerequisites</h3>
-  <p>Step 1 must be complete. Your file must be visible in the upload zone.</p>
-  <h3>Action</h3>
-  <p>Click the large <strong>"Turn into Brain-Friendly Notes"</strong> button at the bottom of the page. Wait for the AI to finish generating. You will see text appear in real-time.</p>
-  <h3>Result</h3>
-  <p>Your notes appear with colored sections, bold terms, and structured formatting.</p>
-</section>
-
-<section data-section-color="peach">
-  <h2 data-section-color="peach" id="section-3">Step 3: Use Your Study Tools</h2>
-  <h3>Prerequisites</h3>
-  <p>Step 2 must be complete. Notes must be fully generated (loading spinner gone).</p>
-  <h3>Action</h3>
-  <p>Highlight any text to open the selection menu. Scroll below the notes to find the retention quiz, mind map, and flow chart.</p>
-  <h3>Result</h3>
-  <p>You can now interact with your material through quizzes, visual maps, and targeted explanations.</p>
-</section>
-</div>`,
-};
-
 /** Returns the combined writing style key for a set of active styles */
 export function getActiveVariantKey(styles: WritingStyleKey[]): WritingStyleKey {
   if (styles.includes("bulleted_literal")) return "bulleted_literal";
@@ -190,3 +54,347 @@ export function getActiveVariantKey(styles: WritingStyleKey[]): WritingStyleKey 
   if (styles.includes("literal")) return "literal";
   return "standard";
 }
+
+// ─── Section content by writing style ───────────────────────────
+// Each section has variants for each writing style. The content teaches
+// "How Memory Works" so the user sees real educational content in their format.
+
+interface SectionBlock {
+  color: string;
+  id: string;
+  title: string;
+  /** Title with emoji prefix for visual_mapper trait */
+  emojiTitle: string;
+  html: string;
+}
+
+function getMemorySections(style: WritingStyleKey): SectionBlock[] {
+  if (style === "procedural") {
+    return [
+      {
+        color: "sage",
+        id: "section-1",
+        title: "Step 1: Encoding — How Your Brain Captures Info",
+        emojiTitle: "🧠 Step 1: Encoding — How Your Brain Captures Info",
+        html: `<h3>Prerequisites</h3>
+<p>Your brain needs sensory input — something you see, hear, or touch.</p>
+<h3>Action</h3>
+<p>Your brain converts the sensory input into a neural signal. This process is called <span class="jargon" data-definition="The process of converting sensory information into a form the brain can store">encoding</span>. The more senses involved, the stronger the encoding.</p>
+<h3>Result</h3>
+<p>A temporary neural pattern is created in your <span class="jargon" data-definition="A seahorse-shaped brain region essential for forming new memories">hippocampus</span>. This is now a short-term memory.</p>`,
+      },
+      {
+        color: "lavender",
+        id: "section-2",
+        title: "Step 2: Storage — Moving to Long-Term",
+        emojiTitle: "💾 Step 2: Storage — Moving to Long-Term",
+        html: `<h3>Prerequisites</h3>
+<p>Step 1 must be complete. A short-term memory must exist in the hippocampus.</p>
+<h3>Action</h3>
+<p>During sleep and repeated review, the hippocampus replays the memory and transfers it to the <span class="jargon" data-definition="The outer layer of the brain responsible for higher thinking, where long-term memories are permanently stored">neocortex</span>. This is called <span class="jargon" data-definition="The process where short-term memories become stable long-term memories through repetition and sleep">consolidation</span>.</p>
+<h3>Result</h3>
+<p>The memory is now stored long-term. It can persist for years if reinforced.</p>`,
+      },
+      {
+        color: "peach",
+        id: "section-3",
+        title: "Step 3: Retrieval — Accessing What You Stored",
+        emojiTitle: "🔍 Step 3: Retrieval — Accessing What You Stored",
+        html: `<h3>Prerequisites</h3>
+<p>Step 2 must be complete. The memory must be consolidated in long-term storage.</p>
+<h3>Action</h3>
+<p>When you encounter a cue (a question, a smell, a related concept), your brain activates the stored neural pattern and brings the memory back into conscious awareness.</p>
+<h3>Result</h3>
+<p>You remember the information. The more retrieval practice you do, the faster and more reliable this step becomes.</p>`,
+      },
+    ];
+  }
+
+  if (style === "bulleted" || style === "bulleted_literal") {
+    const useLiteral = style === "bulleted_literal";
+    return [
+      {
+        color: "sage",
+        id: "section-1",
+        title: "Encoding — Capturing Information",
+        emojiTitle: "🧠 Encoding — Capturing Information",
+        html: `<ul>
+<li><strong>${useLiteral ? "Encoding" : "Encoding"}</strong> — ${useLiteral ? "your brain converts what you see, hear, or touch into a neural signal" : "your brain converts sensory input into a <span class=\"jargon\" data-definition=\"A neural signal pattern that represents new information\">neural code</span>"}</li>
+<li><strong>Multi-sensory input is stronger</strong> — ${useLiteral ? "using more than one sense (seeing AND hearing) creates a stronger memory" : "the more senses involved, the deeper the encoding"}</li>
+<li><strong>Where it happens</strong> — the <span class="jargon" data-definition="A seahorse-shaped brain region essential for forming new memories">hippocampus</span> ${useLiteral ? "creates a temporary copy of the new information" : "creates a temporary neural pattern"}</li>
+</ul>`,
+      },
+      {
+        color: "lavender",
+        id: "section-2",
+        title: "Storage — Short-Term to Long-Term",
+        emojiTitle: "💾 Storage — Short-Term to Long-Term",
+        html: `<ul>
+<li><strong>Short-term memory</strong> — ${useLiteral ? "lasts about 20 to 30 seconds without rehearsal. That means if you do not repeat the information, you lose it." : "lasts ~20-30 seconds without rehearsal"}</li>
+<li><strong><span class="jargon" data-definition="The process where short-term memories become stable long-term memories through repetition and sleep">Consolidation</span></strong> — ${useLiteral ? "during sleep, the hippocampus replays the memory and sends it to the outer brain layer for permanent storage" : "during sleep, the hippocampus replays memories and transfers them to the neocortex"}</li>
+<li><strong>Spacing effect</strong> — ${useLiteral ? "studying the same material across multiple days produces stronger memories than studying it all at once" : "distributed practice beats cramming every time"}</li>
+</ul>`,
+      },
+      {
+        color: "peach",
+        id: "section-3",
+        title: "Retrieval — Pulling Memories Back",
+        emojiTitle: "🔍 Retrieval — Pulling Memories Back",
+        html: `<ul>
+<li><strong>Cue-dependent</strong> — ${useLiteral ? "you need a trigger (a question, a smell, a related idea) to activate the stored memory" : "memories are activated by cues — questions, smells, related concepts"}</li>
+<li><strong>Retrieval practice</strong> — ${useLiteral ? "testing yourself on material makes you remember it better than re-reading the same material" : "testing yourself strengthens the retrieval pathway more than re-reading"}</li>
+<li><strong>Use it or lose it</strong> — ${useLiteral ? "neural pathways that are not used become weaker over time. Regular review prevents this." : "unused pathways weaken; regular review keeps them strong"}</li>
+</ul>`,
+      },
+    ];
+  }
+
+  if (style === "literal") {
+    return [
+      {
+        color: "sage",
+        id: "section-1",
+        title: "Encoding — How Your Brain Captures New Information",
+        emojiTitle: "🧠 Encoding — How Your Brain Captures New Information",
+        html: `<p>When you see, hear, or touch something new, your brain converts that sensory input into a neural signal. This conversion process is called <span class="jargon" data-definition="The process of converting sensory information into a form the brain can store">encoding</span>.</p>
+<p>Encoding is stronger when more than one sense is involved. For example, if you read a word AND hear it spoken at the same time, your brain creates a stronger memory than if you only read it.</p>
+<p>The encoded information goes to a specific brain region called the <span class="jargon" data-definition="A seahorse-shaped brain region essential for forming new memories">hippocampus</span>. The hippocampus creates a temporary copy. This temporary copy is your short-term memory.</p>`,
+      },
+      {
+        color: "lavender",
+        id: "section-2",
+        title: "Storage — Moving From Short-Term to Long-Term",
+        emojiTitle: "💾 Storage — Moving From Short-Term to Long-Term",
+        html: `<p>Short-term memory has a limited duration. Without rehearsal, information in short-term memory disappears after approximately 20 to 30 seconds.</p>
+<p>To move information into long-term memory, a process called <span class="jargon" data-definition="The process where short-term memories become stable long-term memories through repetition and sleep">consolidation</span> must occur. During sleep, the hippocampus replays the memory and gradually transfers it to the <span class="jargon" data-definition="The outer layer of the brain responsible for higher thinking, where long-term memories are permanently stored">neocortex</span> for permanent storage.</p>
+<p>Studying the same material across multiple days (called spaced repetition) produces significantly stronger long-term memories than studying it all in one session.</p>`,
+      },
+      {
+        color: "peach",
+        id: "section-3",
+        title: "Retrieval — Accessing Stored Memories",
+        emojiTitle: "🔍 Retrieval — Accessing Stored Memories",
+        html: `<p>To access a stored memory, your brain needs a trigger. This trigger is called a retrieval cue. A retrieval cue can be a question, a smell, a location, or a related concept.</p>
+<p>When the cue activates the stored neural pattern, the memory returns to your conscious awareness. This is the act of remembering.</p>
+<p>Testing yourself on material (retrieval practice) strengthens the memory pathway more effectively than simply re-reading the material. Each time you successfully retrieve a memory, the pathway becomes faster and more reliable.</p>`,
+      },
+    ];
+  }
+
+  // Default: standard prose
+  return [
+    {
+      color: "sage",
+      id: "section-1",
+      title: "Encoding — How Your Brain Captures Information",
+      emojiTitle: "🧠 Encoding — How Your Brain Captures Information",
+      html: `<p>Every memory starts with <strong>encoding</strong> — the moment your brain converts sensory input into a <span class="jargon" data-definition="A neural signal pattern that represents new information">neural code</span>. Think of it as your brain taking a snapshot, but the quality depends on how many senses are involved.</p>
+<p>Reading a fact quietly uses one channel. Reading it aloud while writing it down uses three. The more channels, the stronger the <span class="jargon" data-definition="A seahorse-shaped brain region essential for forming new memories">hippocampus</span> grips onto the new information.</p>`,
+    },
+    {
+      color: "lavender",
+      id: "section-2",
+      title: "Storage — Short-Term to Long-Term",
+      emojiTitle: "💾 Storage — Short-Term to Long-Term",
+      html: `<p>Your short-term memory is fragile — it holds information for roughly <strong>20-30 seconds</strong> before it fades. The bridge to long-term memory is a process called <span class="jargon" data-definition="The process where short-term memories become stable long-term memories through repetition and sleep">consolidation</span>.</p>
+<p>During sleep, your hippocampus replays the day's memories and transfers them to the <span class="jargon" data-definition="The outer layer of the brain responsible for higher thinking, where long-term memories are permanently stored">neocortex</span> for permanent storage. This is why cramming the night before rarely works — your brain needs sleep cycles to consolidate.</p>`,
+    },
+    {
+      color: "peach",
+      id: "section-3",
+      title: "Retrieval — The Key to Stronger Memory",
+      emojiTitle: "🔍 Retrieval — The Key to Stronger Memory",
+      html: `<p>A stored memory is useless if you can't access it. <strong>Retrieval</strong> is the process of pulling a memory back into conscious awareness, triggered by a cue — a question, a smell, a related concept.</p>
+<p>Here's the critical insight: <strong>testing yourself</strong> on material strengthens the retrieval pathway far more than re-reading. Every successful recall makes the next recall faster and more reliable. This is exactly why the study tools below your notes exist.</p>`,
+    },
+  ];
+}
+
+// ─── Add-on demo blocks ─────────────────────────────────────────
+// Each add-on gets a small HTML block that demonstrates it in context.
+
+const ADDON_BLOCKS: Record<string, string> = {
+  tldr: `<section data-section-color="sky">
+<h2 data-section-color="sky" id="section-tldr">⚡ TL;DR</h2>
+<p>Your brain encodes sensory input into short-term memory, consolidates it into long-term memory during sleep, and retrieves it using cues. Testing yourself (retrieval practice) is the single most effective way to strengthen memories.</p>
+</section>`,
+
+  why_care: `<section data-section-color="amber">
+<h2 data-section-color="amber" id="section-care">🤔 Why Should I Care?</h2>
+<p>Understanding how memory works gives you a <strong>strategic advantage</strong> over every student who just reads and highlights. When you know that retrieval practice beats re-reading by 50-80%, you can study half as long and remember twice as much. This is the science behind every study tool on this platform.</p>
+</section>`,
+
+  recall: `<div class="recall-prompt" data-section-index="1">
+<p><strong>Quick check:</strong> What are the three stages of memory, and which brain region handles the first stage?</p>
+<textarea class="recall-input" placeholder="What do you remember?" rows="3"></textarea>
+<button class="recall-submit">Check</button>
+<div class="recall-key" style="display:none">Encoding (hippocampus), Storage/Consolidation (transfer to neocortex during sleep), and Retrieval (cue-dependent recall). The hippocampus handles encoding.</div>
+</div>`,
+
+  simplify: `<div class="write-this-down"><strong>✍️ Write This Down:</strong> <p>Memory has 3 stages: Encoding (capture), Storage (consolidation during sleep), Retrieval (cue-triggered recall). Testing yourself beats re-reading.</p></div>`,
+
+  feynman: `<div class="feynman-check" data-section="feynman">
+<p><strong>Feynman Check:</strong> Can you explain how a memory goes from "something you just heard" to "something you remember next week"? Use your own words.</p>
+<textarea class="feynman-input" placeholder="Explain it in your own words..." rows="4"></textarea>
+<button class="feynman-submit">Check My Understanding</button>
+<div class="feynman-key" style="display:none">
+<div class="feynman-point" data-concept="encoding">Sensory input is converted to neural signals by the hippocampus</div>
+<div class="feynman-point" data-concept="consolidation">During sleep, the hippocampus replays and transfers to neocortex</div>
+<div class="feynman-point" data-concept="retrieval">Cues trigger recall; testing yourself strengthens the pathway</div>
+</div>
+</div>`,
+
+  visual_learner: `<button class="watch-explainer" data-query="how memory works simple visual explanation">🎥 Watch Explainer</button>`,
+};
+
+// ─── Trait-specific demo blocks ─────────────────────────────────
+
+function getTraitDemoBlocks(traits: CognitiveTrait[]): string {
+  const blocks: string[] = [];
+
+  if (traits.includes("dyscalculia")) {
+    blocks.push(`<section data-section-color="sky">
+<h2 data-section-color="sky" id="section-math-demo">Numbers Made Concrete</h2>
+<p>Your notes will automatically translate abstract numbers into real-world comparisons. For example:</p>
+<p>Short-term memory lasts <strong>20-30 seconds</strong> — that is roughly the time it takes to tie your shoelaces. After that, the information fades unless you actively rehearse it.</p>
+<p>When your notes contain equations, they will appear in a step-by-step format like this:</p>
+<div class="math-stepper" data-total-steps="2">
+<div class="math-step" data-step="1">
+<div class="math-step-equation">Memory Strength = Encoding Quality × Retrieval Practice</div>
+<div class="math-step-explain">The strength of a memory depends on two things multiplied together: how well you encoded it initially, and how often you tested yourself on it.</div>
+</div>
+<div class="math-step" data-step="2">
+<div class="math-step-equation">If Encoding = 3 (multi-sensory) and Practice = 4 sessions → Strength = 12</div>
+<div class="math-step-explain">Using multiple senses (score of 3) combined with 4 practice sessions gives a strong memory score of 12.</div>
+</div>
+</div>
+</section>`);
+  }
+
+  if (traits.includes("prioritization_fatigue")) {
+    blocks.push(`<section data-section-color="amber">
+<h2 data-section-color="amber" id="section-hierarchy-demo">How Information Hierarchy Works</h2>
+<p>Your notes will label every piece of information by importance so you never have to guess what to focus on:</p>
+<p><strong>Core Concept:</strong> Memory has three stages — encoding, storage, and retrieval.</p>
+<p><strong>Context:</strong> The hippocampus handles initial encoding, while the neocortex stores long-term memories. This transfer happens during sleep.</p>
+<p><strong>Example:</strong> Reading a fact aloud while writing it down uses three sensory channels, making encoding much stronger than silent reading alone.</p>
+</section>`);
+  }
+
+  if (traits.includes("demand_avoidant")) {
+    blocks.push(`<section data-section-color="sage">
+<h2 data-section-color="sage" id="section-language-demo">Low-Pressure Language</h2>
+<p>Your notes will never use pressuring phrases. Instead of "You must memorize these three stages," your notes will say something like:</p>
+<p>"There are three stages worth exploring here — encoding, storage, and retrieval. Some people find it helpful to think of them as a pipeline."</p>
+<p>Words like "obviously," "simply," and "clearly" will be removed because they can create unnecessary pressure.</p>
+</section>`);
+  }
+
+  return blocks.join("\n\n");
+}
+
+// ─── Platform tutorial section ──────────────────────────────────
+
+function getPlatformTutorial(style: WritingStyleKey, useEmoji: boolean): string {
+  const e = useEmoji;
+  if (style === "bulleted" || style === "bulleted_literal" || style === "procedural") {
+    return `<section data-section-color="amber">
+<h2 data-section-color="amber" id="section-platform">${e ? "🛠️ " : ""}How to Use This Platform</h2>
+<ul>
+<li><strong>Upload or paste</strong> — drop a PDF, paste text, or enter a YouTube URL on the home page</li>
+<li><strong>Highlight to interact</strong> — select any text in your notes to open the action menu (explain, simplify, sticky note)</li>
+<li><strong>Study tools below</strong> — scroll past your notes to find quizzes, mind maps, and flow charts</li>
+<li><strong>Your settings are saved</strong> — every note you generate will use the preferences you set here</li>
+</ul>
+</section>`;
+  }
+
+  return `<section data-section-color="amber">
+<h2 data-section-color="amber" id="section-platform">${e ? "🛠️ " : ""}How to Use This Platform</h2>
+<p>To create notes, go to the home page and <strong>upload a file</strong> (PDF, Word, PowerPoint), <strong>paste text</strong>, or enter a <strong>YouTube URL</strong>. The AI will transform it using the settings you configure here.</p>
+<p><strong>Highlight any text</strong> in your notes to open the selection menu — you can ask the AI to explain, simplify, or expand on any passage. You can also pin sticky notes to specific spots.</p>
+<p>Below every set of notes you will find <strong>study tools</strong> — retention quizzes, mind maps, and flow charts generated from your material.</p>
+</section>`;
+}
+
+// ─── Main assembly function ─────────────────────────────────────
+
+export interface TutorialBuildOptions {
+  writingStyle: WritingStyleKey;
+  traits: CognitiveTrait[];
+  addOns: string[];
+  uiSettings: string[];
+}
+
+export function buildTutorialNotes(options: TutorialBuildOptions): string {
+  const { writingStyle, traits, addOns } = options;
+  const useEmoji = traits.includes("visual_mapper") || traits.includes("adhd");
+
+  const parts: string[] = [];
+
+  // Title
+  parts.push(`<h1>${useEmoji ? "🧠 " : ""}How Memory Works — Your Brain-Friendly Preview</h1>`);
+
+  // TL;DR at top (if addon selected)
+  if (addOns.includes("tldr")) {
+    parts.push(ADDON_BLOCKS.tldr);
+  }
+
+  // Why Should I Care (if addon selected)
+  if (addOns.includes("why_care")) {
+    parts.push(ADDON_BLOCKS.why_care);
+  }
+
+  // Main content sections
+  const sections = getMemorySections(writingStyle);
+  for (const section of sections) {
+    const title = useEmoji ? section.emojiTitle : section.title;
+    let sectionHtml = `<section data-section-color="${section.color}">
+<h2 data-section-color="${section.color}" id="${section.id}">${title}</h2>
+${section.html}`;
+
+    // Add recall prompt after first content section if addon selected
+    if (section.id === "section-1" && addOns.includes("recall")) {
+      sectionHtml += `\n${ADDON_BLOCKS.recall}`;
+    }
+
+    // Add write-this-down after second section if addon selected
+    if (section.id === "section-2" && addOns.includes("simplify")) {
+      sectionHtml += `\n${ADDON_BLOCKS.simplify}`;
+    }
+
+    // Add watch explainer after each section if addon selected
+    if (addOns.includes("visual_learner")) {
+      sectionHtml += `\n${ADDON_BLOCKS.visual_learner}`;
+    }
+
+    sectionHtml += `\n</section>`;
+    parts.push(sectionHtml);
+  }
+
+  // Trait-specific demo blocks
+  const traitBlocks = getTraitDemoBlocks(traits);
+  if (traitBlocks) {
+    parts.push(traitBlocks);
+  }
+
+  // Platform tutorial
+  parts.push(getPlatformTutorial(writingStyle, useEmoji));
+
+  // Feynman check at end if addon selected
+  if (addOns.includes("feynman")) {
+    parts.push(ADDON_BLOCKS.feynman);
+  }
+
+  return `<div>\n${parts.join("\n\n")}\n</div>`;
+}
+
+// ─── Legacy compat: static variants (used by old code paths) ────
+
+export const ONBOARDING_VARIANTS: Record<WritingStyleKey, string> = {
+  standard: buildTutorialNotes({ writingStyle: "standard", traits: [], addOns: ["simplify"], uiSettings: [] }),
+  bulleted: buildTutorialNotes({ writingStyle: "bulleted", traits: ["adhd"], addOns: ["tldr", "simplify"], uiSettings: [] }),
+  literal: buildTutorialNotes({ writingStyle: "literal", traits: ["asd"], addOns: ["simplify"], uiSettings: [] }),
+  bulleted_literal: buildTutorialNotes({ writingStyle: "bulleted_literal", traits: ["asd", "adhd"], addOns: ["tldr", "simplify"], uiSettings: [] }),
+  procedural: buildTutorialNotes({ writingStyle: "procedural", traits: ["strict_procedural"], addOns: ["simplify"], uiSettings: [] }),
+};
