@@ -332,15 +332,47 @@ STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculati
     "VISUAL ANCHORING: The user requires visual-spatial mapping to decode text. Every single <h2> and <h3> header MUST begin with a single, highly relevant emoji. This creates a visual map for non-linear readers to navigate the document without decoding the text. Choose emojis that are semantically related to the section content, not random decorations.",
 };
 
+// ─── Strength traits: lean INTO these as primary teaching strategies ──
+
+const STRENGTH_TRAITS: CognitiveTrait[] = ["visual_spatial", "systems_analytical", "strict_procedural"];
+
 export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation?: string | null): string {
   const parts: string[] = [];
 
-  for (const trait of traits) {
-    const prompt = TRAIT_PROMPTS[trait];
-    if (prompt) {
-      parts.push(prompt);
+  // Separate strengths from accommodations
+  const strengths = traits.filter((t) => STRENGTH_TRAITS.includes(t));
+  const accommodations = traits.filter((t) => !STRENGTH_TRAITS.includes(t));
+
+  // Strengths first — frame as primary teaching strategy
+  if (strengths.length > 0) {
+    const strengthPrompts = strengths.map((t) => TRAIT_PROMPTS[t]).filter(Boolean);
+    if (strengthPrompts.length > 0) {
+      parts.push(
+        "LEARNING STRENGTHS (lean into these as your PRIMARY teaching strategy — the user processes information best this way):\n" +
+        strengthPrompts.join("\n\n")
+      );
     }
   }
+
+  // Accommodations second — frame as load-reducers
+  if (accommodations.length > 0) {
+    const accomPrompts = accommodations.map((t) => TRAIT_PROMPTS[t]).filter(Boolean);
+    if (accomPrompts.length > 0) {
+      parts.push(
+        "ACCOMMODATIONS (reduce cognitive load in these areas):\n" +
+        accomPrompts.join("\n\n")
+      );
+    }
+  }
+
+  // Subject-aware adaptation rule
+  parts.push(
+    "SUBJECT-AWARE ADAPTATION: Not all accommodations apply to all content. " +
+    "If the source material contains no math or numbers, skip math-specific rules (math steppers, formula translators, color-coded variables). " +
+    "If the source is purely quantitative with no narrative, skip humanities-specific rules (timelines, character motives, thematic breakdowns). " +
+    "Apply only the accommodations that are relevant to the actual content being processed. " +
+    "Strengths-based strategies (above) should ALWAYS be applied regardless of subject matter."
+  );
 
   return parts.length > 0
     ? "\n\nADDITIONAL COGNITIVE PROFILE INSTRUCTIONS:\n" + parts.join("\n\n")
