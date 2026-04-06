@@ -18,7 +18,10 @@ export type CognitiveTrait =
   | "sensory_hypo"
   | "visual_spatial"
   | "systems_analytical"
-  | "strict_procedural";
+  | "strict_procedural"
+  | "demand_avoidant"
+  | "prioritization_fatigue"
+  | "visual_mapper";
 
 // ─── Question definitions ───────────────────────────────────
 export interface WizardOption {
@@ -124,6 +127,16 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
     ],
   },
   {
+    id: "q8b_pressure_language",
+    section: "Emotion & Energy",
+    sectionIcon: "💭",
+    question: "When a teacher or textbook uses authoritative or pressure-heavy language (e.g., 'You must memorize this' or 'Obviously, the answer is...'), how does your brain react?",
+    options: [
+      { label: "It motivates me or I don't really notice", description: "Pressure language is neutral", traits: [] },
+      { label: "I instantly feel anxious, overwhelmed, or a strong urge to resist and disengage", description: "Demand avoidance or academic anxiety", traits: ["demand_avoidant"] },
+    ],
+  },
+  {
     id: "q9_complex_concept",
     section: "Input & Decoding",
     sectionIcon: "📥",
@@ -132,6 +145,26 @@ export const WIZARD_QUESTIONS: WizardQuestion[] = [
       { label: "I need to see a 'blueprint' of the raw materials and how they piece together", description: "You think in spatial layouts and component relationships", traits: ["visual_spatial"] },
       { label: "I look for the leading indicators, the catalyst event, and the momentum shifts", description: "You think in systems, triggers, and cascading effects", traits: ["systems_analytical"] },
       { label: "I need a strict, step-by-step operating procedure where nothing is skipped", description: "You think in rigid sequences and checklists", traits: ["strict_procedural"] },
+    ],
+  },
+  {
+    id: "q10_working_memory_hurdle",
+    section: "Input & Decoding",
+    sectionIcon: "📥",
+    question: "When reading a dense textbook chapter, what is the biggest hurdle for your working memory?",
+    options: [
+      { label: "Understanding the complex vocabulary or domain-specific jargon", description: "Vocabulary is the bottleneck", traits: [] },
+      { label: "Everything looks equally important — I burn all my energy figuring out what is a core fact versus a supporting detail", description: "Information prioritization is the bottleneck", traits: ["prioritization_fatigue"] },
+    ],
+  },
+  {
+    id: "q11_document_navigation",
+    section: "Input & Decoding",
+    sectionIcon: "📥",
+    question: "How do you prefer to navigate a new document or study guide before you start reading?",
+    options: [
+      { label: "I usually just start reading from the top down", description: "Linear reading is natural", traits: [] },
+      { label: "I need to scan for visual markers (like icons or distinct headers) to build a mental map of the document first", description: "Visual-spatial navigation needed", traits: ["visual_mapper"] },
     ],
   },
 ];
@@ -220,6 +253,19 @@ const TRAIT_RULES: Record<CognitiveTrait, Partial<ProfileSettings>> = {
     addOns: ["recall_prompts"],
     studyTools: [],
   },
+  demand_avoidant: {
+    addOns: [],
+    studyTools: [],
+  },
+  prioritization_fatigue: {
+    addOns: ["tldr"],
+    studyTools: [],
+  },
+  visual_mapper: {
+    uiSettings: [],
+    addOns: ["tldr"],
+    studyTools: ["mindmap"],
+  },
 };
 
 export function deriveProfileSettings(traits: CognitiveTrait[]): ProfileSettings {
@@ -257,7 +303,7 @@ const TRAIT_PROMPTS: Partial<Record<CognitiveTrait, string>> = {
   rsd:
     'When the user answers incorrectly, utilize Unconditional Positive Regard. Depersonalize the error. Never say "You got this wrong." Say "This specific concept is notoriously tricky because [X]." Frame failures as neutral, temporary data points in a low-stakes game.',
   interest_based:
-    "The user requires extreme novelty to engage executive function. Explain the target concept entirely through the lens of their registered hyper-fixation. Map the academic variables directly to elements of their interest. RULE OF MECHANICAL ALIGNMENT (CRITICAL GUARDRAIL): The underlying mechanics of the academic concept MUST logically match the rules of the hyper-fixation. Every analogy must be a mathematically sound 1-to-1 mapping where the cause-effect relationships, proportions, and constraints mirror each other. If a logical, mechanically accurate mapping is impossible for a given concept, you MUST opt-out of the hyper-fixation lens and use a standard, highly visual real-world example instead. Never force a broken analogy — accuracy is non-negotiable.",
+    "The user requires extreme novelty to engage executive function. Explain the target concept entirely through the lens of their registered hyper-fixation. Map the academic variables directly to elements of their interest. RULE OF MECHANICAL ALIGNMENT (CRITICAL GUARDRAIL): The underlying mechanics of the academic concept MUST logically match the rules of the hyper-fixation. Every analogy must be a mathematically sound 1-to-1 mapping where the cause-effect relationships, proportions, and constraints mirror each other. If a logical, mechanically accurate mapping is impossible for a given concept, seamlessly default to a standard, highly visual real-world example. DO NOT apologize or mention that you are shifting away from their interest — just teach the concept clearly. Never force a broken analogy — accuracy is non-negotiable.",
   dyscalculia:
     `The user struggles with abstract numbers and timelines. Every statistic, percentage, formula, or date must be accompanied by a concrete, real-world visual analogy. What does this number physically look like?
 
@@ -269,15 +315,21 @@ STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculati
   asd:
     "Rewrite concepts using literal, precise language. Remove all idioms, sarcasm, and abstract metaphors. Create strict 'If X, then Y' logical sequences.",
   dyslexia:
-    "Use short sentences (under 15 words each). Avoid walls of text. Use bullet points and numbered lists extensively. Bold key terms on first use.",
+    "Use short sentences (under 15 words each). Avoid walls of text. Use bullet points and numbered lists extensively. Use <strong> tags to bold key terms on first use. NEVER use asterisks or markdown syntax — only HTML tags.",
   adhd:
-    "Use chunked, color-coded sections with clear headers. Start each section with a one-line hook. Use bullet points, not paragraphs. Bold the most important words. Keep each bullet under 20 words.",
+    "Use chunked, color-coded sections with clear headers. Start each section with a one-line hook. Use bullet points, not paragraphs. Use <strong> tags to bold the most important words. Keep each bullet under 20 words. NEVER use asterisks or markdown syntax — only HTML tags.",
   visual_spatial:
     "COGNITIVE MODIFIER: Visual-Spatial Processing. Whenever explaining a complex system where multiple parts form a whole, you MUST format the explanation like a 'Technical Pack' or 'Design Blueprint'. First, provide a bulleted list of the raw 'Materials' or 'Components' involved. Then, explicitly explain how these components 'stitch' or connect together to create the final structure.",
   systems_analytical:
     "COGNITIVE MODIFIER: Systems-Analytical Processing. Whenever explaining a cause-and-effect relationship, historical event, or biological chain reaction, format the explanation using 'Catalysts' and 'Indicators'. You MUST explicitly identify the 'Leading Indicator' (the early warning sign), the 'Catalyst' (the exact trigger event), and the 'Momentum Shift' (the final resulting action or trend).",
   strict_procedural:
     "COGNITIVE MODIFIER: Strict Procedural Processing. Whenever explaining a process, lifecycle, or sequence of events, format it as a strict 'Standard Operating Procedure'. First, list the exact 'Tools' or prerequisites required before beginning. Then, provide a rigid, numbered sequence of actions where each step explicitly relies on the successful completion of the previous step. Do not group multiple actions into a single step.",
+  demand_avoidant:
+    "LOW-DEMAND LANGUAGE: The user experiences Pathological Demand Avoidance (PDA) or academic anxiety. Never use words that imply a concept should be easy (e.g., 'obviously', 'simply', 'clearly', 'as you can see', 'of course', 'just'). Never use high-pressure commands (e.g., 'you must memorize this', 'it is essential that you'). Use invitational, neutral language that lowers the student's affective filter. Frame learning as exploration, not obligation.",
+  prioritization_fatigue:
+    "EXPLICIT HIERARCHY: The user struggles with executive function and information prioritization. You must explicitly label the weight of information to help them prioritize. Use HTML bold prefixes like <strong>Core Concept:</strong> for the main testable idea, <strong>Context:</strong> for the supporting narrative, and <strong>Example:</strong> for illustrative cases. This visual hierarchy helps the reader instantly distinguish what to memorize from what is background context. NEVER use asterisks for bold — only HTML <strong> tags.",
+  visual_mapper:
+    "VISUAL ANCHORING: The user requires visual-spatial mapping to decode text. Every single <h2> and <h3> header MUST begin with a single, highly relevant emoji. This creates a visual map for non-linear readers to navigate the document without decoding the text. Choose emojis that are semantically related to the section content, not random decorations.",
 };
 
 export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation?: string | null): string {
