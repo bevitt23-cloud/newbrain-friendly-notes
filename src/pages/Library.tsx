@@ -126,6 +126,7 @@ const Library = () => {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<Set<string>>(new Set());
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
   const [selectStep, setSelectStep] = useState<"notes" | "tools">("notes");
   const [selectedTools, setSelectedTools] = useState<Set<StudyToolType>>(new Set());
 
@@ -219,27 +220,64 @@ const Library = () => {
   }
   const totalNoteCount = notes.filter((n) => n.title !== ".folder_metadata").length;
 
+  const toggleFolderSelect = (folder: string) => {
+    setSelectedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(folder)) next.delete(folder); else next.add(folder);
+      return next;
+    });
+  };
+
   // Bulk action handlers
   const handleBulkDelete = async () => {
     const noteIds = Array.from(selectedNoteIds);
     const matIds = Array.from(selectedMaterialIds);
     if (noteIds.length > 0) await supabase.from("saved_notes").delete().in("id", noteIds);
     if (matIds.length > 0) await supabase.from("saved_study_materials").delete().in("id", matIds);
-    toast.success(`Deleted ${noteIds.length + matIds.length} items`);
+
+    // Delete selected folders (move notes to Unsorted, remove metadata)
+    for (const folder of selectedFolders) {
+      const notesInFolder = notes.filter((n) => n.folder === folder);
+      for (const n of notesInFolder) {
+        if (n.title === ".folder_metadata") {
+          await supabase.from("saved_notes").delete().eq("id", n.id);
+        } else {
+          await supabase.from("saved_notes").update({ folder: DEFAULT_FOLDER }).eq("id", n.id);
+        }
+      }
+    }
+
+    const totalDeleted = noteIds.length + matIds.length + selectedFolders.size;
+    toast.success(`Deleted ${totalDeleted} item${totalDeleted !== 1 ? "s" : ""}${selectedFolders.size > 0 ? ` (${selectedFolders.size} folder${selectedFolders.size > 1 ? "s" : ""} — notes moved to Unsorted)` : ""}`);
     setSelectedNoteIds(new Set());
     setSelectedMaterialIds(new Set());
+    setSelectedFolders(new Set());
     setBulkDeleteConfirm(false);
     fetchNotes();
     fetchMaterials();
   };
 
   const handleBulkMoveFolder = async (folder: string) => {
+    // Move individually selected notes
     const noteIds = Array.from(selectedNoteIds);
     for (const id of noteIds) {
       await supabase.from("saved_notes").update({ folder }).eq("id", id);
     }
-    toast.success(`Moved ${noteIds.length} notes to ${folder}`);
+
+    // Move all notes from selected folders
+    let folderNoteCount = 0;
+    for (const srcFolder of selectedFolders) {
+      const notesInFolder = notes.filter((n) => n.folder === srcFolder && n.title !== ".folder_metadata");
+      for (const n of notesInFolder) {
+        await supabase.from("saved_notes").update({ folder }).eq("id", n.id);
+        folderNoteCount++;
+      }
+    }
+
+    const totalMoved = noteIds.length + folderNoteCount;
+    toast.success(`Moved ${totalMoved} note${totalMoved !== 1 ? "s" : ""} to ${folder}`);
     setSelectedNoteIds(new Set());
+    setSelectedFolders(new Set());
     setBulkMoveOpen(false);
     fetchNotes();
   };
@@ -327,6 +365,7 @@ const Library = () => {
   const deselectAll = () => {
     setSelectedNoteIds(new Set());
     setSelectedMaterialIds(new Set());
+    setSelectedFolders(new Set());
   };
 
   // Multi-select handlers
@@ -346,7 +385,7 @@ const Library = () => {
     });
   };
 
-  const totalSelected = selectedNoteIds.size + selectedMaterialIds.size;
+  const totalSelected = selectedNoteIds.size + selectedMaterialIds.size + selectedFolders.size;
 
   const handleStartStudySession = () => {
     const noteIds = new Set(selectedNoteIds);
@@ -397,6 +436,9 @@ const Library = () => {
         setDeleteFolderDialogOpen(true);
       }}
       onCreate={() => setNewFolderDialogOpen(true)}
+      selectMode={selectMode}
+      selectedFolders={selectedFolders}
+      onToggleFolderSelect={toggleFolderSelect}
     />
   );
 
@@ -420,6 +462,7 @@ const Library = () => {
             if (selectMode) {
               setSelectedNoteIds(new Set());
               setSelectedMaterialIds(new Set());
+              setSelectedFolders(new Set());
             }
           }}
           selectedCount={totalSelected}
@@ -446,7 +489,7 @@ const Library = () => {
                 >
                   <Trash2 className="h-3.5 w-3.5" /> Delete
                 </Button>
-                {selectedNoteIds.size > 0 && (
+                {(selectedNoteIds.size > 0 || selectedFolders.size > 0) && (
                   <Button
                     variant="outline"
                     size="sm"

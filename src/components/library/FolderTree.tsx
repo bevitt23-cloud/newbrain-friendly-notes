@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, ChevronDown, Folder, FolderOpen, FolderPlus, Pencil, Trash2, Library } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderOpen, FolderPlus, Pencil, Trash2, Library, CheckSquare, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { buildFolderTree, type FolderTreeNode } from "@/lib/folderUtils";
 import { DEFAULT_FOLDER } from "@/lib/constants";
@@ -12,6 +12,10 @@ interface FolderTreeProps {
   onRename: (oldName: string) => void;
   onDelete: (folderName: string) => void;
   onCreate: () => void;
+  /** Multi-select mode */
+  selectMode?: boolean;
+  selectedFolders?: Set<string>;
+  onToggleFolderSelect?: (folder: string) => void;
 }
 
 interface TreeNodeProps {
@@ -21,25 +25,45 @@ interface TreeNodeProps {
   onSelect: (folder: string | null) => void;
   onRename: (oldName: string) => void;
   onDelete: (folderName: string) => void;
+  selectMode?: boolean;
+  selectedFolders?: Set<string>;
+  onToggleFolderSelect?: (folder: string) => void;
 }
 
-const TreeNode = ({ node, depth, selectedFolder, onSelect, onRename, onDelete }: TreeNodeProps) => {
+const TreeNode = ({ node, depth, selectedFolder, onSelect, onRename, onDelete, selectMode, selectedFolders, onToggleFolderSelect }: TreeNodeProps) => {
   const [expanded, setExpanded] = useState(true);
   const isActive = selectedFolder === node.fullPath;
   const hasChildren = node.children.length > 0;
   const isDefault = node.fullPath === DEFAULT_FOLDER;
+  const isFolderSelected = selectedFolders?.has(node.fullPath) ?? false;
 
   return (
     <div>
       <div
         className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 text-sm cursor-pointer transition-all duration-150 ${
-          isActive
-            ? "bg-primary/10 text-primary font-medium"
-            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+          isFolderSelected
+            ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+            : isActive
+              ? "bg-primary/10 text-primary font-medium"
+              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
-        onClick={() => onSelect(isActive ? null : node.fullPath)}
+        onClick={() => selectMode && onToggleFolderSelect ? onToggleFolderSelect(node.fullPath) : onSelect(isActive ? null : node.fullPath)}
       >
+        {/* Select checkbox */}
+        {selectMode && !isDefault && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleFolderSelect?.(node.fullPath); }}
+            className="shrink-0"
+          >
+            {isFolderSelected ? (
+              <CheckSquare className="h-3.5 w-3.5 text-primary" />
+            ) : (
+              <Square className="h-3.5 w-3.5 text-muted-foreground/40" />
+            )}
+          </button>
+        )}
+
         {/* Expand/collapse arrow */}
         {hasChildren ? (
           <button
@@ -107,6 +131,9 @@ const TreeNode = ({ node, depth, selectedFolder, onSelect, onRename, onDelete }:
                 onSelect={onSelect}
                 onRename={onRename}
                 onDelete={onDelete}
+                selectMode={selectMode}
+                selectedFolders={selectedFolders}
+                onToggleFolderSelect={onToggleFolderSelect}
               />
             ))}
           </motion.div>
@@ -124,6 +151,9 @@ const FolderTree = ({
   onRename,
   onDelete,
   onCreate,
+  selectMode,
+  selectedFolders,
+  onToggleFolderSelect,
 }: FolderTreeProps) => {
   const tree = buildFolderTree(folderCounts);
 
@@ -169,6 +199,9 @@ const FolderTree = ({
           onSelect={onSelect}
           onRename={onRename}
           onDelete={onDelete}
+          selectMode={selectMode}
+          selectedFolders={selectedFolders}
+          onToggleFolderSelect={onToggleFolderSelect}
         />
       ))}
     </div>
