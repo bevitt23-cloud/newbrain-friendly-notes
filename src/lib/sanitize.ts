@@ -6,7 +6,16 @@ import DOMPurify from "dompurify";
  * while stripping scripts, event handlers, and dangerous attributes.
  */
 export function sanitizeHtml(dirty: string): string {
-  return DOMPurify.sanitize(dirty, {
+  // Strip math-formula pill wrappers globally — AI wraps plain numbers/labels
+  // in these spans which show misleading magnifying glass pills. Remove the
+  // wrapper but keep the inner content. This runs before DOMPurify so it
+  // catches saved notes loaded from the library, not just new generations.
+  const cleaned = dirty.replace(
+    /<span\s+class="math-formula"[^>]*>([\s\S]*?)<\/span>/gi,
+    "$1",
+  );
+
+  return DOMPurify.sanitize(cleaned, {
     ADD_TAGS: ["section", "details", "summary", "button", "textarea", "figure", "figcaption", "img"],
     ADD_ATTR: [
       "data-definition",
@@ -18,7 +27,6 @@ export function sanitizeHtml(dirty: string): string {
       "data-section-index",
       "data-concept",
       "data-image-index",
-      "data-formula",
       "data-total-steps",
       "data-step",
       "tabindex",
