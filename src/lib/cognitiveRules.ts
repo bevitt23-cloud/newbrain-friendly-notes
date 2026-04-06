@@ -516,12 +516,17 @@ export const TOOL_DETAILS: Record<string, ToolDetail> = {
   },
 };
 
-export function deriveTraitsFromAnswers(answers: Record<string, number>): CognitiveTrait[] {
+export function deriveTraitsFromAnswers(answers: Record<string, number | number[]>): CognitiveTrait[] {
   const traits: CognitiveTrait[] = [];
   for (const q of WIZARD_QUESTIONS) {
-    const ansIdx = answers[q.id];
-    if (ansIdx !== undefined && q.options[ansIdx]) {
-      traits.push(...q.options[ansIdx].traits);
+    const raw = answers[q.id];
+    if (raw === undefined) continue;
+    // Support both legacy single-index and new multi-select array
+    const indices = Array.isArray(raw) ? raw : [raw];
+    for (const idx of indices) {
+      if (q.options[idx]) {
+        traits.push(...q.options[idx].traits);
+      }
     }
   }
   return [...new Set(traits)];

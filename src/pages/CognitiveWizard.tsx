@@ -39,7 +39,7 @@ const CognitiveWizard = () => {
   const { saveProfile, profile } = useCognitiveProfile();
   // step 0 = intro, step 1 = age, 2-(totalQ+1) = questions, then interest, then results
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, number[]>>({});
   const [hyperFixations, setHyperFixations] = useState<string[]>(
     profile.hyperFixations?.length ? profile.hyperFixations : []
   );
@@ -68,10 +68,23 @@ const CognitiveWizard = () => {
 
   const progressPercent = Math.min(100, (step / (totalQuestions + 2)) * 100);
 
-  const handleAnswer = (optionIdx: number) => {
+  const handleToggleOption = (optionIdx: number) => {
     if (!currentQ) return;
-    setAnswers((prev) => ({ ...prev, [currentQ.id]: optionIdx }));
-    setTimeout(() => setStep((s) => s + 1), 300);
+    setAnswers((prev) => {
+      const current = prev[currentQ.id] || [];
+      const hasTraits = currentQ.options[optionIdx].traits.length > 0;
+      if (current.includes(optionIdx)) {
+        // Deselect
+        return { ...prev, [currentQ.id]: current.filter((i) => i !== optionIdx) };
+      }
+      // If selecting a baseline option (no traits), clear other selections
+      if (!hasTraits) {
+        return { ...prev, [currentQ.id]: [optionIdx] };
+      }
+      // If selecting a trait option, remove any baseline (no-trait) options
+      const filtered = current.filter((i) => currentQ.options[i]?.traits.length > 0);
+      return { ...prev, [currentQ.id]: [...filtered, optionIdx] };
+    });
   };
 
   // Live preview HTML based on selected writing style
@@ -343,21 +356,38 @@ const CognitiveWizard = () => {
                   {currentQ.question}
                 </h2>
 
+                <p className="text-xs text-muted-foreground -mt-3">Select all that apply</p>
                 <div className="space-y-2.5">
                   {currentQ.options.map((opt, i) => {
-                    const selected = answers[currentQ.id] === i;
+                    const currentSelections = answers[currentQ.id] || [];
+                    const selected = currentSelections.includes(i);
                     return (
                       <button
                         key={i}
-                        onClick={() => handleAnswer(i)}
+                        onClick={() => handleToggleOption(i)}
                         className={`w-full text-left rounded-xl border p-4 transition-all duration-200 ${
                           selected
                             ? "border-lavender-400 bg-lavender-50 dark:bg-lavender-500/10 ring-2 ring-lavender-300"
                             : "border-border hover:border-lavender-200 hover:bg-muted/50"
                         }`}
                       >
-                        <div className="font-medium text-sm text-foreground">{opt.label}</div>
-                        <div className="mt-0.5 text-xs text-muted-foreground">{opt.description}</div>
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            selected
+                              ? "bg-lavender-500 border-lavender-500"
+                              : "border-muted-foreground/30"
+                          }`}>
+                            {selected && (
+                              <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                                <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm text-foreground">{opt.label}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">{opt.description}</div>
+                          </div>
+                        </div>
                       </button>
                     );
                   })}
@@ -371,14 +401,12 @@ const CognitiveWizard = () => {
                   >
                     <ArrowLeft className="h-3.5 w-3.5" /> Back
                   </button>
-                  {answers[currentQ.id] !== undefined && (
-                    <button
-                      onClick={() => setStep((s) => s + 1)}
-                      className="flex items-center gap-1 text-sm font-medium text-lavender-500 hover:text-lavender-600 transition-colors"
-                    >
-                      Next <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setStep((s) => s + 1)}
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lavender-500 to-peach-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {(answers[currentQ.id]?.length ?? 0) === 0 ? "Skip" : "Next"} <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               </motion.div>
             )}

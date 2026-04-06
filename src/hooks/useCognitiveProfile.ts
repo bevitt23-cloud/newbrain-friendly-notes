@@ -11,7 +11,7 @@ import {
 
 export interface CognitiveProfile {
   traits: CognitiveTrait[];
-  wizardAnswers: Record<string, number>;
+  wizardAnswers: Record<string, number | number[]>;
   hyperFixation: string | null;
   hyperFixations: string[];
   wizardCompleted: boolean;
@@ -69,7 +69,7 @@ export function useCognitiveProfile() {
         const hfList = parseHyperFixations(hfRaw);
         setProfile({
           traits,
-          wizardAnswers: (d.wizard_answers || {}) as Record<string, number>,
+          wizardAnswers: (d.wizard_answers || {}) as Record<string, number | number[]>,
           hyperFixation: hfList.length > 0 ? hfList[0] : hfRaw,
           hyperFixations: hfList,
           wizardCompleted: d.wizard_completed || false,
@@ -85,7 +85,7 @@ export function useCognitiveProfile() {
 
   // Save profile to DB
   const saveProfile = useCallback(
-    async (answers: Record<string, number>, hyperFixations?: string[], age?: number | null) => {
+    async (answers: Record<string, number | number[]>, hyperFixations?: string[], age?: number | null) => {
       if (!user) return;
 
       const traits = deriveTraitsFromAnswers(answers);
