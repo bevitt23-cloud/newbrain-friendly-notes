@@ -360,7 +360,7 @@ serve(async (req) => {
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images, noteFormat } = body;
 
     const contentParts: any[] = [];
 
@@ -870,6 +870,17 @@ Format for a reader with ADHD:
 - CRITICAL FORMATTING: Set generous spacing between all elements, keep text columns narrow, and use line height of at least 1.6.`;
     }
 
+    // 0. Note format instruction
+    const NOTE_FORMAT_PROMPTS: Record<string, string> = {
+      outline: "NOTE FORMAT: Use Outline format. Organize content with a clear heading hierarchy (H1 → H2 → H3). Use bulleted and numbered lists under each heading. Group related ideas under descriptive sub-headers.",
+      cornell: "NOTE FORMAT: Use Cornell Notes format. Structure each section with two columns: a narrow left CUE COLUMN containing keywords, questions, or prompts, and a wider right NOTES COLUMN containing the detailed content. At the end of each major section, add a SUMMARY row with 2-3 sentences capturing the key takeaway. Use this HTML structure: <div class=\"cornell-section\"><div class=\"cornell-cue\">cue/question</div><div class=\"cornell-notes\">detailed notes</div></div> and <div class=\"cornell-summary\">summary</div>.",
+      concept_map: "NOTE FORMAT: Use Concept Map format. Organize content around relationships between ideas rather than linear flow. For each concept, explicitly label its relationships to other concepts using tags like CAUSES, LEADS TO, IS A TYPE OF, CONTRASTS WITH, DEPENDS ON. Use connection markers and group related concepts visually with sub-sections.",
+      flow: "NOTE FORMAT: Use Flow/Sequential format. Present content as a numbered sequence of steps, stages, or events. Each step should include: the step number (Step N of Total), what happens, why it happens, and what it leads to. Use arrow notation (→) between steps to show progression.",
+    };
+    const formatStr = noteFormat && typeof noteFormat === "string" && noteFormat !== "auto" && NOTE_FORMAT_PROMPTS[noteFormat]
+      ? `\n\n${NOTE_FORMAT_PROMPTS[noteFormat]}`
+      : "";
+
     // 1. Process standard profile and age
     let profileStr = profilePrompt && typeof profilePrompt === "string" ? `\n\nUSER COGNITIVE PROFILE:\n${profilePrompt}` : "";
     const ageStr = age && typeof age === "number" ? `\n\nIMPORTANT: The learner is approximately ${age} years old. Adjust vocabulary, sentence complexity, and reading level accordingly. ${age < 10 ? "Use very simple language, short sentences, and concrete examples." : age < 13 ? "Use clear, straightforward language appropriate for a middle schooler." : age < 18 ? "Use age-appropriate language for a teenager." : ""}` : "";
@@ -903,10 +914,22 @@ STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div cl
     const systemPrompt = `You are an expert, empathetic tutor. Your primary goal is to ensure the user fully comprehends this material. If the source material is disorganized, poorly extracted (like a messy PDF), or lacks punctuation (like an auto-generated YouTube transcript), DO NOT just blindly reformat the mess. Use your judgement to restructure the logic, fix the grammar, and present the concepts in a clear, pedagogical flow. Teach the material.
 
 DYNAMIC SUBJECT ROUTING:
-First, identify the subject matter of the source material.
-- IF STEM (Math, Science, Engineering, Computing): heavily utilize data tables, step-by-step math steppers, formula breakdowns, and worked examples with the math-stepper format.
-- IF HUMANITIES (History, Literature, Psychology, Sociology, Philosophy): heavily utilize chronological timelines, thematic breakdowns, character and concept motives, and cause-and-effect logical flows. Structure the narrative to build understanding progressively.
-- IF MIXED or UNCLEAR: blend both strategies as appropriate for each section.
+First, identify the subject matter of the source material and output your analysis as a hidden HTML comment at the very start of your output:
+<!-- subject: [subject], topic: [main topic], subtopics: [list], recommended_format: [outline|cornell|concept_map|flow], complexity: [basic|intermediate|advanced] -->
+
+Then apply the subject-specific rules below IN ADDITION to all other formatting rules:
+
+STEM-Math: Preserve ALL formulas exactly. Show every step in worked examples — never skip steps. Add plain-English translations after every formula. Number all steps sequentially. Use the math-stepper format for all calculations.
+STEM-Science: Process flows must stay in sequential order. Diagrams are critical — always describe fully. Label all components. Use cause-and-effect framing for mechanisms.
+History: Chronological order. Cause-and-effect framing. Bold key figures and dates. Use timeline format for sequences of events.
+Literature: Thematic organization. Preserve all quotes exactly. Frame analysis around author intent. Character and concept motives.
+Medical/Nursing: Clinical terms MUST have plain-English definitions in parentheses on first use. Process flows for treatment pathways. Anatomy references with clear descriptions.
+Law: Hierarchical structure essential. Definition boxes for legal terms. Precedent chains and case relationships.
+Business/Economics: Definition boxes for jargon. Case study format preserved. Real-world framing. Supply-demand and market relationships made explicit.
+Computer Science: Code blocks preserved exactly with syntax formatting. Algorithm walkthroughs step by step. Input/output examples for every function or concept.
+Psychology: Study details (researcher, year, sample, findings) all included. Theory comparisons side by side. Distinguish between correlation and causation.
+Foreign Language: Vocabulary formatted for flashcard creation. Grammar rules with clear examples. Conjugation tables preserved as HTML tables.
+General/Mixed: Blend strategies as appropriate for each section.
 
 CONTENT FILTERING (apply to WEB-SCRAPED content ONLY):
 • When content comes from a scraped website URL (marked "Content from http..."), it may include navigation menus, headers, footers, cookie consent banners, sidebar widgets, advertisements, social media links, and legal disclaimers. You MUST identify and DISCARD this non-academic noise. Only process information relevant to the core subject matter.
@@ -1041,11 +1064,30 @@ CAPTION RULES:
 - Connect it explicitly to the surrounding concept
 - Minimum 2 sentences per caption
 
+SELF-VERIFICATION (do this internally before finalizing output):
+After generating the notes, verify:
+1. Every heading and section from the source is represented
+2. No facts, dates, names, or formulas were omitted
+3. Nothing was added from outside the source material
+4. All images/figures were handled
+Output as a hidden HTML comment at the very end of your output:
+<!-- verification: sections_covered: [count], key_terms_preserved: [count], hallucination_check: pass -->
+
+STUDY TOOL RECOMMENDATIONS:
+At the very end of the notes (after all content sections), add a hidden div for the UI to parse:
+<div class="study-tool-recommendations" style="display:none" data-recommendations='["tool_id_1","tool_id_2"]'></div>
+Choose 2-3 tools from this list based on the content analysis:
+- "flashcards" if many key terms or definitions
+- "flowchart" if sequential processes, procedures, or cycles
+- "retention_quiz" if exam-prep content with testable facts
+- "mindmap" if conceptual content with many interconnected ideas
+- "cloze_notes" if dense terminology that needs active recall
+
 CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
-1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node. 
+1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node.
 2. NEVER leave "detailed_info" blank. NEVER use generic placeholders like "Details go here."
-3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${extrasStr}${instructionsStr}${profileStr}${ageStr}`;
+3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}`;
 
     // ── Chapter-aware generation ──
     // When chapterContext is provided, the AI is generating notes for one

@@ -22,7 +22,7 @@ import { motion } from "framer-motion";
 import {
   Brain, ArrowRight, Upload, Sparkles, BookOpen,
   Eye, MessageCircle, GitBranch, Map, Layers,
-  ChevronRight, Sun, Moon,
+  ChevronRight, Sun, Moon, RefreshCw,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -456,8 +456,11 @@ function Workspace() {
     preferences.mindmap_default, preferences.flowchart_default,
   ]);
 
+  const lastGenerateDataRef = useRef<Record<string, any> | null>(null);
+
   const handleGenerate = useCallback(
-    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean; chapterData?: ChapterGenerateData }) => {
+    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean; noteFormat?: string; chapterData?: ChapterGenerateData }) => {
+      lastGenerateDataRef.current = data;
       autoSavedRef.current = false;
       setSavedNoteId(null);
       setSavedNoteTitle("");
@@ -511,6 +514,7 @@ function Workspace() {
           extras: activeExtras,
           profilePrompt: profile.promptAppend || undefined,
           age: profile.age,
+          noteFormat: data.noteFormat as any,
           folder: pendingMetaRef.current.folder,
           tags: data.tags,
           shouldSaveToLibrary: data.shouldSaveToLibrary,
@@ -543,6 +547,7 @@ function Workspace() {
         extras: activeExtras,
         profilePrompt: profile.promptAppend || undefined,
         age: profile.age,
+        noteFormat: data.noteFormat as any,
       });
     },
     [generate, learningMode, activeExtras, profile.promptAppend, profile.age, startBackgroundGeneration, resetChapterGeneration]
@@ -706,6 +711,30 @@ function Workspace() {
             bookTitle={chapterBookTitle}
             onStop={stopAfterCurrent}
           />
+        )}
+
+        {notesGenerated && !isGenerating && lastGenerateDataRef.current && (
+          <div className="flex items-center gap-2 flex-wrap rounded-xl border border-border bg-card p-3 shadow-sm">
+            <RefreshCw className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">Regenerate as:</span>
+            {([
+              { value: "outline", label: "Outline" },
+              { value: "cornell", label: "Cornell Notes" },
+              { value: "concept_map", label: "Concept Map" },
+              { value: "flow", label: "Flow" },
+            ] as const).map((fmt) => (
+              <button
+                key={fmt.value}
+                onClick={() => {
+                  const prev = lastGenerateDataRef.current;
+                  if (prev) handleGenerate({ ...prev, noteFormat: fmt.value });
+                }}
+                className="rounded-lg bg-lavender-100 dark:bg-lavender-500/15 px-2.5 py-1 text-[11px] font-medium text-lavender-600 dark:text-lavender-300 hover:bg-lavender-200 dark:hover:bg-lavender-500/25 transition-colors"
+              >
+                {fmt.label}
+              </button>
+            ))}
+          </div>
         )}
 
         {notesGenerated && (

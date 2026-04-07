@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye } from "lucide-react";
-import { WIZARD_QUESTIONS, deriveTraitsFromAnswers, deriveProfileSettings, TOOL_DETAILS, type CognitiveTrait } from "@/lib/cognitiveRules";
+import { WIZARD_QUESTIONS, deriveTraitsFromAnswers, deriveProfileSettings, deriveProfileLabel, TOOL_DETAILS, type CognitiveTrait } from "@/lib/cognitiveRules";
 import { WRITING_STYLE_LABELS, getActiveVariantKey, buildTutorialNotes, type WritingStyleKey } from "@/lib/onboardingTemplate";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { supabase } from "@/integrations/supabase/client";
@@ -521,14 +521,17 @@ const CognitiveWizard = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 className="space-y-5"
               >
-                {/* Header */}
+                {/* Header with profile name */}
                 <div className="text-center">
                   <div className="mx-auto mb-3 h-14 w-14 rounded-2xl bg-gradient-to-br from-sage-200 to-lavender-200 dark:from-sage-500/20 dark:to-lavender-500/20 flex items-center justify-center">
                     <CheckCircle2 className="h-7 w-7 text-sage-600 dark:text-sage-300" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground">Customize Your Experience</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    We've pre-selected tools based on your answers. Toggle anything on or off — changes preview live on the right.
+                  <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sage-100 to-lavender-100 dark:from-sage-500/15 dark:to-lavender-500/15 px-4 py-1.5 mb-2">
+                    <span className="text-sm font-bold text-foreground">{deriveProfileLabel(traits).name}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{deriveProfileLabel(traits).description}</p>
+                  <p className="mt-2 text-xs text-muted-foreground/70">
+                    Toggle anything on or off below — your preview updates live on the right.
                   </p>
                 </div>
 

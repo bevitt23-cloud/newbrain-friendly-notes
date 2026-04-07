@@ -19,6 +19,8 @@ export interface ChapterContext {
   bookTitle: string;
 }
 
+export type NoteFormat = "auto" | "outline" | "cornell" | "concept_map" | "flow";
+
 export interface GenerateOptions {
   textContent?: string;
   files?: File[];
@@ -32,6 +34,8 @@ export interface GenerateOptions {
   folder?: string;
   tags?: string[];
   shouldSaveToLibrary?: boolean;
+  /** Note structural format — "auto" lets AI decide based on content */
+  noteFormat?: NoteFormat;
   /** When generating notes for a single chapter of a larger document */
   chapterContext?: ChapterContext;
   /** Original PDF file for chapter-mode image extraction */
@@ -215,6 +219,7 @@ export function useNoteGeneration() {
         instructions: typeof opts.instructions === "string" ? opts.instructions : "",
         profilePrompt: typeof opts.profilePrompt === "string" ? opts.profilePrompt : undefined,
         age: opts.age ?? null,
+        noteFormat: opts.noteFormat || "auto",
       };
 
       // Add encoded images to payload for vision processing

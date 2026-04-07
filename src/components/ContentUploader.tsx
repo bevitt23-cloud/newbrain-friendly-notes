@@ -44,6 +44,7 @@ interface ContentUploaderProps {
     tags: string[];
     shouldSaveToLibrary: boolean;
     saveYouTubeVideo?: boolean;
+    noteFormat?: string;
     /** Present when generating from detected chapters */
     chapterData?: ChapterGenerateData;
   }) => void;
@@ -59,6 +60,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [text, setText] = useState("");
   const [instructions, setInstructions] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
+  const [noteFormat, setNoteFormat] = useState<string>("auto");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -255,7 +257,7 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const parsedTags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean);
 
   const handleSubmit = () => {
-    const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary };
+    const common = { instructions, folder: shouldSaveToLibrary ? folder : DEFAULT_FOLDER, tags: shouldSaveToLibrary ? parsedTags : [], shouldSaveToLibrary, noteFormat };
 
     // ── Chapter mode: split into first chapter (workspace) + background chapters ──
     if (isChapterMode && chapterDetection) {
@@ -634,6 +636,30 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Note format selector */}
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-medium text-muted-foreground">Format:</span>
+        {([
+          { value: "auto", label: "Auto-detect" },
+          { value: "outline", label: "Outline" },
+          { value: "cornell", label: "Cornell Notes" },
+          { value: "concept_map", label: "Concept Map" },
+          { value: "flow", label: "Flow" },
+        ] as const).map((fmt) => (
+          <button
+            key={fmt.value}
+            onClick={() => setNoteFormat(fmt.value)}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all ${
+              noteFormat === fmt.value
+                ? "bg-lavender-200 text-lavender-700 dark:bg-lavender-500/20 dark:text-lavender-300 ring-1 ring-lavender-300 dark:ring-lavender-500/30"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {fmt.label}
+          </button>
+        ))}
       </div>
 
       {/* CTA button */}

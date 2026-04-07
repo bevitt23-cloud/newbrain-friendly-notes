@@ -379,6 +379,84 @@ export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation
     : "";
 }
 
+// ─── Profile name derivation ────────────────────────────────
+
+export interface ProfileLabel {
+  name: string;
+  description: string;
+}
+
+export function deriveProfileLabel(traits: CognitiveTrait[]): ProfileLabel {
+  const s = new Set(traits);
+
+  // Check dominant patterns (order matters — first match wins)
+  if (s.has("visual_spatial") || s.has("visual_mapper")) {
+    return {
+      name: "Visual Learner",
+      description: "You process information best through spatial layouts, diagrams, and visual anchors. Your notes will emphasize blueprints, concept maps, and emoji-marked navigation.",
+    };
+  }
+  if (s.has("systems_analytical")) {
+    return {
+      name: "Systems Thinker",
+      description: "You naturally think in cause-and-effect chains and cascading systems. Your notes will highlight triggers, catalysts, and momentum shifts.",
+    };
+  }
+  if (s.has("strict_procedural")) {
+    return {
+      name: "Step-by-Step Learner",
+      description: "You process information best as rigid, sequential procedures. Your notes will be formatted as numbered checklists where each step builds on the last.",
+    };
+  }
+  if (s.has("rsd") || s.has("demand_avoidant")) {
+    return {
+      name: "Confidence Builder",
+      description: "Your notes will use warm, low-pressure language that frames learning as exploration. Errors are treated as stepping stones, not failures.",
+    };
+  }
+  if (s.has("adhd") && s.has("dyslexia")) {
+    return {
+      name: "Focus Flow",
+      description: "Your notes combine chunked, scannable formatting with short sentences and bold key terms — optimized for both attention and decoding.",
+    };
+  }
+  if (s.has("adhd")) {
+    return {
+      name: "Focus Flow",
+      description: "Your notes are chunked into short, color-coded sections with bold key phrases and one-line hooks to keep your attention locked in.",
+    };
+  }
+  if (s.has("dyslexia")) {
+    return {
+      name: "Deep Reader",
+      description: "Your notes use short sentences, extra spacing, and bold key terms to reduce decoding effort so you can focus on understanding.",
+    };
+  }
+  if (s.has("dyscalculia")) {
+    return {
+      name: "Concrete Thinker",
+      description: "Abstract numbers and formulas are translated into real-world comparisons and step-by-step breakdowns with plain-English explanations.",
+    };
+  }
+  if (s.has("working_memory") || s.has("prioritization_fatigue")) {
+    return {
+      name: "Guided Learner",
+      description: "Your notes explicitly label what's essential versus supporting context, with checklists and recall prompts to reinforce key points.",
+    };
+  }
+  if (s.has("interest_based")) {
+    return {
+      name: "Curiosity-Driven",
+      description: "Your notes connect academic concepts to your personal interests, using real-world analogies that make abstract ideas click.",
+    };
+  }
+
+  return {
+    name: "Adaptive Learner",
+    description: "Your notes are formatted with brain-friendly defaults — clear headings, bold key terms, and color-coded sections for easy navigation.",
+  };
+}
+
 // ─── Tool details for the Smart Checkout UI ───────────────
 
 export interface ToolDetail {
