@@ -2,10 +2,15 @@ import * as pdfjsLib from "pdfjs-dist";
 import { toast } from "sonner";
 
 // Fix PDF.js worker for Vite — use the minified worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
+try {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+  ).toString();
+} catch {
+  // Fallback: disable worker (runs on main thread — slower but works everywhere)
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+}
 
 /** Optional progress callback: receives (pagesProcessed, totalPages) */
 export type ExtractionProgressCallback = (
@@ -17,12 +22,37 @@ async function extractPdfText(
   file: File,
   onProgress?: ExtractionProgressCallback
 ): Promise<{ text: string; pageCount: number }> {
-  console.log(`[PDF Extract] Starting extraction for "${file.name}" (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+  const sizeMB = file.size / 1024 / 1024;
+  console.log(`[PDF Extract] Starting extraction for "${file.name}" (${sizeMB.toFixed(1)} MB)`);
 
-  const arrayBuffer = await file.arrayBuffer();
+  // On mobile browsers, large PDFs can exhaust memory during arrayBuffer read
+  let arrayBuffer: ArrayBuffer;
+  try {
+    arrayBuffer = await file.arrayBuffer();
+  } catch (bufErr) {
+    console.error(`[PDF Extract] arrayBuffer failed for "${file.name}":`, bufErr);
+    throw new Error(
+      sizeMB > 50
+        ? "This PDF is too large for your browser. Try a smaller file or use a desktop browser."
+        : "Could not read the PDF file. Try again or use a desktop browser."
+    );
+  }
   console.log(`[PDF Extract] ArrayBuffer loaded: ${arrayBuffer.byteLength} bytes`);
 
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let pdf: pdfjsLib.PDFDocumentProxy;
+  try {
+    pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  } catch (docErr) {
+    console.error(`[PDF Extract] getDocument failed for "${file.name}":`, docErr);
+    // Retry without worker (main thread fallback) if worker failed
+    if (pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      console.log("[PDF Extract] Retrying without worker...");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "";
+      pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    } else {
+      throw new Error("Could not parse this PDF. The file may be corrupted or password-protected.");
+    }
+  }
   console.log(`[PDF Extract] PDF loaded: ${pdf.numPages} pages`);
 
   const pages: string[] = [];
