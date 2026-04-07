@@ -3,6 +3,7 @@ import { Upload, Link2, FileText, X, Sparkles, Mic, MessageSquare, Loader2, Yout
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { isTranscribableYouTubeUrl } from "@/lib/youtube";
@@ -59,6 +60,8 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [instructions, setInstructions] = useState("");
   const [showInstructions, setShowInstructions] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
   const [folder, setFolder] = useState(DEFAULT_FOLDER);
   const [tagsInput, setTagsInput] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -350,25 +353,29 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
               onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              className={`relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-300 ${
+              onClick={() => fileInputRef.current?.click()}
+              className={`relative flex min-h-[140px] sm:min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-300 ${
                 dragOver
                   ? "border-sage-600 bg-sage-200 dark:border-sage-300 dark:bg-sage-500/30 scale-[1.01]"
                   : "border-sage-400 bg-gradient-to-br from-sage-100 to-sage-200/60 dark:border-sage-300/40 dark:from-sage-500/20 dark:to-sage-500/10 hover:border-sage-500 hover:bg-sage-200/80 dark:hover:border-sage-200/50 dark:hover:bg-sage-500/25"
               }`}
             >
               <input
+                ref={fileInputRef}
                 id="content-files"
                 name="contentFiles"
                 type="file"
                 multiple
                 accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.csv,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.avi"
                 onChange={handleFileSelect}
-                className="absolute inset-0 cursor-pointer opacity-0"
+                className="absolute inset-0 z-10 cursor-pointer opacity-0"
               />
               <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-sage-300 dark:bg-sage-500/35 shadow-md">
                 <Upload className="h-7 w-7 text-sage-700 dark:text-sage-100" />
               </div>
-              <p className="text-sm font-medium text-foreground">Drop files here or click to browse</p>
+              <p className="text-sm font-medium text-foreground">
+                {isMobile ? "Tap to select files" : "Drop files here or click to browse"}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 PDF, Word, PowerPoint, images, video — up to 5 files (500MB each)
               </p>
