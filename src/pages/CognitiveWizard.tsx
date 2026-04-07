@@ -45,6 +45,8 @@ const CognitiveWizard = () => {
   );
   const [newInterest, setNewInterest] = useState("");
   const [selectedAge, setSelectedAge] = useState<number | null>(profile.age);
+  const [selectedGender, setSelectedGender] = useState<string | null>(profile.gender);
+  const [selectedRegion, setSelectedRegion] = useState<string>(profile.region || "");
   const [saving, setSaving] = useState(false);
 
   // ── Smart Checkout state (initialized when result step is reached) ──
@@ -55,18 +57,19 @@ const CognitiveWizard = () => {
   const [checkoutInitialized, setCheckoutInitialized] = useState(false);
 
   const totalQuestions = WIZARD_QUESTIONS.length;
-  // step 1 = age picker
+  // step 0 = intro, step 1 = age, step 2 = demographics, step 3+ = questions
   const isAgeStep = step === 1;
-  const isQuestionStep = step >= 2 && step <= totalQuestions + 1;
-  const questionIdx = step - 2;
+  const isDemographicsStep = step === 2;
+  const isQuestionStep = step >= 3 && step <= totalQuestions + 2;
+  const questionIdx = step - 3;
   const currentQ = isQuestionStep ? WIZARD_QUESTIONS[questionIdx] : null;
 
   const traits = deriveTraitsFromAnswers(answers);
   const needsHyperFixation = traits.includes("interest_based");
-  const isInterestStep = step === totalQuestions + 2 && needsHyperFixation;
-  const isResultStep = step === (needsHyperFixation ? totalQuestions + 3 : totalQuestions + 2);
+  const isInterestStep = step === totalQuestions + 3 && needsHyperFixation;
+  const isResultStep = step === (needsHyperFixation ? totalQuestions + 4 : totalQuestions + 3);
 
-  const progressPercent = Math.min(100, (step / (totalQuestions + 2)) * 100);
+  const progressPercent = Math.min(100, (step / (totalQuestions + 3)) * 100);
 
   const handleToggleOption = (optionIdx: number) => {
     if (!currentQ) return;
@@ -126,7 +129,7 @@ const CognitiveWizard = () => {
 
     // 1. Save cognitive profile with custom checkout preferences
     const validInterests = hyperFixations.filter((h) => h.trim());
-    const err = await saveProfile(answers, validInterests.length > 0 ? validInterests : undefined, selectedAge);
+    const err = await saveProfile(answers, validInterests.length > 0 ? validInterests : undefined, selectedAge, { gender: selectedGender, region: selectedRegion.trim() || null });
     if (err) {
       setSaving(false);
       toast.error("Failed to save profile. Please try again.");
@@ -339,6 +342,78 @@ const CognitiveWizard = () => {
                       Next <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* ─── Demographics step ─── */}
+            {isDemographicsStep && (
+              <motion.div
+                key="demographics"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                className="space-y-6"
+              >
+                <div className="text-center">
+                  <h2 className="text-xl font-bold text-foreground">A little about you</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Optional — helps us understand how different learners use the platform. You can update this anytime in Settings.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Gender</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        { value: "male", label: "Male" },
+                        { value: "female", label: "Female" },
+                        { value: "non_binary", label: "Non-binary" },
+                        { value: "prefer_not_to_say", label: "Prefer not to say" },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setSelectedGender(selectedGender === opt.value ? null : opt.value)}
+                          className={`rounded-xl border p-3 text-sm font-medium transition-all duration-200 ${
+                            selectedGender === opt.value
+                              ? "border-lavender-400 bg-lavender-50 dark:bg-lavender-500/10 ring-2 ring-lavender-300"
+                              : "border-border hover:border-lavender-200 hover:bg-muted/50"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="wizard-region" className="text-sm font-medium text-foreground mb-2 block">Region</label>
+                    <input
+                      id="wizard-region"
+                      name="wizardRegion"
+                      type="text"
+                      value={selectedRegion}
+                      onChange={(e) => setSelectedRegion(e.target.value)}
+                      placeholder="e.g., Tennessee, US"
+                      className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-lavender-300 transition-shadow"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    onClick={() => setStep(1)}
+                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> Back
+                  </button>
+                  <button
+                    onClick={() => setStep(3)}
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-lavender-500 to-peach-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
+                  >
+                    {!selectedGender && !selectedRegion.trim() ? "Skip" : "Next"} <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               </motion.div>
             )}

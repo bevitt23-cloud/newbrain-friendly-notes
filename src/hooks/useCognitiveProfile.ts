@@ -18,6 +18,8 @@ export interface CognitiveProfile {
   settings: ProfileSettings;
   promptAppend: string;
   age: number | null;
+  gender: string | null;
+  region: string | null;
 }
 
 function parseHyperFixations(raw: string | null): string[] {
@@ -40,6 +42,8 @@ const DEFAULT_PROFILE: CognitiveProfile = {
   settings: deriveProfileSettings([]),
   promptAppend: "",
   age: null,
+  gender: null,
+  region: null,
 };
 
 export function useCognitiveProfile() {
@@ -76,6 +80,8 @@ export function useCognitiveProfile() {
           settings: deriveProfileSettings(traits),
           promptAppend: buildProfilePromptAppend(traits, hfList[0] || hfRaw),
           age: d.age || null,
+          gender: d.gender || null,
+          region: d.region || null,
         });
       }
       setLoading(false);
@@ -85,7 +91,7 @@ export function useCognitiveProfile() {
 
   // Save profile to DB
   const saveProfile = useCallback(
-    async (answers: Record<string, number | number[]>, hyperFixations?: string[], age?: number | null) => {
+    async (answers: Record<string, number | number[]>, hyperFixations?: string[], age?: number | null, demographics?: { gender?: string | null; region?: string | null }) => {
       if (!user) return;
 
       const traits = deriveTraitsFromAnswers(answers);
@@ -100,6 +106,8 @@ export function useCognitiveProfile() {
         wizard_completed: true,
       };
       if (age !== undefined) payload.age = age;
+      if (demographics?.gender !== undefined) payload.gender = demographics.gender;
+      if (demographics?.region !== undefined) payload.region = demographics.region;
 
       // Upsert
       const { error } = await supabase
@@ -117,6 +125,8 @@ export function useCognitiveProfile() {
           settings: deriveProfileSettings(traits),
           promptAppend: buildProfilePromptAppend(traits, hfList[0] || null),
           age: age ?? null,
+          gender: demographics?.gender ?? null,
+          region: demographics?.region ?? null,
         });
       }
       return error;

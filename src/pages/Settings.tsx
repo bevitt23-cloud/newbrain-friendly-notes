@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useUserPreferences, UserPreferences } from "@/hooks/useUserPreferences";
 import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { supabase } from "@/integrations/supabase/client";
 import { ISOCHRONIC_OPTIONS } from "@/hooks/useAudioMixer";
 import { toast } from "sonner";
 
@@ -165,6 +166,45 @@ const Settings = () => {
               <button onClick={() => navigate("/setup")} className="text-lavender-500 underline">Update</button>
             </div>
           )}
+
+          {/* Demographics */}
+          <div className="mt-4 space-y-3 border-t border-border/50 pt-4">
+            <p className="text-xs font-medium text-muted-foreground">Demographics (optional — used for anonymized research only)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="settings-gender" className="text-xs text-muted-foreground mb-1 block">Gender</label>
+                <select
+                  id="settings-gender"
+                  value={profile.gender || ""}
+                  onChange={async (e) => {
+                    const val = e.target.value || null;
+                    await supabase.from("cognitive_profiles" as any).update({ gender: val }).eq("user_id", user?.id);
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non_binary">Non-binary</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="settings-region" className="text-xs text-muted-foreground mb-1 block">Region</label>
+                <input
+                  id="settings-region"
+                  type="text"
+                  defaultValue={profile.region || ""}
+                  placeholder="e.g., Tennessee, US"
+                  onBlur={async (e) => {
+                    const val = e.target.value.trim() || null;
+                    await supabase.from("cognitive_profiles" as any).update({ region: val }).eq("user_id", user?.id);
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
+            </div>
+          </div>
         </Section>
 
         {/* Appearance */}

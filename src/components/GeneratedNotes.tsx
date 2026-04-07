@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { useBehavioralSensors } from "@/hooks/useBehavioralSensors";
 import { motion } from "framer-motion";
 import { RotateCcw, Save, Loader2, Sparkles, Download, Map, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -203,6 +204,9 @@ const GeneratedNotes = ({
   useNotesInteractivity(containerRef, html);
   useMathSteppers(containerRef, html, isGenerating);
   const { sections: navSections, activeSectionId, scrollToSection } = useJumpToNav(containerRef, html);
+
+  // Research behavioral sensors — tracks scroll thrashing, dwell time, etc.
+  useBehavioralSensors(containerRef);
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
