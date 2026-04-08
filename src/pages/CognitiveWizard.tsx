@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye, Type } from "lucide-react";
 import { WIZARD_QUESTIONS, deriveTraitsFromAnswers, deriveProfileSettings, deriveProfileLabel, TOOL_DETAILS, type CognitiveTrait } from "@/lib/cognitiveRules";
 import { WRITING_STYLE_LABELS, getActiveVariantKey, buildTutorialNotes, type WritingStyleKey } from "@/lib/onboardingTemplate";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -56,6 +56,13 @@ const CognitiveWizard = () => {
   const [selectedStudyTools, setSelectedStudyTools] = useState<string[]>([]);
   const [checkoutInitialized, setCheckoutInitialized] = useState(false);
 
+  // Font & spacing preview state
+  const [selectedFont, setSelectedFont] = useState<"arial" | "lexend" | "opendyslexic">("arial");
+  const [fontSize, setFontSize] = useState(0.95);
+  const [lineSpacing, setLineSpacing] = useState(1.6);
+  const [letterSpacing, setLetterSpacing] = useState(0);
+  const [wordSpacing, setWordSpacing] = useState(0);
+
   const totalQuestions = WIZARD_QUESTIONS.length;
   // step 0 = intro, step 1 = age, step 2 = demographics, step 3+ = questions
   const isAgeStep = step === 1;
@@ -90,38 +97,56 @@ const CognitiveWizard = () => {
     });
   };
 
+  // Bionic reading transformation
+  const applyBionic = useCallback((html: string): string => {
+    return html.replace(/>([^<]+)</g, (match, text: string) => {
+      const bionicText = text.replace(/\b(\w{2,})\b/g, (word: string) => {
+        const boldLen = Math.ceil(word.length * 0.4);
+        return `<span style="font-weight:700">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
+      });
+      return `>${bionicText}<`;
+    });
+  }, []);
+
   // Live preview HTML — dynamically assembled from traits + selected add-ons
   const activeVariantKey = useMemo(
     () => getActiveVariantKey(selectedWritingStyles),
     [selectedWritingStyles],
   );
-  const activePreviewHtml = useMemo(
-    () => sanitizeHtml(buildTutorialNotes({
+  const activePreviewHtml = useMemo(() => {
+    let html = buildTutorialNotes({
       writingStyle: activeVariantKey,
       traits,
       addOns: selectedAddOns,
       uiSettings: selectedUiSettings,
-    })),
-    [activeVariantKey, traits, selectedAddOns, selectedUiSettings],
-  );
+    });
+    if (selectedUiSettings.includes("bionic_reading")) {
+      html = applyBionic(html);
+    }
+    return sanitizeHtml(html);
+  }, [activeVariantKey, traits, selectedAddOns, selectedUiSettings, applyBionic]);
 
-  // Preview CSS classes based on selected UI settings
+  // Preview CSS classes
   const previewClasses = useMemo(() => {
-    const cls: string[] = ["generated-notes"];
-    if (selectedUiSettings.includes("dyslexia_font")) cls.push("dyslexia-preview");
-    return cls.join(" ");
-  }, [selectedUiSettings]);
+    return "generated-notes";
+  }, []);
+
+  // Preview styles — apply font, size, spacing settings
+  const FONT_FAMILIES: Record<string, string> = {
+    arial: "'Arial', 'Helvetica Neue', sans-serif",
+    lexend: "'Lexend', sans-serif",
+    opendyslexic: "'OpenDyslexic', 'Comic Sans MS', sans-serif",
+  };
 
   const previewStyles = useMemo((): React.CSSProperties => {
-    const s: React.CSSProperties = {};
-    if (selectedUiSettings.includes("dyslexia_font")) {
-      s.fontFamily = "'OpenDyslexic', 'Comic Sans MS', sans-serif";
-    }
-    if (selectedUiSettings.includes("line_spacing")) {
-      s.lineHeight = 2.2;
-    }
-    return s;
-  }, [selectedUiSettings]);
+    return {
+      fontFamily: FONT_FAMILIES[selectedFont],
+      fontSize: `${fontSize}rem`,
+      lineHeight: lineSpacing,
+      letterSpacing: `${letterSpacing}em`,
+      wordSpacing: `${wordSpacing}em`,
+    };
+  }, [selectedFont, fontSize, lineSpacing, letterSpacing, wordSpacing]);
 
   const handleFinish = useCallback(async () => {
     if (!user) return;
@@ -156,13 +181,35 @@ const CognitiveWizard = () => {
       toast.warning("Profile saved, but some preferences could not be stored.");
     }
 
+    // 2b. Save font & spacing preferences
+    try {
+      await supabase
+        .from("user_preferences" as any)
+        .upsert({
+          user_id: user.id,
+          dyslexia_font: selectedFont === "opendyslexic",
+          bionic_reading: selectedUiSettings.includes("bionic_reading"),
+          font_size: fontSize,
+          line_spacing: lineSpacing,
+          letter_spacing: letterSpacing,
+          word_spacing: wordSpacing,
+        }, { onConflict: "user_id" });
+      // Also persist adhd_font to localStorage
+      localStorage.setItem("bfn:adhd_font", String(selectedFont === "lexend"));
+    } catch {
+      console.warn("[Wizard] Font preferences save failed");
+    }
+
     // 3. Insert welcome note into saved_notes
-    const welcomeHtml = buildTutorialNotes({
+    let welcomeHtml = buildTutorialNotes({
       writingStyle: activeVariantKey,
       traits,
       addOns: selectedAddOns,
       uiSettings: selectedUiSettings,
     });
+    if (selectedUiSettings.includes("bionic_reading")) {
+      welcomeHtml = applyBionic(welcomeHtml);
+    }
     const { data: noteData, error: noteError } = await supabase
       .from("saved_notes")
       .insert({
@@ -191,7 +238,7 @@ const CognitiveWizard = () => {
     } else {
       navigate("/");
     }
-  }, [answers, hyperFixations, selectedAge, selectedGender, selectedRegion, selectedWritingStyles, selectedUiSettings, selectedAddOns, selectedStudyTools, activeVariantKey, user, saveProfile, navigate]);
+  }, [answers, hyperFixations, selectedAge, selectedGender, selectedRegion, selectedFont, fontSize, lineSpacing, letterSpacing, wordSpacing, selectedWritingStyles, selectedUiSettings, selectedAddOns, selectedStudyTools, activeVariantKey, traits, applyBionic, user, saveProfile, navigate]);
 
   const handleSkip = () => {
     navigate("/");
@@ -217,6 +264,16 @@ const CognitiveWizard = () => {
         setSelectedWritingStyles(styles);
       } else {
         setSelectedWritingStyles(["standard"]);
+      }
+
+      // Auto-select font based on traits
+      if (traits.includes("dyslexia")) {
+        setSelectedFont("opendyslexic");
+        setLineSpacing(2.0);
+        setLetterSpacing(0.05);
+      } else if (traits.includes("adhd")) {
+        setSelectedFont("lexend");
+        setLetterSpacing(0.03);
       }
 
       setCheckoutInitialized(true);
@@ -665,14 +722,92 @@ const CognitiveWizard = () => {
                       </div>
                     </div>
 
+                    {/* Font & Spacing */}
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
+                        <Type className="h-3 w-3" /> Font & Spacing
+                      </div>
+
+                      {/* Font selector */}
+                      <div className="space-y-1.5 mb-3">
+                        {([
+                          { id: "arial" as const, name: "Arial", desc: "Clean, universal sans-serif" },
+                          { id: "lexend" as const, name: "Lexend", desc: "Expanded spacing, optimized for ADHD focus" },
+                          { id: "opendyslexic" as const, name: "OpenDyslexic", desc: "Bottom-weighted letters, optimized for dyslexia" },
+                        ]).map((font) => (
+                          <button
+                            key={font.id}
+                            onClick={() => setSelectedFont(font.id)}
+                            className={`w-full text-left rounded-xl border p-3 transition-all duration-200 ${
+                              selectedFont === font.id
+                                ? "border-primary/40 bg-primary/5 ring-1 ring-primary/10"
+                                : "border-border/50 hover:border-border hover:bg-muted/30"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-foreground" style={{ fontFamily: FONT_FAMILIES[font.id] }}>{font.name}</span>
+                              <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${selectedFont === font.id ? "border-primary" : "border-muted-foreground/30"}`}>
+                                {selectedFont === font.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                              </div>
+                            </div>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">{font.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Spacing sliders */}
+                      <div className="space-y-3 rounded-xl border border-border/50 p-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-muted-foreground">Font Size</span>
+                            <span className="text-[11px] font-medium text-foreground">{fontSize.toFixed(2)}rem</span>
+                          </div>
+                          <input type="range" min="0.8" max="1.6" step="0.05" value={fontSize}
+                            onChange={(e) => setFontSize(Number(e.target.value))}
+                            className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-muted-foreground">Line Spacing</span>
+                            <span className="text-[11px] font-medium text-foreground">{lineSpacing.toFixed(1)}</span>
+                          </div>
+                          <input type="range" min="1.2" max="2.5" step="0.1" value={lineSpacing}
+                            onChange={(e) => setLineSpacing(Number(e.target.value))}
+                            className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-muted-foreground">Letter Spacing</span>
+                            <span className="text-[11px] font-medium text-foreground">{letterSpacing.toFixed(2)}em</span>
+                          </div>
+                          <input type="range" min="0" max="0.12" step="0.01" value={letterSpacing}
+                            onChange={(e) => setLetterSpacing(Number(e.target.value))}
+                            className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[11px] text-muted-foreground">Word Spacing</span>
+                            <span className="text-[11px] font-medium text-foreground">{wordSpacing.toFixed(2)}em</span>
+                          </div>
+                          <input type="range" min="0" max="0.5" step="0.05" value={wordSpacing}
+                            onChange={(e) => setWordSpacing(Number(e.target.value))}
+                            className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary" />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* UI Settings */}
-                    {settings.uiSettings.length > 0 && (
+                    {(() => {
+                      // Always show bionic_reading + audio_player alongside trait-derived settings
+                      const alwaysShow = ["bionic_reading", "audio_player"];
+                      const visibleSettings = [...new Set([...alwaysShow, ...settings.uiSettings])];
+                      return visibleSettings.length > 0 && (
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
                           UI Settings
                         </div>
                         <div className="space-y-1.5">
-                          {settings.uiSettings.map((key) => {
+                          {visibleSettings.map((key) => {
                             const info = TOOL_DETAILS[key];
                             if (!info) return null;
                             const active = selectedUiSettings.includes(key);
@@ -698,7 +833,8 @@ const CognitiveWizard = () => {
                           })}
                         </div>
                       </div>
-                    )}
+                      );
+                    })()}
 
                     {/* Add-ons */}
                     {settings.addOns.length > 0 && (
