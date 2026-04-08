@@ -136,6 +136,7 @@ const Library = () => {
     { id: "flashcard", label: "Flash Cards", icon: Layers },
     { id: "cloze", label: "Fill-in-the-Blank", icon: FileText },
     { id: "socratic", label: "Argue With Me", icon: MessageCircle },
+    { id: "final-exam", label: "Final Exam", icon: GraduationCap },
   ];
 
   useEffect(() => {

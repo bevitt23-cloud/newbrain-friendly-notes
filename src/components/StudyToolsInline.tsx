@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Map, GitBranch, Layers, FileText, MessageCircle,
+  Map, GitBranch, Layers, FileText, MessageCircle, GraduationCap,
   Loader2, Tag, Plus, X, ChevronUp,
 } from "lucide-react";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
@@ -17,6 +17,7 @@ import ClozeNotes from "@/components/study-tools/ClozeNotes";
 import SocraticDebate from "@/components/study-tools/SocraticDebate";
 import MindMap from "@/components/study-tools/MindMap";
 import FlowChart from "@/components/study-tools/FlowChart";
+import FinalExam from "@/components/study-tools/FinalExam";
 import StickyNoteButton from "@/components/study-tools/StickyNoteButton";
 import FunFactLink from "@/components/study-tools/FunFactLink";
 
@@ -26,6 +27,7 @@ const allStudyTools = [
   { id: "flashcard" as StudyToolType, label: "Flash Cards", icon: Layers, color: "text-peach-500 dark:text-peach-300", bg: "from-peach-50 to-peach-100 dark:from-peach-500/10 dark:to-peach-500/5", border: "border-peach-200 dark:border-peach-200/30" },
   { id: "cloze" as StudyToolType, label: "Fill-in-the-Blank", icon: FileText, color: "text-amber-500 dark:text-amber-400", bg: "from-amber-50 to-amber-100 dark:from-amber-400/10 dark:to-amber-400/5", border: "border-amber-200 dark:border-amber-400/30" },
   { id: "socratic" as StudyToolType, label: "Argue With Me", icon: MessageCircle, color: "text-lavender-500 dark:text-lavender-300", bg: "from-lavender-50 to-peach-50 dark:from-lavender-500/10 dark:to-peach-500/5", border: "border-lavender-200 dark:border-lavender-200/30" },
+  { id: "final-exam" as StudyToolType, label: "Final Exam", icon: GraduationCap, color: "text-sky-500 dark:text-sky-300", bg: "from-sky-50 to-sky-100 dark:from-sky-500/10 dark:to-sky-500/5", border: "border-sky-200 dark:border-sky-200/30" },
 ];
 
 interface GeneratedTab {
@@ -149,6 +151,14 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
         case "cloze": return <ClozeNotes data={tab.result} />;
         case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
         case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;
+        case "final-exam": {
+          try {
+            const examData = JSON.parse(tab.result);
+            return <FinalExam data={examData} />;
+          } catch {
+            return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
+          }
+        }
         default: return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
       }
     })();
