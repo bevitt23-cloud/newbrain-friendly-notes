@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Highlighter, Music, Timer, Volume2, Mic, ArrowRight } from "lucide-react";
 
@@ -52,18 +52,18 @@ const STEPS: TutorialStep[] = [
 export function useFirstTimeTutorial() {
   const [showTutorial, setShowTutorial] = useState(false);
 
-  const triggerIfFirstTime = () => {
+  const triggerIfFirstTime = useCallback(() => {
     if (typeof window === "undefined") return;
     const shown = localStorage.getItem(STORAGE_KEY);
     if (!shown) {
       setShowTutorial(true);
     }
-  };
+  }, []);
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     setShowTutorial(false);
     localStorage.setItem(STORAGE_KEY, "true");
-  };
+  }, []);
 
   return { showTutorial, triggerIfFirstTime, dismiss };
 }

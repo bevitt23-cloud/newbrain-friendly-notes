@@ -623,7 +623,7 @@ function Workspace() {
     if (notesGenerated && !isGenerating) {
       triggerIfFirstTime();
     }
-  }, [notesGenerated, isGenerating]);
+  }, [notesGenerated, isGenerating, triggerIfFirstTime]);
 
   return (
     <Layout>

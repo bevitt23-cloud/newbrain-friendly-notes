@@ -262,7 +262,7 @@ export function computeMetric(
             if (allQuiz[j].user_id === allQuiz[i].user_id) {
               const delta = new Date(allQuiz[j].created_at).getTime() - new Date(allQuiz[i].created_at).getTime();
               if (delta < 300000) { // within 5 min
-                recoveryTimes.push({ ...allQuiz[i], recovery_ms: delta });
+                recoveryTimes.push({ ...allQuiz[j], recovery_ms: delta });
               }
               break;
             }

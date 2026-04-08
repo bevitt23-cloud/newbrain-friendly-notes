@@ -23,8 +23,6 @@ interface CascadingMathStepperProps {
 const CascadingMathStepper = ({ steps }: CascadingMathStepperProps) => {
   const [currentStep, setCurrentStep] = useState(1);
 
-  if (steps.length === 0) return null;
-
   const showNext = useCallback(() => {
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
   }, [steps.length]);
@@ -36,6 +34,8 @@ const CascadingMathStepper = ({ steps }: CascadingMathStepperProps) => {
   const reset = useCallback(() => {
     setCurrentStep(1);
   }, []);
+
+  if (steps.length === 0) return null;
 
   const isComplete = currentStep >= steps.length;
   const visibleSteps = steps.slice(0, currentStep);
