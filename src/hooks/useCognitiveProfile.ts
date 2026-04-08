@@ -106,13 +106,27 @@ export function useCognitiveProfile() {
         wizard_completed: true,
       };
       if (age !== undefined) payload.age = age;
-      if (demographics?.gender !== undefined) payload.gender = demographics.gender;
-      if (demographics?.region !== undefined) payload.region = demographics.region;
 
-      // Upsert
+      // Upsert core profile
       const { error } = await supabase
         .from("cognitive_profiles" as any)
         .upsert(payload, { onConflict: "user_id" });
+
+      // Save demographics separately (columns may not exist if migration hasn't run)
+      if (!error && demographics && (demographics.gender !== undefined || demographics.region !== undefined)) {
+        const demoPayload: any = {};
+        if (demographics.gender !== undefined) demoPayload.gender = demographics.gender;
+        if (demographics.region !== undefined) demoPayload.region = demographics.region;
+        try {
+          await supabase
+            .from("cognitive_profiles" as any)
+            .update(demoPayload)
+            .eq("user_id", user.id);
+        } catch {
+          // Demographics columns may not exist yet — non-critical
+          console.warn("[Profile] Demographics save skipped — columns may not exist yet");
+        }
+      }
 
       if (!error) {
         const hfList = hyperFixations || [];

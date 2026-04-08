@@ -191,7 +191,7 @@ const CognitiveWizard = () => {
     } else {
       navigate("/");
     }
-  }, [answers, hyperFixations, selectedAge, selectedWritingStyles, selectedUiSettings, selectedAddOns, selectedStudyTools, activeVariantKey, user, saveProfile, navigate]);
+  }, [answers, hyperFixations, selectedAge, selectedGender, selectedRegion, selectedWritingStyles, selectedUiSettings, selectedAddOns, selectedStudyTools, activeVariantKey, user, saveProfile, navigate]);
 
   const handleSkip = () => {
     navigate("/");
