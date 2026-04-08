@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Upload, Link2, FileText, X, Sparkles, Mic, MessageSquare, Loader2, Youtube, FolderPlus, Check, Save, BookOpen } from "lucide-react";
+import { Upload, Link2, FileText, X, Sparkles, Mic, MicOff, MessageSquare, Loader2, Youtube, FolderPlus, Check, Save, BookOpen } from "lucide-react";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
@@ -64,6 +65,9 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const textVoice = useVoiceInput(useCallback((transcript: string) => {
+    setText((prev) => prev ? prev + " " + transcript : transcript);
+  }, []));
   const [folder, setFolder] = useState(DEFAULT_FOLDER);
   const [tagsInput, setTagsInput] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -478,15 +482,30 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
 
         {activeTab === "text" && (
           <motion.div key="text" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}>
-            <textarea
-              id="content-text"
-              name="contentText"
-              placeholder="Paste your study material here..."
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={6}
-              className="w-full resize-none rounded-2xl border-2 border-peach-300 dark:border-peach-300/30 bg-gradient-to-br from-peach-100/60 to-peach-200/30 dark:from-peach-500/15 dark:to-peach-500/10 px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-peach-500 focus:bg-peach-100 dark:focus:bg-peach-500/20 focus:outline-none focus:ring-2 focus:ring-peach-300/60 transition-all"
-            />
+            <div className="relative">
+              <textarea
+                id="content-text"
+                name="contentText"
+                placeholder={textVoice.isListening ? "Listening..." : "Paste or speak your study material here..."}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={6}
+                className="w-full resize-none rounded-2xl border-2 border-peach-300 dark:border-peach-300/30 bg-gradient-to-br from-peach-100/60 to-peach-200/30 dark:from-peach-500/15 dark:to-peach-500/10 px-4 py-3.5 pb-10 text-sm text-foreground placeholder:text-muted-foreground focus:border-peach-500 focus:bg-peach-100 dark:focus:bg-peach-500/20 focus:outline-none focus:ring-2 focus:ring-peach-300/60 transition-all"
+              />
+              {textVoice.supported && (
+                <button
+                  onClick={textVoice.toggle}
+                  className={`absolute right-3 bottom-3 rounded-lg p-1.5 transition-all ${
+                    textVoice.isListening
+                      ? "bg-red-500 text-white animate-pulse"
+                      : "text-muted-foreground/50 hover:text-foreground hover:bg-peach-200 dark:hover:bg-peach-500/20"
+                  }`}
+                  title={textVoice.isListening ? "Stop listening" : "Speak your study material"}
+                >
+                  {textVoice.isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

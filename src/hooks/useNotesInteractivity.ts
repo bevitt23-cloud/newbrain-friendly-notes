@@ -143,16 +143,23 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
       // Don't add mic button twice
       if (textarea.parentElement?.querySelector(".voice-mic-btn")) return;
 
+      // Wrap textarea in a relative container so mic button sits inside
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = "position:relative;display:block;";
+      textarea.parentNode?.insertBefore(wrapper, textarea);
+      wrapper.appendChild(textarea);
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "voice-mic-btn";
-      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`;
-      btn.title = "Voice input";
-      btn.style.cssText = "position:absolute;right:8px;top:8px;padding:6px;border-radius:8px;background:var(--muted);color:var(--muted-foreground);border:none;cursor:pointer;transition:all 0.2s;z-index:5;";
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`;
+      btn.title = "Tap to speak your answer";
+      btn.style.cssText = "position:absolute;right:8px;bottom:8px;padding:6px;border-radius:8px;background:hsl(var(--muted));color:hsl(var(--muted-foreground));border:1px solid hsl(var(--border));cursor:pointer;transition:all 0.2s;z-index:5;opacity:0.7;";
+      btn.onmouseenter = () => { if (!recognition) btn.style.opacity = "1"; };
+      btn.onmouseleave = () => { if (!recognition) btn.style.opacity = "0.7"; };
 
-      // Make the textarea container relative for positioning
-      const parent = textarea.parentElement;
-      if (parent) parent.style.position = "relative";
+      // Add padding to textarea so text doesn't overlap the mic button
+      (textarea as HTMLTextAreaElement).style.paddingBottom = "36px";
 
       let recognition: any = null;
 
@@ -185,26 +192,33 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
 
         recognition.onend = () => {
           recognition = null;
-          btn.style.background = "var(--muted)";
-          btn.style.color = "var(--muted-foreground)";
+          btn.style.background = "hsl(var(--muted))";
+          btn.style.color = "hsl(var(--muted-foreground))";
+          btn.style.opacity = "0.7";
         };
 
         recognition.onerror = () => {
           recognition = null;
-          btn.style.background = "var(--muted)";
-          btn.style.color = "var(--muted-foreground)";
+          btn.style.background = "hsl(var(--muted))";
+          btn.style.color = "hsl(var(--muted-foreground))";
+          btn.style.opacity = "0.7";
         };
 
         recognition.start();
         btn.style.background = "#ef4444";
         btn.style.color = "white";
+        btn.style.opacity = "1";
       });
 
-      textarea.parentElement?.insertBefore(btn, textarea.nextSibling);
+      wrapper.appendChild(btn);
 
       cleanups.push(() => {
         if (recognition) { try { recognition.stop(); } catch {} }
-        btn.remove();
+        // Unwrap textarea back to original parent
+        if (wrapper.parentNode) {
+          wrapper.parentNode.insertBefore(textarea, wrapper);
+          wrapper.remove();
+        }
       });
     });
 

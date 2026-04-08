@@ -156,29 +156,31 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
       {/* Input */}
       {started && (
         <div className="mt-3 flex gap-2">
-          <input
-            id="socratic-message"
-            name="socraticMessage"
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Defend your understanding..."
-            className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-          {voice.supported && (
-            <button
-              onClick={voice.toggle}
-              className={`rounded-xl px-3 py-2.5 transition-all ${
-                voice.isListening
-                  ? "bg-red-500 text-white animate-pulse"
-                  : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
-              }`}
-              title={voice.isListening ? "Stop listening" : "Voice input"}
-            >
-              {voice.isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </button>
-          )}
+          <div className="relative flex-1">
+            <input
+              id="socratic-message"
+              name="socraticMessage"
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              placeholder="Defend your understanding..."
+              className={`w-full rounded-xl border border-border bg-background pl-4 ${voice.supported ? "pr-10" : "pr-4"} py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30`}
+            />
+            {voice.supported && (
+              <button
+                onClick={voice.toggle}
+                className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-all ${
+                  voice.isListening
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "text-muted-foreground/50 hover:text-foreground hover:bg-muted"
+                }`}
+                title={voice.isListening ? "Stop listening" : "Voice input"}
+              >
+                {voice.isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              </button>
+            )}
+          </div>
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || loading}

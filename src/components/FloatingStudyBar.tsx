@@ -71,6 +71,40 @@ const FloatingStudyBar = () => {
 
   // Read aloud state
   const [isReading, setIsReading] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceUri, setSelectedVoiceUri] = useState<string>(() =>
+    localStorage.getItem("bfn:tts-voice") || ""
+  );
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [readSpeed, setReadSpeed] = useState<number>(() =>
+    Number(localStorage.getItem("bfn:tts-speed")) || 0.9
+  );
+
+  // Load available voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const voices = speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        // Prioritize natural/enhanced voices, then English voices
+        const english = voices.filter((v) => v.lang.startsWith("en"));
+        const sorted = english.sort((a, b) => {
+          // Prefer voices with "Natural", "Enhanced", "Premium", "Google", or "Samantha" in the name
+          const aScore = /natural|enhanced|premium|google|samantha|daniel|karen/i.test(a.name) ? 1 : 0;
+          const bScore = /natural|enhanced|premium|google|samantha|daniel|karen/i.test(b.name) ? 1 : 0;
+          return bScore - aScore;
+        });
+        setAvailableVoices(sorted);
+        // Auto-select the best voice if user hasn't chosen one
+        if (!selectedVoiceUri && sorted.length > 0) {
+          setSelectedVoiceUri(sorted[0].voiceURI);
+          localStorage.setItem("bfn:tts-voice", sorted[0].voiceURI);
+        }
+      }
+    };
+    loadVoices();
+    speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    return () => speechSynthesis.removeEventListener("voiceschanged", loadVoices);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem("studybar-position");
@@ -154,7 +188,7 @@ const FloatingStudyBar = () => {
     setTimeLeft((parseInt(customWork) || 25) * 60);
   };
 
-  // Read aloud
+  // Read aloud with selected voice
   const handleReadAloud = () => {
     if (isReading) {
       speechSynthesis.cancel();
@@ -166,9 +200,25 @@ const FloatingStudyBar = () => {
     const text = notes.textContent || "";
     if (!text.trim()) return;
     const utt = new SpeechSynthesisUtterance(text.slice(0, 5000));
-    utt.rate = 0.9;
+    utt.rate = readSpeed;
+    // Apply selected voice
+    if (selectedVoiceUri) {
+      const voice = availableVoices.find((v) => v.voiceURI === selectedVoiceUri);
+      if (voice) utt.voice = voice;
+    }
     utt.onend = () => setIsReading(false);
     setIsReading(true);
+    speechSynthesis.speak(utt);
+  };
+
+  // Preview a voice with a short sample
+  const previewVoice = (voiceUri: string) => {
+    speechSynthesis.cancel();
+    const voice = availableVoices.find((v) => v.voiceURI === voiceUri);
+    if (!voice) return;
+    const utt = new SpeechSynthesisUtterance("This is how your notes will sound with this voice.");
+    utt.voice = voice;
+    utt.rate = readSpeed;
     speechSynthesis.speak(utt);
   };
 
@@ -359,8 +409,8 @@ const FloatingStudyBar = () => {
                     <button
                       key={tool.id}
                       onClick={() => {
-                        if (tool.id === "read") {
-                          handleReadAloud();
+                        if (tool.id === "read" && isReading) {
+                          handleReadAloud(); // stop reading
                         } else {
                           setActiveTool(activeTool === tool.id ? null : tool.id);
                         }
@@ -496,6 +546,61 @@ const FloatingStudyBar = () => {
                         {sessions} session{sessions !== 1 ? "s" : ""} completed 🎯
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* ─── Read Aloud Panel ─── */}
+                {activeTool === "read" && !isReading && (
+                  <div className="p-4">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-sage-500 mb-3">
+                      Voice Settings
+                    </div>
+
+                    {/* Voice selector */}
+                    {availableVoices.length > 0 && (
+                      <div className="mb-3">
+                        <label className="text-[11px] text-muted-foreground mb-1 block">Voice</label>
+                        <select
+                          value={selectedVoiceUri}
+                          onChange={(e) => {
+                            setSelectedVoiceUri(e.target.value);
+                            localStorage.setItem("bfn:tts-voice", e.target.value);
+                            previewVoice(e.target.value);
+                          }}
+                          className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+                        >
+                          {availableVoices.map((v) => (
+                            <option key={v.voiceURI} value={v.voiceURI}>
+                              {v.name}{v.localService ? "" : " (online)"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Speed slider */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] text-muted-foreground">Speed</span>
+                        <span className="text-[11px] font-medium text-foreground">{readSpeed.toFixed(1)}x</span>
+                      </div>
+                      <input
+                        type="range" min="0.5" max="2.0" step="0.1" value={readSpeed}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          setReadSpeed(v);
+                          localStorage.setItem("bfn:tts-speed", String(v));
+                        }}
+                        className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-sage-500"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleReadAloud}
+                      className="w-full rounded-lg bg-sage-100 dark:bg-sage-500/15 py-2 text-xs font-semibold text-sage-600 dark:text-sage-300 hover:bg-sage-200 transition-colors"
+                    >
+                      Start Reading
+                    </button>
                   </div>
                 )}
 
