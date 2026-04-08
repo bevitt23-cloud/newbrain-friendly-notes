@@ -362,6 +362,9 @@ const Library = () => {
   const selectAllNotes = () => {
     setSelectedNoteIds(new Set(filteredNotes.map((n) => n.id)));
   };
+  const selectAllMaterials = () => {
+    setSelectedMaterialIds(new Set(filteredMaterials.map((m) => m.id)));
+  };
   const deselectAll = () => {
     setSelectedNoteIds(new Set());
     setSelectedMaterialIds(new Set());
@@ -655,6 +658,19 @@ const Library = () => {
               </TabsContent>
 
               <TabsContent value="materials">
+                {selectMode && filteredMaterials.length > 0 && (
+                  <div className="mb-3 flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectedMaterialIds.size === filteredMaterials.length ? deselectAll : selectAllMaterials}
+                      className="gap-1.5 text-xs"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      {selectedMaterialIds.size === filteredMaterials.length ? "Deselect All" : "Select All"}
+                    </Button>
+                  </div>
+                )}
                 {filteredMaterials.length === 0 ? (
                   <EmptyState type="materials" />
                 ) : (
@@ -808,6 +824,23 @@ const Library = () => {
 // Fun Facts tab component
 const FunFactsTab = () => {
   const { savedFacts, removeFact } = useFunFacts();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelectedIds(new Set(savedFacts.map((f) => f.id)));
+  const deselectAllFacts = () => setSelectedIds(new Set());
+
+  const handleBulkDelete = () => {
+    for (const id of selectedIds) removeFact(id);
+    setSelectedIds(new Set());
+  };
 
   if (savedFacts.length === 0) {
     return (
@@ -822,47 +855,88 @@ const FunFactsTab = () => {
   }
 
   return (
-    <div className="grid gap-3">
-      <AnimatePresence>
-        {savedFacts.map((ff) => (
-          <motion.div
-            key={ff.id}
-            layout
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="group rounded-xl border border-border bg-card p-4 shadow-sm hover:shadow-md transition-all"
+    <div className="space-y-3">
+      {/* Select all / bulk actions bar */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={selectedIds.size === savedFacts.length ? deselectAllFacts : selectAll}
+          className="gap-1.5 text-xs"
+        >
+          <CheckCheck className="h-3.5 w-3.5" />
+          {selectedIds.size === savedFacts.length ? "Deselect All" : "Select All"}
+        </Button>
+        {selectedIds.size > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBulkDelete}
+            className="gap-1.5 text-xs text-destructive hover:text-destructive"
           >
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 mt-0.5 text-lg">🧠</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm leading-relaxed text-foreground">{ff.fact}</p>
-                <div className="mt-2 flex items-center gap-3">
-                  <a
-                    href={ff.searchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline transition-colors"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Learn more: {ff.searchQuery}
-                  </a>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(ff.savedAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => removeFact(ff.id)}
-                className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
-                title="Remove"
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete {selectedIds.size} selected
+          </Button>
+        )}
+      </div>
+
+      <div className="grid gap-3">
+        <AnimatePresence>
+          {savedFacts.map((ff) => {
+            const isSelected = selectedIds.has(ff.id);
+            return (
+              <motion.div
+                key={ff.id}
+                layout
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={() => toggleSelect(ff.id)}
+                className={`group rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                  isSelected ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
+                }`}
               >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(ff.id); }}
+                    className="shrink-0 mt-0.5"
+                  >
+                    {isSelected
+                      ? <CheckSquare className="h-5 w-5 text-primary" />
+                      : <Square className="h-5 w-5 text-muted-foreground/40" />
+                    }
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-relaxed text-foreground">{ff.fact}</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <a
+                        href={ff.searchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Learn more: {ff.searchQuery}
+                      </a>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(ff.savedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFact(ff.id); }}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                    title="Remove"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };
