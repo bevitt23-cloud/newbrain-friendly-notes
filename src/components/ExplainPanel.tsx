@@ -4,6 +4,7 @@ import { Lightbulb, Loader2, X, Send, ChevronDown, ChevronUp, Sparkles, MessageC
 import { sanitizeHtml } from "@/lib/sanitize";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -83,6 +84,20 @@ function renderSectionContent(section: string): ReactNode {
 
 const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPanelProps) => {
   const { track } = useTelemetry();
+  const { preferences } = useUserPreferences();
+
+  // Apply the same font settings as the notes
+  const panelFontStyle: React.CSSProperties = {
+    fontFamily: preferences.dyslexia_font
+      ? "'OpenDyslexic', 'Comic Sans MS', sans-serif"
+      : preferences.adhd_font
+        ? "'Lexend', sans-serif"
+        : "'Arial', 'Helvetica Neue', sans-serif",
+    fontSize: `${preferences.font_size || 0.95}rem`,
+    lineHeight: preferences.line_spacing || 1.6,
+    letterSpacing: `${preferences.letter_spacing || 0}em`,
+    wordSpacing: `${preferences.word_spacing || 0}em`,
+  };
   const [isExplaining, setIsExplaining] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -205,7 +220,7 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="max-h-[28rem] space-y-4 overflow-y-auto px-5 py-4">
+                  <div className="max-h-[28rem] space-y-4 overflow-y-auto px-5 py-4" style={panelFontStyle}
                     {isExplaining && chatMessages.length === 0 && (
                       <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />

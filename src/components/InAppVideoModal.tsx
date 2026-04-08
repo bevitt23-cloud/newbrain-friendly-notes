@@ -149,7 +149,7 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
       <div className="relative mx-4 w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
           <p className="text-sm font-medium text-foreground truncate pr-4">
-            🎥 Visual Explainer: {searchQuery}
+            🎥 Visual Explainer: {searchQuery.replace(/\b(simple|easy)?\s*(explanation|explainer)?\s*(for|aimed at)?\s*\d+[\s-]*(year[\s-]*old|yo)\b/gi, "").replace(/\b(for students|for kids|for beginners|ADHD friendly|simple visual)\b/gi, "").replace(/\s{2,}/g, " ").trim()}
           </p>
           <Button
             variant="ghost"

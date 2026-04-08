@@ -397,9 +397,16 @@ const GeneratedNotes = ({
       )}
 
       {isGenerating &&
-      <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          Generating your notes...
+      <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            Generating your notes...
+          </div>
+          <div className="mx-auto max-w-md rounded-xl bg-sage-50 dark:bg-sage-500/10 border border-sage-200 dark:border-sage-500/20 px-4 py-3 text-center">
+            <p className="text-xs text-sage-600 dark:text-sage-300 leading-relaxed">
+              Hang tight! Your notes are being built. Study tools like quizzes, mind maps, and the text selection menu will be ready once generation is complete.
+            </p>
+          </div>
         </div>
       }
 
