@@ -655,19 +655,31 @@ body.dyslexia-active .generated-notes {
 }
 
 /* Math stepper — cascading reveal container */
+/* Hide all steps by default — the CascadingMathStepper React component
+   replaces the static HTML. If it hasn't mounted yet, only show step 1. */
 .generated-notes .math-stepper {
   @apply my-5 space-y-3;
 }
-.generated-notes .math-step {
+.generated-notes .math-stepper .math-step {
   @apply rounded-xl border border-border/50 p-4 transition-all duration-300;
   background: hsl(var(--card));
+  display: none;
 }
+.generated-notes .math-stepper .math-step[data-step="1"] {
+  display: block;
+}
+/* Once the React component mounts, it replaces the HTML entirely,
+   so these rules only affect the brief flash before mount */
 .generated-notes .math-step .math-step-equation {
   @apply font-mono text-base font-semibold mb-2;
   color: hsl(var(--primary));
 }
 .generated-notes .math-step .math-step-explain {
   @apply text-sm text-muted-foreground leading-relaxed;
+}
+/* The mounted React component uses this class */
+.math-stepper-component .math-step-card {
+  /* Styles handled by Tailwind in the component */
 }
 
 /* Base layout for prose sections — NO transition */

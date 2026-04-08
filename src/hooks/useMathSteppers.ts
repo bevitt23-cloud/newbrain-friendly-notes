@@ -31,6 +31,10 @@ export function useMathSteppers(
     const container = containerRef.current;
     if (!container || isGenerating) return;
 
+    // Delay mount slightly to ensure dangerouslySetInnerHTML has flushed to DOM
+    const timer = setTimeout(() => {
+      if (!containerRef.current) return;
+
     const stepperEls = container.querySelectorAll(".math-stepper");
     if (stepperEls.length === 0) return;
 
@@ -66,8 +70,10 @@ export function useMathSteppers(
       root.render(createElement(CascadingMathStepper, { steps }));
       rootsRef.current.push(root);
     }
+    }, 100); // Small delay to ensure DOM is ready after innerHTML update
 
     return () => {
+      clearTimeout(timer);
       for (const root of rootsRef.current) {
         root.unmount();
       }

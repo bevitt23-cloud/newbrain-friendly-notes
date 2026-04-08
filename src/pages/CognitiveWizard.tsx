@@ -230,16 +230,10 @@ const CognitiveWizard = () => {
     }
 
     setSaving(false);
-    toast.success("Profile saved! Opening your welcome note...");
+    toast.success("Profile saved! Let's generate your first set of notes.");
 
-    // 4. Redirect to the welcome note (or home if note save failed)
-    if (noteData?.id) {
-      navigate("/library/study", {
-        state: { notesHtml: welcomeHtml, noteTitle: "Welcome to Brain-Friendly Notes" },
-      });
-    } else {
-      navigate("/");
-    }
+    // 4. Redirect to the upload page so user can generate their first notes
+    navigate("/");
   }, [answers, hyperFixations, selectedAge, selectedGender, selectedRegion, selectedFont, fontSize, lineSpacing, letterSpacing, wordSpacing, selectedWritingStyles, selectedUiSettings, selectedAddOns, selectedStudyTools, activeVariantKey, traits, applyBionic, user, saveProfile, navigate]);
 
   const handleSkip = () => {
