@@ -58,7 +58,10 @@ export interface PdfImageExtractionOptions {
 }
 
 const DEFAULT_MAX_DIM = 2048;
-const JPEG_QUALITY = 0.92;
+/** JPEG quality for full-page fallbacks (large images where size matters) */
+const JPEG_QUALITY = 0.95;
+/** Use PNG for cropped diagrams — lossless, much sharper text */
+const USE_PNG_FOR_CROPS = true;
 /** Minimum crop size in pixels — skip tiny images */
 const MIN_CROP_DIM = 80;
 /** If content area covers more than this fraction of the page, use full page */
@@ -244,7 +247,9 @@ async function renderPageToCanvas(
 ): Promise<{ canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; scale: number; viewport: any }> {
   const baseViewport = page.getViewport({ scale: 1.0 });
   const longest = Math.max(baseViewport.width, baseViewport.height);
-  const scale = longest > maxDim ? maxDim / longest : 1.0;
+  // Render at minimum 2x scale for sharp text on diagrams, cap at maxDim
+  const minScale = 2.0;
+  const scale = longest * minScale > maxDim ? maxDim / longest : minScale;
   const viewport = page.getViewport({ scale });
 
   const canvas = document.createElement("canvas");
@@ -267,7 +272,6 @@ async function renderPageToCanvas(
 function cropRegion(
   sourceCanvas: HTMLCanvasElement,
   region: ImageRegion,
-  quality: number = JPEG_QUALITY,
 ): { data: string; mimeType: string } | null {
   // Add padding
   const x = Math.max(0, Math.floor(region.x - CROP_PADDING));
@@ -290,9 +294,17 @@ function cropRegion(
     const cropCtx = cropCanvas.getContext("2d");
     if (!cropCtx) return null;
 
+    // White background for transparency
+    cropCtx.fillStyle = "#FFFFFF";
+    cropCtx.fillRect(0, 0, w, h);
     cropCtx.drawImage(sourceCanvas, x, y, w, h, 0, 0, w, h);
 
-    const dataUrl = cropCanvas.toDataURL("image/jpeg", quality);
+    // PNG for cropped diagrams — lossless, sharp text
+    if (USE_PNG_FOR_CROPS) {
+      const dataUrl = cropCanvas.toDataURL("image/png");
+      return { data: dataUrl.split(",")[1], mimeType: "image/png" };
+    }
+    const dataUrl = cropCanvas.toDataURL("image/jpeg", JPEG_QUALITY);
     return { data: dataUrl.split(",")[1], mimeType: "image/jpeg" };
   } finally {
     cropCanvas.width = 0;

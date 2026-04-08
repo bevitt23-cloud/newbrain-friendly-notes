@@ -49,7 +49,7 @@ export function isImageFile(file: File): boolean {
  * Resize an image to fit within MAX_DIMENSION and compress to JPEG.
  * Returns base64-encoded data without the data URI prefix.
  */
-function resizeAndCompress(img: HTMLImageElement): {
+function resizeAndCompress(img: HTMLImageElement, originalType?: string): {
   data: string;
   mimeType: string;
 } {
@@ -78,11 +78,15 @@ function resizeAndCompress(img: HTMLImageElement): {
   ctx.fillRect(0, 0, width, height);
   ctx.drawImage(img, 0, 0, width, height);
 
-  // Convert to JPEG for smaller payload
-  const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+  // Use PNG for images that are already PNG (preserves text sharpness)
+  // Use JPEG for photos and other formats (smaller payload)
+  const usePng = originalType === "image/png";
+  const dataUrl = usePng
+    ? canvas.toDataURL("image/png")
+    : canvas.toDataURL("image/jpeg", JPEG_QUALITY);
   const base64 = dataUrl.split(",")[1];
 
-  return { data: base64, mimeType: "image/jpeg" };
+  return { data: base64, mimeType: usePng ? "image/png" : "image/jpeg" };
 }
 
 /**
@@ -112,7 +116,7 @@ export async function encodeImage(
   index: number,
 ): Promise<EncodedImage> {
   const img = await loadImage(file);
-  const { data, mimeType } = resizeAndCompress(img);
+  const { data, mimeType } = resizeAndCompress(img, file.type);
   return { data, mimeType, fileName: file.name, index };
 }
 
