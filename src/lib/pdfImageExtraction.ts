@@ -313,17 +313,17 @@ function cropRegion(
 }
 
 /**
- * For vector-only pages (no raster images), detect the bounding box of
- * non-white content by scanning pixels. Returns a content region or null.
+ * Detect the bounding box of non-white content by scanning rendered pixels.
+ * Works for both raster images and vector diagrams.
+ * Returns a content region or null if content fills the whole page.
  */
 function detectContentBounds(
   ctx: CanvasRenderingContext2D,
   canvasWidth: number,
   canvasHeight: number,
 ): ImageRegion | null {
-  // Sample pixels to find the bounding box of non-white content
-  // Scan at reduced resolution for performance (every 4th pixel)
-  const step = 4;
+  // Scan every 2nd pixel for a good balance of accuracy vs performance
+  const step = 2;
   const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
   const pixels = imageData.data;
 
@@ -331,6 +331,7 @@ function detectContentBounds(
   let minY = canvasHeight;
   let maxX = 0;
   let maxY = 0;
+  let nonWhiteCount = 0;
 
   for (let y = 0; y < canvasHeight; y += step) {
     for (let x = 0; x < canvasWidth; x += step) {
@@ -339,8 +340,10 @@ function detectContentBounds(
       const g = pixels[idx + 1];
       const b = pixels[idx + 2];
 
-      // Check if pixel is "not white" (threshold for near-white)
-      if (r < 240 || g < 240 || b < 240) {
+      // Pixel is "content" if it's noticeably not white
+      // Use 230 threshold to avoid catching faint page textures
+      if (r < 230 || g < 230 || b < 230) {
+        nonWhiteCount++;
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (x > maxX) maxX = x;
@@ -354,7 +357,7 @@ function detectContentBounds(
   const width = maxX - minX;
   const height = maxY - minY;
 
-  // If content spans most of the page, it's probably not a single diagram
+  // If content spans most of the page, skip cropping — full page is better
   if ((width * height) / (canvasWidth * canvasHeight) > MAX_CONTENT_RATIO) return null;
 
   // If content is too small, skip
@@ -439,53 +442,30 @@ export async function extractPdfImages(
 
       try {
         const page = await pdf.getPage(analysis.pageNum);
-        const { canvas, ctx, scale } = await renderPageToCanvas(page);
+        const { canvas, ctx } = await renderPageToCanvas(page);
 
         let extracted = false;
 
-        // Strategy 1: Crop individual raster images by position
-        if (analysis.rasterRegions.length > 0) {
-          // Merge overlapping regions to avoid duplicates
-          const merged = mergeOverlappingRegions(analysis.rasterRegions);
-
-          for (const region of merged) {
-            if (imageIdx - startIndex >= maxImages) break;
-
-            const cropped = cropRegion(canvas, region);
-            if (cropped) {
-              results.push(
-                createEncodedImage(
-                  cropped.data,
-                  cropped.mimeType,
-                  `${file.name} — Page ${analysis.pageNum} (diagram)`,
-                  imageIdx++,
-                ),
-              );
-              extracted = true;
-            }
+        // Strategy: Detect content bounding box by scanning rendered pixels.
+        // This works for both raster images AND vector diagrams — it finds
+        // where the actual visual content is on the page and crops to it.
+        const bounds = detectContentBounds(ctx, canvas.width, canvas.height);
+        if (bounds) {
+          const cropped = cropRegion(canvas, bounds);
+          if (cropped) {
+            results.push(
+              createEncodedImage(
+                cropped.data,
+                cropped.mimeType,
+                `${file.name} — Page ${analysis.pageNum} (diagram)`,
+                imageIdx++,
+              ),
+            );
+            extracted = true;
           }
         }
 
-        // Strategy 2: For vector-only pages, detect content bounding box
-        if (!extracted && analysis.hasVectorContent && !analysis.hasRasterImages) {
-          const bounds = detectContentBounds(ctx, canvas.width, canvas.height);
-          if (bounds) {
-            const cropped = cropRegion(canvas, bounds);
-            if (cropped) {
-              results.push(
-                createEncodedImage(
-                  cropped.data,
-                  cropped.mimeType,
-                  `${file.name} — Page ${analysis.pageNum} (figure)`,
-                  imageIdx++,
-                ),
-              );
-              extracted = true;
-            }
-          }
-        }
-
-        // Strategy 3: Fallback — use full page if cropping didn't produce anything
+        // Fallback — use full page if content detection didn't produce a useful crop
         if (!extracted) {
           const full = canvasToJpeg(canvas);
           results.push(
