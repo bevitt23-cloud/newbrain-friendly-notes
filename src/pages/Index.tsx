@@ -5,7 +5,7 @@ import ContentUploader from "@/components/ContentUploader";
 import type { ChapterGenerateData } from "@/components/ContentUploader";
 import ChapterGenerationProgress from "@/components/ChapterGenerationProgress";
 import NoteExtras from "@/components/NoteExtras";
-import FloatingStudyBar from "@/components/FloatingStudyBar";
+// FloatingStudyBar is now in Layout.tsx (global, persists across pages)
 import StudyToolsInline from "@/components/StudyToolsInline";
 import GeneratedNotes from "@/components/GeneratedNotes";
 import FirstTimeTutorial, { useFirstTimeTutorial } from "@/components/FirstTimeTutorial";
@@ -750,8 +750,6 @@ function Workspace() {
           <StudyToolsInline notesHtml={generatedHtml} linkedNoteId={savedNoteId} noteTitle={savedNoteTitle} />
         )}
       </div>
-
-      <FloatingStudyBar />
 
       {notesGenerated && savedVideos.length > 0 && (
         <VideoBar

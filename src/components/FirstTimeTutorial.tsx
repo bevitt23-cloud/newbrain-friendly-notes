@@ -168,6 +168,14 @@ export default function FirstTimeTutorial({ show, onDismiss }: FirstTimeTutorial
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
+
+          {/* Don't show again */}
+          <button
+            onClick={onDismiss}
+            className="mt-3 w-full text-center text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+          >
+            Don't show this again
+          </button>
         </motion.div>
       </motion.div>
     </AnimatePresence>

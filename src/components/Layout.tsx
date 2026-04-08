@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import Header from "./Header";
 import Footer from "./Footer";
+import FloatingStudyBar from "./FloatingStudyBar";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import logo from "@/assets/logo.jpeg";
 
@@ -42,6 +43,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <main className="relative z-10 flex-1">{children}</main>
       </div>
       <Footer />
+      <FloatingStudyBar />
     </div>
   );
 };

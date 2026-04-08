@@ -823,7 +823,7 @@ serve(async (req) => {
       recall: `SELECTIVE PLACEMENT RULE: Add recall prompts ONLY to sections that contain actual educational/study content — concepts, mechanisms, facts, theories, procedures, or analysis. Do NOT add recall prompts to sections that are structural, organizational, introductory overviews, tables of contents, handbook structure descriptions, author bios, acknowledgements, or administrative content. For qualifying sections: At the VERY END of the <section>, AFTER all content (paragraphs, lists, sub-sections, write-this-down boxes), insert a recall prompt as the LAST child element before the closing </section> tag. The recall prompt MUST come AFTER the section content so the user reads the material first — placing it at the top defeats the purpose of retrieval practice. Wrap in <div class="recall-prompt" data-section-index="N"> (where N is the section number starting from 1). Include a brief open-ended question about that section's key concept. Add a <textarea class="recall-input" placeholder="What do you remember?" rows="3"></textarea> and a <button class="recall-submit">Check</button>. Include a hidden <div class="recall-key" style="display:none">the correct key points for this section</div>. Make questions force retrieval, not recognition.`,
       simplify: `SELECTIVE PLACEMENT RULE: Add "Write This Down" boxes ONLY to sections that contain actual educational/study content worth memorizing — key concepts, mechanisms, facts, formulas, procedures, or critical analysis. Do NOT add them to structural sections, handbook overviews, tables of contents, organizational descriptions, admin info, or introductory framing that has no testable content. For qualifying sections: at the end, include a <div class="write-this-down"><strong>✍️ Write This Down:</strong> <p>A 1-2 sentence guidance telling the user exactly what to note from this section and how to summarize it in their own words. Be specific about what concept to capture.</p></div>`,
       why_care: `Write a highly engaging introductory paragraph connecting the academic topic directly to the student's real life. Explicitly explain how mastering this academic concept gives them a strategic advantage. Wrap it in its own colored section: <section data-section-color="amber"><h2 data-section-color="amber">🤔 Why Should I Care?</h2>...</section>. This section MUST be a colored <section> tag with data-section-color — never plain unstyled text. Place it right after the TL;DR (if present) or at the very top.`,
-      visual_learner: `At the end of every major <section>, inject a button to help visual learners. The button MUST be formatted exactly like this: <button class="watch-explainer" data-query="[TAILORED SEARCH QUERY]">🎥 Watch Explainer</button>.
+      visual_learner: `SELECTIVE PLACEMENT: Only add a Watch Explainer button to sections that contain a concept, process, or mechanism that would genuinely benefit from a video demonstration. DO NOT add the button to introductory sections, summary sections, tables of contents, definitions-only sections, or sections that are purely text-based context without a visualizable concept. Good candidates: scientific processes, math procedures, historical events, anatomical systems, coding tutorials, engineering concepts. Bad candidates: author bios, vocabulary lists, administrative info, simple factual lists. The button MUST be formatted exactly like this: <button class="watch-explainer" data-query="[TAILORED SEARCH QUERY]">🎥 Watch Explainer</button>.
     CRITICAL RULES FOR THE SEARCH QUERY:
     1. Do NOT generate a YouTube URL. You must generate a YouTube SEARCH QUERY string.
     2. The query MUST be hyper-specific to the exact concept in that section — not the general topic. BAD: "biology explained". GOOD: "mitosis prophase metaphase stages explained diagram".
@@ -1130,10 +1130,18 @@ Focus exclusively on the content provided for this chapter.`;
 
       imageInstruction = `
 
-IMAGE MANIFEST — you received ${validImageCount} image(s). Here is what each one is:
+IMAGE MANIFEST — you received ${validImageCount} image(s):
 ${manifest}
 
-INSTRUCTIONS: You MUST reference every image that contains educational content (graphs, charts, diagrams, tables, worked examples). Use <figure data-image-index="N"> where N is the image number from the manifest above. Valid indices are 0 through ${validImageCount - 1}. Do NOT skip images that contain visual learning content. For text-only or decorative pages, you may skip them.`;
+IMAGE PLACEMENT RULES (CRITICAL — images are frequently placed incorrectly):
+1. LOOK AT EACH IMAGE CAREFULLY before writing notes. Identify what each image actually depicts (a graph, a diagram, a table, a formula, a photo, etc.).
+2. MATCH images to content by what you SEE in the image, NOT just by the page number in the filename. The page number is a hint for ordering, but the content of the image is what determines where it belongs.
+3. Place each image ONLY in the section where its content is directly discussed. A diagram of cell division goes in the cell division section, not in the introduction.
+4. If an image shows content that spans multiple sections, place it at the FIRST relevant section.
+5. If an image is purely text (a screenshot of a text-heavy page with no diagrams or visual elements), SKIP IT — do not embed it.
+6. Use <figure data-image-index="N"> where N is the image number (0 through ${validImageCount - 1}).
+7. Write a 2-sentence caption explaining what the image shows and how it connects to the surrounding content.
+8. NEVER place all images at the end or group them together — they must be inline with relevant content.`;
     }
 
     contentParts.unshift({
