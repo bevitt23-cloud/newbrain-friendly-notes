@@ -128,6 +128,89 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
     }
   }, []);
 
+  // Inject voice-to-text mic buttons next to Feynman and Recall textareas
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return; // Browser doesn't support speech recognition
+
+    const textareas = container.querySelectorAll(".recall-input, .feynman-input");
+    const cleanups: (() => void)[] = [];
+
+    textareas.forEach((textarea) => {
+      // Don't add mic button twice
+      if (textarea.parentElement?.querySelector(".voice-mic-btn")) return;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "voice-mic-btn";
+      btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`;
+      btn.title = "Voice input";
+      btn.style.cssText = "position:absolute;right:8px;top:8px;padding:6px;border-radius:8px;background:var(--muted);color:var(--muted-foreground);border:none;cursor:pointer;transition:all 0.2s;z-index:5;";
+
+      // Make the textarea container relative for positioning
+      const parent = textarea.parentElement;
+      if (parent) parent.style.position = "relative";
+
+      let recognition: any = null;
+
+      btn.addEventListener("click", () => {
+        if (recognition) {
+          recognition.stop();
+          recognition = null;
+          btn.style.background = "var(--muted)";
+          btn.style.color = "var(--muted-foreground)";
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onresult = (event: any) => {
+          let transcript = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
+          }
+          if (transcript.trim()) {
+            const ta = textarea as HTMLTextAreaElement;
+            ta.value = ta.value ? ta.value + " " + transcript.trim() : transcript.trim();
+            // Trigger input event so any listeners detect the change
+            ta.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        };
+
+        recognition.onend = () => {
+          recognition = null;
+          btn.style.background = "var(--muted)";
+          btn.style.color = "var(--muted-foreground)";
+        };
+
+        recognition.onerror = () => {
+          recognition = null;
+          btn.style.background = "var(--muted)";
+          btn.style.color = "var(--muted-foreground)";
+        };
+
+        recognition.start();
+        btn.style.background = "#ef4444";
+        btn.style.color = "white";
+      });
+
+      textarea.parentElement?.insertBefore(btn, textarea.nextSibling);
+
+      cleanups.push(() => {
+        if (recognition) { try { recognition.stop(); } catch {} }
+        btn.remove();
+      });
+    });
+
+    return () => cleanups.forEach((fn) => fn());
+  }, [containerRef, html]);
+
   // Proactively strip invalid math-formula pills on render so they never appear visually
   useEffect(() => {
     const container = containerRef.current;

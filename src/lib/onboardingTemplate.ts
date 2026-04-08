@@ -295,25 +295,36 @@ function getTraitDemoBlocks(traits: CognitiveTrait[]): string {
 
 // ─── Platform tutorial section ──────────────────────────────────
 
-function getPlatformTutorial(style: WritingStyleKey, useEmoji: boolean): string {
+function getApplicationSection(style: WritingStyleKey, useEmoji: boolean): string {
   const e = useEmoji;
-  if (style === "bulleted" || style === "bulleted_literal" || style === "procedural") {
+  if (style === "bulleted" || style === "bulleted_literal") {
     return `<section data-section-color="amber">
-<h2 data-section-color="amber" id="section-platform">${e ? "🛠️ " : ""}How to Use This Platform</h2>
+<h2 data-section-color="amber" id="section-apply">${e ? "🎯 " : ""}Applying This to Your Study Habits</h2>
 <ul>
-<li><strong>Upload or paste</strong> — drop a PDF, paste text, or enter a YouTube URL on the home page</li>
-<li><strong>Highlight to interact</strong> — select any text in your notes to open the action menu (explain, simplify, sticky note)</li>
-<li><strong>Study tools below</strong> — scroll past your notes to find quizzes, mind maps, and flow charts</li>
-<li><strong>Your settings are saved</strong> — every note you generate will use the preferences you set here</li>
+<li><strong>Space your sessions</strong> — review material across multiple days instead of one marathon session</li>
+<li><strong>Test before re-reading</strong> — close your notes and try to recall the key points first</li>
+<li><strong>Use multiple senses</strong> — read aloud while writing key terms to strengthen encoding</li>
+<li><strong>Sleep on it</strong> — <span class="jargon" data-definition="The process where short-term memories become stable long-term memories during sleep">consolidation</span> happens during sleep, so study before bed</li>
 </ul>
 </section>`;
   }
 
+  if (style === "procedural") {
+    return `<section data-section-color="amber">
+<h2 data-section-color="amber" id="section-apply">${e ? "🎯 " : ""}Step 4: Apply These Principles</h2>
+<h3>Prerequisites</h3>
+<p>Steps 1-3 must be understood. You know how encoding, storage, and retrieval work.</p>
+<h3>Action</h3>
+<p>Space your study sessions across multiple days. After each session, close your notes and test yourself before re-reading. Read key terms aloud while writing them down to engage multiple senses.</p>
+<h3>Result</h3>
+<p>Stronger encoding, faster consolidation, and more reliable retrieval on exam day.</p>
+</section>`;
+  }
+
   return `<section data-section-color="amber">
-<h2 data-section-color="amber" id="section-platform">${e ? "🛠️ " : ""}How to Use This Platform</h2>
-<p>To create notes, go to the home page and <strong>upload a file</strong> (PDF, Word, PowerPoint), <strong>paste text</strong>, or enter a <strong>YouTube URL</strong>. The AI will transform it using the settings you configure here.</p>
-<p><strong>Highlight any text</strong> in your notes to open the selection menu — you can ask the AI to explain, simplify, or expand on any passage. You can also pin sticky notes to specific spots.</p>
-<p>Below every set of notes you will find <strong>study tools</strong> — retention quizzes, mind maps, and flow charts generated from your material.</p>
+<h2 data-section-color="amber" id="section-apply">${e ? "🎯 " : ""}Applying This to Your Study Habits</h2>
+<p>The most effective study strategy based on memory science is <strong>spaced retrieval practice</strong>. Instead of re-reading your notes, close them and try to recall the key points from memory. This strengthens the retrieval pathway far more than passive review.</p>
+<p>Spacing your sessions across multiple days gives your <span class="jargon" data-definition="A seahorse-shaped brain region essential for forming new memories">hippocampus</span> time to consolidate each review into long-term storage. Cramming skips this step entirely.</p>
 </section>`;
 }
 
@@ -333,7 +344,7 @@ export function buildTutorialNotes(options: TutorialBuildOptions): string {
   const parts: string[] = [];
 
   // Title
-  parts.push(`<h1>${useEmoji ? "🧠 " : ""}How Memory Works — Your Brain-Friendly Preview</h1>`);
+  parts.push(`<h1>${useEmoji ? "🧠 " : ""}How Memory Works</h1>`);
 
   // TL;DR at top (if addon selected)
   if (addOns.includes("tldr")) {
@@ -378,8 +389,8 @@ ${section.html}`;
     parts.push(traitBlocks);
   }
 
-  // Platform tutorial
-  parts.push(getPlatformTutorial(writingStyle, useEmoji));
+  // Application section — how memory concepts apply to studying
+  parts.push(getApplicationSection(writingStyle, useEmoji));
 
   // Feynman check at end if addon selected
   if (addOns.includes("feynman")) {

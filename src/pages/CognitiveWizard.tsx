@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye, Type } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, SkipForward, Brain, CheckCircle2, Eye, Type, Sun, Moon } from "lucide-react";
 import { WIZARD_QUESTIONS, deriveTraitsFromAnswers, deriveProfileSettings, deriveProfileLabel, TOOL_DETAILS, type CognitiveTrait } from "@/lib/cognitiveRules";
 import { WRITING_STYLE_LABELS, getActiveVariantKey, buildTutorialNotes, type WritingStyleKey } from "@/lib/onboardingTemplate";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -10,6 +10,7 @@ import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
 import { useAuth } from "@/hooks/useAuth";
 import { DEFAULT_FOLDER } from "@/lib/constants";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
 
 const SECTION_COLORS: Record<string, string> = {
   "Input & Decoding": "from-sage-400 to-sage-500",
@@ -37,6 +38,7 @@ const CognitiveWizard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { saveProfile, profile } = useCognitiveProfile();
+  const { theme, setTheme } = useTheme();
   // step 0 = intro, step 1 = age, 2-(totalQ+1) = questions, then interest, then results
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number[]>>({});
@@ -916,9 +918,18 @@ const CognitiveWizard = () => {
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                           Live Preview
                         </span>
-                        <span className="ml-auto text-[10px] text-muted-foreground/60">
-                          {WRITING_STYLE_LABELS[activeVariantKey]?.name}
-                        </span>
+                        <div className="ml-auto flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground/60">
+                            {WRITING_STYLE_LABELS[activeVariantKey]?.name}
+                          </span>
+                          <button
+                            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border/50 bg-card text-muted-foreground hover:text-foreground transition-colors"
+                            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                          >
+                            {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Preview content */}

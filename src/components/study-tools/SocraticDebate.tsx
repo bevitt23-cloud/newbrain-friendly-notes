@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Send, Loader2, Flag, MessageCircle } from "lucide-react";
+import { Send, Loader2, Flag, MessageCircle, Mic, MicOff } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { supabase } from "@/integrations/supabase/client";
 
 const DEBATE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-study-tool`;
@@ -17,6 +18,10 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setInput((prev) => (prev ? prev + " " + text : text));
+  }, []);
+  const voice = useVoiceInput(handleVoiceTranscript);
   const [started, setStarted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -161,6 +166,19 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
             placeholder="Defend your understanding..."
             className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
+          {voice.supported && (
+            <button
+              onClick={voice.toggle}
+              className={`rounded-xl px-3 py-2.5 transition-all ${
+                voice.isListening
+                  ? "bg-red-500 text-white animate-pulse"
+                  : "bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80"
+              }`}
+              title={voice.isListening ? "Stop listening" : "Voice input"}
+            >
+              {voice.isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </button>
+          )}
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || loading}

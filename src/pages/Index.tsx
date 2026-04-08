@@ -8,6 +8,7 @@ import NoteExtras from "@/components/NoteExtras";
 import FloatingStudyBar from "@/components/FloatingStudyBar";
 import StudyToolsInline from "@/components/StudyToolsInline";
 import GeneratedNotes from "@/components/GeneratedNotes";
+import FirstTimeTutorial, { useFirstTimeTutorial } from "@/components/FirstTimeTutorial";
 import type { StickyNoteData } from "@/components/TextSelectionMenu";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
 import VideoBar from "@/components/VideoBar";
@@ -616,6 +617,14 @@ function Workspace() {
   const notesGenerated = generatedHtml.length > 0;
   const showWizardBanner = user && !profileLoading && !profile.wizardCompleted;
 
+  // First-time tutorial
+  const { showTutorial, triggerIfFirstTime, dismiss: dismissTutorial } = useFirstTimeTutorial();
+  useEffect(() => {
+    if (notesGenerated && !isGenerating) {
+      triggerIfFirstTime();
+    }
+  }, [notesGenerated, isGenerating]);
+
   return (
     <Layout>
       {/* Hero — compact, lets Layout watermark show through */}
@@ -752,6 +761,7 @@ function Workspace() {
           }}
         />
       )}
+      <FirstTimeTutorial show={showTutorial} onDismiss={dismissTutorial} />
     </Layout>
   );
 }
