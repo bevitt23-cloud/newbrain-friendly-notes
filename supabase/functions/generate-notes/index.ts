@@ -1120,28 +1120,44 @@ Focus exclusively on the content provided for this chapter.`;
 
     let imageInstruction = "";
     if (hasImages) {
-      // Build a manifest so the AI knows exactly which images it received
-      const manifest = images
+      // Build a manifest grouped by source file so the AI can match images to content
+      const validImages = images
         .slice(0, 10)
         .filter((img: any) => img.data && typeof img.data === "string" && typeof img.mimeType === "string")
-        .map((img: any, i: number) => `  Image ${i}: "${img.fileName || "unknown"}"`)
-        .slice(0, validImageCount)
-        .join("\n");
+        .slice(0, validImageCount);
+
+      // Group images by source file
+      const fileGroups = new Map<string, Array<{ index: number; fileName: string }>>();
+      validImages.forEach((img: any, i: number) => {
+        const name = img.fileName || "unknown";
+        // Extract the base file name (before " — Page")
+        const baseFile = name.includes(" — ") ? name.split(" — ")[0] : name;
+        if (!fileGroups.has(baseFile)) fileGroups.set(baseFile, []);
+        fileGroups.get(baseFile)!.push({ index: i, fileName: name });
+      });
+
+      let manifest = "";
+      for (const [baseFile, imgs] of fileGroups) {
+        manifest += `\n  FROM "${baseFile}":\n`;
+        for (const img of imgs) {
+          manifest += `    Image ${img.index}: "${img.fileName}"\n`;
+        }
+      }
 
       imageInstruction = `
 
-IMAGE MANIFEST — you received ${validImageCount} image(s):
+IMAGE MANIFEST — you received ${validImageCount} image(s) from ${fileGroups.size} source file(s):
 ${manifest}
-
-IMAGE PLACEMENT RULES (CRITICAL — images are frequently placed incorrectly):
-1. LOOK AT EACH IMAGE CAREFULLY before writing notes. Identify what each image actually depicts (a graph, a diagram, a table, a formula, a photo, etc.).
-2. MATCH images to content by what you SEE in the image, NOT just by the page number in the filename. The page number is a hint for ordering, but the content of the image is what determines where it belongs.
-3. Place each image ONLY in the section where its content is directly discussed. A diagram of cell division goes in the cell division section, not in the introduction.
-4. If an image shows content that spans multiple sections, place it at the FIRST relevant section.
-5. If an image is purely text (a screenshot of a text-heavy page with no diagrams or visual elements), SKIP IT — do not embed it.
+CRITICAL IMAGE-TO-CONTENT MATCHING RULES:
+1. Images are grouped by their SOURCE FILE above. Match each image ONLY to content from the SAME source file. An image from "anatomy.pdf" must NEVER be placed in a section generated from "heart.pdf" content.
+2. The text content is also labeled by source file (e.g., "--- Content from anatomy.pdf ---"). Use these labels to match images to the correct file's content sections.
+3. LOOK AT EACH IMAGE CAREFULLY. Identify what it depicts. Place it ONLY in the section discussing that specific concept.
+4. If an image shows content that spans multiple sections from the same file, place it at the FIRST relevant section.
+5. If an image is purely text with no diagrams or visual elements, SKIP IT.
 6. Use <figure data-image-index="N"> where N is the image number (0 through ${validImageCount - 1}).
-7. Write a 2-sentence caption explaining what the image shows and how it connects to the surrounding content.
-8. NEVER place all images at the end or group them together — they must be inline with relevant content.`;
+7. Write a 2-sentence caption: what the image shows AND how it connects to the surrounding content.
+8. NEVER place all images at the end. They must be inline with their relevant content.
+9. NEVER mix images between source files. This is the most common error — double-check the source file name before placing each image.`;
     }
 
     contentParts.unshift({
