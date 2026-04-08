@@ -17,10 +17,10 @@ const IMAGE_MIME_TYPES = new Set([
 export const MAX_IMAGES = 20;
 
 /** Max dimension in pixels for the longest edge */
-const MAX_DIMENSION = 1024;
+const MAX_DIMENSION = 1536;
 
 /** JPEG compression quality */
-const JPEG_QUALITY = 0.75;
+const JPEG_QUALITY = 0.90;
 
 export interface EncodedImage {
   /** Base64-encoded image data (no data URI prefix) */

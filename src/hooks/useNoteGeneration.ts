@@ -356,6 +356,12 @@ export function useNoteGeneration() {
         finalHtml = appendUnreferencedImages(finalHtml, encodedImages);
       }
 
+      // Strip any leaked markdown bold/italic (AI sometimes ignores the no-markdown rule)
+      finalHtml = finalHtml
+        .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/(?<!=["'])\*([^*\n]+)\*(?!["'])/g, "<em>$1</em>");
+
       setGeneratedHtml(finalHtml);
 
       // 5. Trigger Quiz Generation

@@ -57,8 +57,8 @@ export interface PdfImageExtractionOptions {
   onProgress?: (phase: string, current: number, total: number) => void;
 }
 
-const DEFAULT_MAX_DIM = 1536;
-const JPEG_QUALITY = 0.75;
+const DEFAULT_MAX_DIM = 2048;
+const JPEG_QUALITY = 0.92;
 /** Minimum crop size in pixels — skip tiny images */
 const MIN_CROP_DIM = 80;
 /** If content area covers more than this fraction of the page, use full page */
