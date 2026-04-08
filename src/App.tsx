@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { FunFactProvider } from "@/hooks/useFunFacts";
 import { NotesProvider } from "@/hooks/useNotesContext";
 import { UserPreferencesProvider, useUserPreferences } from "@/hooks/useUserPreferences";
+import FloatingStudyBar from "@/components/FloatingStudyBar";
 import Index from "./pages/Index.tsx";
 import About from "./pages/About.tsx";
 import Support from "./pages/Support.tsx";
@@ -60,6 +61,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <FloatingStudyBar />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/about" element={<About />} />
