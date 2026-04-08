@@ -220,7 +220,7 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="max-h-[28rem] space-y-4 overflow-y-auto px-5 py-4" style={panelFontStyle}
+                  <div className="max-h-[28rem] space-y-4 overflow-y-auto px-5 py-4" style={panelFontStyle}>
                     {isExplaining && chatMessages.length === 0 && (
                       <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
