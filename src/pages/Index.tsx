@@ -429,6 +429,10 @@ function Workspace() {
 
   // Extras managed by DB preferences — synced on preference change
   const managedExtras = new Set(["tldr", "retention_quiz", "feynman", "recall", "simplify", "why_care", "jargon", "mindmap", "flowchart"]);
+  // Low battery mode: only keep lightweight extras
+  const LOW_BATTERY_EXTRAS = new Set(["tldr", "jargon", "simplify"]);
+  const isLowBattery = preferences.energy_mode === "low";
+
   useEffect(() => {
     const prefMap: Array<[boolean, string]> = [
       [preferences.tldr_default, "tldr"],
@@ -443,9 +447,13 @@ function Workspace() {
     ];
     setActiveExtras((prev) => {
       const manual = prev.filter((e) => !managedExtras.has(e));
-      const fromPrefs: string[] = [];
+      let fromPrefs: string[] = [];
       for (const [enabled, key] of prefMap) {
         if (enabled) fromPrefs.push(key);
+      }
+      // Low battery: strip heavy extras
+      if (isLowBattery) {
+        fromPrefs = fromPrefs.filter((e) => LOW_BATTERY_EXTRAS.has(e));
       }
       return [...fromPrefs, ...manual];
     });
@@ -455,6 +463,7 @@ function Workspace() {
     preferences.recall_prompts_default, preferences.simplify_default,
     preferences.why_care_default, preferences.jargon_default,
     preferences.mindmap_default, preferences.flowchart_default,
+    isLowBattery,
   ]);
 
   const lastGenerateDataRef = useRef<Record<string, any> | null>(null);
@@ -522,6 +531,7 @@ function Workspace() {
           chapterContext: cd.chapterContext,
           sourceFile: cd.sourceFile,
           chapterPageRange,
+          energyMode: preferences.energy_mode || "full",
         });
 
         // Kick off background chapters (chapters 1+)
@@ -549,6 +559,7 @@ function Workspace() {
         profilePrompt: profile.promptAppend || undefined,
         age: profile.age,
         noteFormat: data.noteFormat as any,
+        energyMode: preferences.energy_mode || "full",
       });
 
       // ── Multi-file: generate remaining files in background ──
@@ -698,7 +709,7 @@ function Workspace() {
               transition={{ delay: 0.2 }}
               className="rounded-2xl border border-border/60 bg-card p-4 md:p-5 shadow-soft"
             >
-              <NoteExtras activeExtras={activeExtras} onExtrasChange={setActiveExtras} />
+              <NoteExtras activeExtras={activeExtras} onExtrasChange={setActiveExtras} isLowBattery={isLowBattery} />
             </motion.div>
           </>
         )}

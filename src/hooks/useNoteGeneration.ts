@@ -36,6 +36,8 @@ export interface GenerateOptions {
   shouldSaveToLibrary?: boolean;
   /** Note structural format — "auto" lets AI decide based on content */
   noteFormat?: NoteFormat;
+  /** Energy mode: "full" (default) or "low" (low battery) */
+  energyMode?: string;
   /** When generating notes for a single chapter of a larger document */
   chapterContext?: ChapterContext;
   /** Original PDF file for chapter-mode image extraction */
@@ -220,6 +222,7 @@ export function useNoteGeneration() {
         profilePrompt: typeof opts.profilePrompt === "string" ? opts.profilePrompt : undefined,
         age: opts.age ?? null,
         noteFormat: opts.noteFormat || "auto",
+        energyMode: opts.energyMode || "full",
       };
 
       // Add encoded images to payload for vision processing

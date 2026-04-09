@@ -47,9 +47,12 @@ const noteIncludes: NoteInclude[] = [
 interface NoteExtrasProps {
   activeExtras: string[];
   onExtrasChange: (extras: string[]) => void;
+  isLowBattery?: boolean;
 }
 
-const NoteExtras = ({ activeExtras, onExtrasChange }: NoteExtrasProps) => {
+const LOW_BATTERY_EXTRAS = new Set(["tldr", "jargon", "simplify"]);
+
+const NoteExtras = ({ activeExtras, onExtrasChange, isLowBattery = false }: NoteExtrasProps) => {
   const [expanded, setExpanded] = useState(false);
 
   const toggle = (id: string) => {
@@ -89,25 +92,37 @@ const NoteExtras = ({ activeExtras, onExtrasChange }: NoteExtrasProps) => {
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
+            {isLowBattery && (
+              <div className="flex items-center gap-2 pt-3 pb-1 text-xs text-amber-600 dark:text-amber-400">
+                <span>🪫</span>
+                <span className="font-medium">Low Battery Mode — only lightweight add-ons are active. Switch to Full Battery on your Insights page for all options.</span>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 pt-4">
-              {noteIncludes.map((item, i) => (
-                <motion.button
-                  key={item.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.02 }}
-                  onClick={() => toggle(item.id)}
-                  title={item.description ?? item.label}
-                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
-                    activeExtras.includes(item.id)
-                      ? `${item.color} shadow-sm ring-1 ring-primary/20`
-                      : "border-border bg-card text-muted-foreground hover:bg-accent/50"
-                  }`}
-                >
-                  {item.icon ? <item.icon className="h-3.5 w-3.5" /> : <span>{item.emoji}</span>}
-                  {item.label}
-                </motion.button>
-              ))}
+              {noteIncludes.map((item, i) => {
+                const disabledByBattery = isLowBattery && !LOW_BATTERY_EXTRAS.has(item.id);
+                return (
+                  <motion.button
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.02 }}
+                    onClick={() => !disabledByBattery && toggle(item.id)}
+                    title={disabledByBattery ? `${item.label} — disabled in Low Battery mode` : item.description ?? item.label}
+                    className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-all ${
+                      disabledByBattery
+                        ? "border-border bg-muted/50 text-muted-foreground/40 cursor-not-allowed"
+                        : activeExtras.includes(item.id)
+                          ? `${item.color} shadow-sm ring-1 ring-primary/20`
+                          : "border-border bg-card text-muted-foreground hover:bg-accent/50"
+                    }`}
+                  >
+                    {item.icon ? <item.icon className="h-3.5 w-3.5" /> : <span>{item.emoji}</span>}
+                    {item.label}
+                    {disabledByBattery && <span className="text-[9px] opacity-60">🪫</span>}
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
         )}

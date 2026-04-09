@@ -360,7 +360,7 @@ serve(async (req) => {
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images, noteFormat } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images, noteFormat, energyMode } = body;
 
     const contentParts: any[] = [];
 
@@ -919,6 +919,17 @@ STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div cl
       profileStr += `\n\nSTRICT COGNITIVE RULES:\n${cognitiveRules.join("\n\n")}`;
     }
 
+    // Energy mode modifier
+    const isLowBattery = energyMode === "low";
+    const energyStr = isLowBattery ? `\n\n⚡ LOW BATTERY MODE ACTIVE:
+The student is in low-energy mode. Adapt your output:
+- SHORTER sections: Get to the point faster. Cut filler sentences. Every sentence must earn its place.
+- NO interactive study tools: Skip recall prompts, Feynman checks, and engagement extras even if requested.
+- PRIORITIZE: Bold the single most important takeaway per section. If a student only reads the bolded words, they should still understand the core concept.
+- SIMPLER structure: Use shorter paragraphs (1-2 sentences). Fewer bullets per list (3-5 max). No nested lists.
+- KEEP the casual tutor voice but be more concise — think "quick summary from a friend" not "full lecture."
+- STILL preserve all information — do NOT cut facts. Just deliver them more efficiently.` : "";
+
     const systemPrompt = `You are a knowledgeable friend who also happens to be a great tutor. Your voice should feel like a smart, patient friend explaining things casually — "So basically what's happening here is..." — while still being accurate and thorough. Use "we" and "you" naturally. Be warm but not cheesy.
 
 If the source material is disorganized, poorly extracted (like a messy PDF), or lacks punctuation (like an auto-generated YouTube transcript), you MUST rewrite it for clarity and teaching flow — make it sound like a great tutor wrote it from scratch. However, preserve the original phrasing in a collapsed block so the student can reference it:
@@ -1157,7 +1168,7 @@ CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
 1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node.
 2. NEVER leave "detailed_info" blank. NEVER use generic placeholders like "Details go here."
-3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}
+3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}${energyStr}
 
 FINAL REMINDER — MATH STEPS: If the source material contains ANY math, equations, or worked problems: show EVERY single intermediate step using the math-stepper format. Each step = ONE operation. Each explanation = teach the student what you did, why, and what to notice. NEVER skip, combine, or gloss over steps. The student must be able to follow from start to finish without needing to figure out any gap on their own.`;
 
