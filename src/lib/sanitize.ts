@@ -6,16 +6,13 @@ import DOMPurify from "dompurify";
  * while stripping scripts, event handlers, and dangerous attributes.
  */
 export function sanitizeHtml(dirty: string): string {
-  // Strip math-formula pill wrappers globally — AI wraps plain numbers/labels
-  // in these spans which show misleading magnifying glass pills. Remove the
-  // wrapper but keep the inner content. This runs before DOMPurify so it
-  // catches saved notes loaded from the library, not just new generations.
-  const cleaned = dirty.replace(
-    /<span\s+class="math-formula"[^>]*>([\s\S]*?)<\/span>/gi,
-    "$1",
-  );
+  // NOTE: math-formula spans are intentionally preserved here. The AI generates
+  // <span class="math-formula" data-formula="..."> tags for dyscalculia users
+  // so they can click equations to get plain-English translations. Invalid pills
+  // (plain numbers, exercise labels) are selectively stripped by the validation
+  // logic in useNotesInteractivity.ts, not by a blanket regex here.
 
-  return DOMPurify.sanitize(cleaned, {
+  return DOMPurify.sanitize(dirty, {
     ADD_TAGS: ["section", "details", "summary", "button", "textarea", "figure", "figcaption", "img"],
     ADD_ATTR: [
       "data-definition",
@@ -27,6 +24,7 @@ export function sanitizeHtml(dirty: string): string {
       "data-section-index",
       "data-concept",
       "data-image-index",
+      "data-formula",
       "data-total-steps",
       "data-step",
       "tabindex",

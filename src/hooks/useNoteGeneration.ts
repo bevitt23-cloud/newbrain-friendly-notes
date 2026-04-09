@@ -339,13 +339,9 @@ export function useNoteGeneration() {
       // Strip any leading whitespace or stray newlines before the first tag
       cleaned = cleaned.replace(/^[\s\n\r]+(?=<)/, "");
 
-      // Strip math-formula pill wrappers — AI wraps too aggressively, causing
-      // plain numbers and exercise labels to appear as clickable pills.
-      // Convert <span class="math-formula" data-formula="...">content</span> → content
-      cleaned = cleaned.replace(
-        /<span\s+class="math-formula"[^>]*>([\s\S]*?)<\/span>/gi,
-        "$1",
-      );
+      // NOTE: math-formula spans are preserved here. Invalid pills (plain
+      // numbers, exercise labels) are stripped selectively by the validation
+      // logic in useNotesInteractivity.ts on render, not by a blanket regex.
 
       let finalHtml = cleaned.trim();
 

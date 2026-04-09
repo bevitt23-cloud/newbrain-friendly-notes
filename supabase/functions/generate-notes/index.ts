@@ -462,8 +462,12 @@ serve(async (req) => {
       const host = parsedUrl.hostname.replace(/^www\./i, "").toLowerCase();
 
       // ── Helper: strip HTML to plain text ──
-      const stripHtml = (html: string): string =>
-        html
+      // Cap input at 500KB to prevent ReDoS from malformed HTML with
+      // unclosed tags causing catastrophic regex backtracking.
+      const STRIP_HTML_MAX = 512 * 1024;
+      const stripHtml = (html: string): string => {
+        const capped = html.length > STRIP_HTML_MAX ? html.slice(0, STRIP_HTML_MAX) : html;
+        return capped
           .replace(/<script[\s\S]*?<\/script>/gi, "")
           .replace(/<style[\s\S]*?<\/style>/gi, "")
           .replace(/<nav[\s\S]*?<\/nav>/gi, "")
@@ -479,6 +483,7 @@ serve(async (req) => {
           .replace(/&#?\w+;/g, " ")
           .replace(/\s{2,}/g, " ")
           .trim();
+      };
 
       // ── Helper: fetch with browser-like headers ──
       const browserFetch = (url: string) =>
@@ -613,7 +618,7 @@ serve(async (req) => {
           }
           // Unpaywall — find free/legal open access version
           if (!websiteText) {
-            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=brainfriendlynotes@app.com`);
+            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=${Deno.env.get("UNPAYWALL_EMAIL") || "brainfriendlynotes@app.com"}`);
             if (upResp.ok) {
               const upData = await upResp.json();
               const oaUrl = upData.best_oa_location?.url_for_landing_page || upData.best_oa_location?.url;
@@ -738,7 +743,7 @@ serve(async (req) => {
           if (possibleDoi) {
             const doi = possibleDoi[1];
             console.log(`Last resort: Unpaywall for DOI ${doi}`);
-            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=brainfriendlynotes@app.com`);
+            const upResp = await fetch(`https://api.unpaywall.org/v2/${doi}?email=${Deno.env.get("UNPAYWALL_EMAIL") || "brainfriendlynotes@app.com"}`);
             if (upResp.ok) {
               const upData = await upResp.json();
               const oaUrl = upData.best_oa_location?.url_for_landing_page || upData.best_oa_location?.url;

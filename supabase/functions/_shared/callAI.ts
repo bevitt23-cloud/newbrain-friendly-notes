@@ -125,11 +125,18 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
     try {
       const claudeMessages = toClaudeMessages(messages);
 
+      // When JSON mode is requested, add an assistant prefill to force
+      // Claude into structured JSON output (Anthropic doesn't support
+      // response_format natively the way Gemini does).
+      if (jsonMode) {
+        claudeMessages.push({ role: "assistant", content: "{" });
+      }
+
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
+          "anthropic-version": "2024-10-22",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -142,8 +149,12 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
 
       if (resp.ok) {
         const data = await resp.json();
-        const content =
+        let content =
           data.content?.map((b: any) => b.text).join("") || "";
+        // Prepend the prefill brace back since Claude continues from it
+        if (jsonMode && content && !content.trimStart().startsWith("{")) {
+          content = "{" + content;
+        }
         return { content };
       }
 
@@ -164,7 +175,7 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
 export async function callAIStream(
   opts: CallAIOptions,
 ): Promise<CallAIStreamResult> {
-  const { systemPrompt, messages, maxTokens } = opts;
+  const { systemPrompt, messages, maxTokens, jsonMode = false } = opts;
 
   const GOOGLE_API_KEY = Deno.env.get("GEMINI_KEY");
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_KEY");
@@ -177,6 +188,17 @@ export async function callAIStream(
         ...messages,
       ];
 
+      const geminiStreamBody: Record<string, unknown> = {
+        model: "gemini-2.5-flash",
+        messages: allMessages,
+        stream: true,
+        ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      };
+
+      if (jsonMode) {
+        geminiStreamBody.response_format = { type: "json_object" };
+      }
+
       const resp = await fetch(
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         {
@@ -185,12 +207,7 @@ export async function callAIStream(
             Authorization: `Bearer ${GOOGLE_API_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            model: "gemini-2.5-flash",
-            messages: allMessages,
-            stream: true,
-            ...(maxTokens ? { max_tokens: maxTokens } : {}),
-          }),
+          body: JSON.stringify(geminiStreamBody),
         },
       );
 
@@ -213,7 +230,7 @@ export async function callAIStream(
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
+          "anthropic-version": "2024-10-22",
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
