@@ -71,6 +71,31 @@ const FloatingStudyBar = () => {
 
   // Read aloud state
   const [isReading, setIsReading] = useState(false);
+  const ttsKeepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Chrome bug workaround: Chrome silently pauses long utterances after ~15s.
+  // A periodic pause/resume keeps it alive.
+  useEffect(() => {
+    if (isReading) {
+      ttsKeepAliveRef.current = setInterval(() => {
+        if (speechSynthesis.speaking && !speechSynthesis.paused) {
+          speechSynthesis.pause();
+          speechSynthesis.resume();
+        }
+      }, 10000);
+    } else {
+      if (ttsKeepAliveRef.current) {
+        clearInterval(ttsKeepAliveRef.current);
+        ttsKeepAliveRef.current = null;
+      }
+    }
+    return () => {
+      if (ttsKeepAliveRef.current) {
+        clearInterval(ttsKeepAliveRef.current);
+        ttsKeepAliveRef.current = null;
+      }
+    };
+  }, [isReading]);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string>(() =>
     localStorage.getItem("bfn:tts-voice") || ""
@@ -195,20 +220,70 @@ const FloatingStudyBar = () => {
       setIsReading(false);
       return;
     }
+
+    // Chrome bug workaround: cancel any stale queued utterances first
+    speechSynthesis.cancel();
+
     const notes = document.querySelector(".generated-notes");
-    if (!notes) return;
-    const text = notes.textContent || "";
-    if (!text.trim()) return;
-    const utt = new SpeechSynthesisUtterance(text.slice(0, 5000));
-    utt.rate = readSpeed;
-    // Apply selected voice
-    if (selectedVoiceUri) {
-      const voice = availableVoices.find((v) => v.voiceURI === selectedVoiceUri);
-      if (voice) utt.voice = voice;
+    if (!notes) {
+      console.warn("[TTS] No .generated-notes element found on page");
+      return;
     }
-    utt.onend = () => setIsReading(false);
+    const text = (notes.textContent || "").trim();
+    if (!text) {
+      console.warn("[TTS] Notes element found but text content is empty");
+      return;
+    }
+
+    // Chrome has a bug where long utterances silently stop after ~15s.
+    // Split into chunks at sentence boundaries to work around this.
+    const MAX_CHUNK = 4000;
+    const chunks: string[] = [];
+    let remaining = text;
+    while (remaining.length > 0) {
+      if (remaining.length <= MAX_CHUNK) {
+        chunks.push(remaining);
+        break;
+      }
+      // Find the last sentence-ending punctuation within the limit
+      let splitAt = remaining.lastIndexOf(". ", MAX_CHUNK);
+      if (splitAt < MAX_CHUNK / 2) splitAt = remaining.lastIndexOf("! ", MAX_CHUNK);
+      if (splitAt < MAX_CHUNK / 2) splitAt = remaining.lastIndexOf("? ", MAX_CHUNK);
+      if (splitAt < MAX_CHUNK / 2) splitAt = MAX_CHUNK; // fallback: hard cut
+      else splitAt += 2; // include the punctuation + space
+      chunks.push(remaining.slice(0, splitAt));
+      remaining = remaining.slice(splitAt);
+    }
+
+    // Find the user's selected voice
+    const voice = selectedVoiceUri
+      ? availableVoices.find((v) => v.voiceURI === selectedVoiceUri) || null
+      : null;
+
     setIsReading(true);
-    speechSynthesis.speak(utt);
+
+    // Queue all chunks — only the last one triggers onend
+    chunks.forEach((chunk, i) => {
+      const utt = new SpeechSynthesisUtterance(chunk);
+      utt.rate = readSpeed;
+      if (voice) utt.voice = voice;
+      if (i === chunks.length - 1) {
+        utt.onend = () => setIsReading(false);
+      }
+      utt.onerror = (e) => {
+        console.warn("[TTS] Utterance error:", e.error);
+        setIsReading(false);
+      };
+      speechSynthesis.speak(utt);
+    });
+
+    // Chrome workaround: speechSynthesis.speak() can silently fail.
+    // If nothing is speaking after 500ms, reset state.
+    setTimeout(() => {
+      if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+        setIsReading(false);
+      }
+    }, 500);
   };
 
   // Preview a voice with a short sample
