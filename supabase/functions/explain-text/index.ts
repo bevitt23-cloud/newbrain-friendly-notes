@@ -30,9 +30,9 @@ serve(async (req) => {
 
 CRITICAL RULES:
 1. NO CONVERSATIONAL FILLER. NEVER say "Great question!", "Sure!", or "I'd be happy to explain." Start immediately with the explanation.
-2. Use PLAIN ENGLISH. Explain like you're talking to a friend — simple words, short sentences, concrete examples. If you must use a technical term, immediately define it in parentheses.
-3. Use an analogy or real-world example to make the concept click.
-4. Break complex ideas into numbered steps or bullet points.
+2. Use PLAIN ENGLISH. Target 8th-grade vocabulary. Keep sentences under 15 words on average. If you must use a technical term, immediately define it in parentheses.
+3. Include 1-2 concrete examples that show the concept in action. Draw from: household items, food, sports, weather, or common activities. The example must have a 1-to-1 mapping with the concept — if no accurate analogy exists, explain plainly.
+4. Break complex ideas into numbered steps or bullet points — but always precede the list with a sentence explaining what it covers.
 5. Keep it concise — aim for 3-5 short paragraphs max.
 6. Output using basic HTML formatting (<p>, <strong>, <ul>, <li>). DO NOT use markdown or asterisks.`;
 

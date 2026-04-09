@@ -329,7 +329,7 @@ STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculati
   prioritization_fatigue:
     "EXPLICIT HIERARCHY: The user struggles with executive function and information prioritization. You must explicitly label the weight of information to help them prioritize. Use HTML bold prefixes like <strong>Core Concept:</strong> for the main testable idea, <strong>Context:</strong> for the supporting narrative, and <strong>Example:</strong> for illustrative cases. This visual hierarchy helps the reader instantly distinguish what to memorize from what is background context. NEVER use asterisks for bold — only HTML <strong> tags.",
   visual_mapper:
-    "VISUAL ANCHORING: The user requires visual-spatial mapping to decode text. Every single <h2> and <h3> header MUST begin with a single, highly relevant emoji. This creates a visual map for non-linear readers to navigate the document without decoding the text. Choose emojis that are semantically related to the section content, not random decorations.",
+    "VISUAL ANCHORING: The user requires visual-spatial mapping to decode text. Every single <h2> and <h3> header MUST begin with a single emoji that literally depicts the main object or action in that section (e.g., 🧬 for DNA, ☀️ for light/energy, 🧠 for brain, 📊 for data/charts). Do NOT use abstract emoji like 🔄, 💡, ✨, 🌟. Use the same emoji consistently for the same concept throughout. One emoji per header.",
 };
 
 // ─── Strength traits: lean INTO these as primary teaching strategies ──
@@ -368,9 +368,9 @@ export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation
   // Subject-aware adaptation rule
   parts.push(
     "SUBJECT-AWARE ADAPTATION: Not all accommodations apply to all content. " +
-    "If the source material contains no math or numbers, skip math-specific rules (math steppers, formula translators, color-coded variables). " +
-    "If the source is purely quantitative with no narrative, skip humanities-specific rules (timelines, character motives, thematic breakdowns). " +
-    "Apply only the accommodations that are relevant to the actual content being processed. " +
+    "If the source material contains zero equations, formulas, or numerical data, skip math-specific rules entirely (math steppers, formula translators, color-coded variables). " +
+    "If it contains even one equation or worked problem, apply math rules fully. " +
+    "If the source is purely quantitative with no narrative text, skip humanities-specific rules (timelines, character motives, thematic breakdowns). " +
     "Strengths-based strategies (above) should ALWAYS be applied regardless of subject matter."
   );
 

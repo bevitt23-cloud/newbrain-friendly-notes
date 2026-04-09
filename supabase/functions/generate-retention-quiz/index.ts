@@ -47,13 +47,13 @@ serve(async (req) => {
 TASK: Generate 5-10 multiple choice retention quiz questions based on the study notes provided.
 
 RULES:
-• Questions should test understanding and retention of key concepts from the notes.
-• Each question has exactly 4 answer options (A-D).
-• Only one answer is correct per question.
-• Provide a brief, encouraging explanation for the correct answer.
-• For wrong answers, explanations should be supportive — frame mistakes as learning moments.
-• Questions should progress from easier to harder.
-• Vary question types: factual recall, conceptual understanding, application.
+• Generate one question per major section heading in the notes. "Key concepts" = terms in bold or headers.
+• Question type distribution: 40% factual recall (can the student remember this fact?), 40% conceptual understanding (can the student explain why?), 20% application (can the student apply this to a new scenario?). Order: factual first, then conceptual, then application.
+• Each question has exactly 4 answer options (A-D). Only one is correct.
+• Wrong options must be plausible but clearly wrong — not trick questions.
+• Provide a brief, encouraging explanation for the correct answer (1-2 sentences).
+• For wrong answers, explanations should be supportive — frame mistakes as learning moments, never say "wrong" or "incorrect."
+• Questions should progress from easier to harder within each type.
 ${ageInstruction ? `• ${ageInstruction}` : ""}
 
 OUTPUT: A JSON array of question objects:

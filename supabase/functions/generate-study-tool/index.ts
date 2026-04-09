@@ -18,13 +18,15 @@ DESIGN LANGUAGE RULES (apply to ALL outputs):
 
 const TOOL_PROMPTS: Record<string, string> = {
   flashcard: `${AESTHETIC_PREAMBLE}
-TASK: Convert the provided source material into a comprehensive JSON array of flashcards. Do not artificially limit the number of cards. Generate as many as necessary to comprehensively cover all concepts in the text.
+TASK: Convert the provided source material into a comprehensive JSON array of flashcards.
+
+CARD COUNT: Generate one flashcard per atomic fact or concept. For every major section heading in the source, generate 3-5 cards. Aim for 15-30 total cards for a typical page of notes; add 10-15 more for each additional page of content. Cover EVERY section — do not over-represent one topic at the expense of others.
 
 RULES:
 • Each card tests ONE atomic concept — never combine multiple ideas.
-• "front" = a clear, specific question or prompt (not just a term).
+• "front" = a clear, specific question or prompt (not just a term). Ask "What is...", "Why does...", "How does...", or "What happens when...".
 • "back" = a concise answer (1-2 sentences max). Use plain language.
-• Include application cards that ask "Why does X matter?" or "Give an example of X."
+• Card type mix: ~60% factual recall ("What is X?"), ~20% conceptual ("Why does X happen?"), ~20% application ("Give an example of X in real life").
 • Order cards from foundational concepts → advanced details.
 
 OUTPUT: A JSON array of objects: [{"id":"1","front":"...","back":"..."}]. Output ONLY valid JSON, no markdown fences, no explanation.`,
@@ -52,7 +54,7 @@ Output ONLY valid JSON, no markdown fences, no explanation.`,
 TASK: Map the logical processes, cause-effect relationships, or sequential steps from the material into a flowchart. Output as structured JSON.
 
 RULES:
-• Include 10-20 nodes for comprehensive coverage.
+• Node count: 1 root + 3-5 main_topic nodes (one per major section heading) + 2-4 detail nodes per main_topic. Total should be 10-25 nodes depending on source depth.
 • Each node has: "id" (string), "label" (1-5 words), "type" ("start"|"end"|"process"|"decision"), "color" ("sage"|"lavender"|"peach"|"sky"), "detailed_info" (2-3 sentences explaining this step).
 • Edges connect nodes using "source" and "target" (node IDs), with optional "label" for edge text (e.g. "Yes", "No", "If valid").
 • Start nodes should be type "start", end nodes "end".
@@ -86,7 +88,7 @@ RULES:
 • Use conversational, relatable language. Brief banter is encouraged.
 • If the user is wrong, guide them with curiosity: "Interesting take! But what if we considered..." NEVER be dismissive.
 • Keep responses to 2-4 sentences max.
-• Use analogies from everyday life to make abstract concepts click.
+• Use ONE analogy per response if the concept is abstract. Draw from: food, sports, household items, weather, or common activities. The analogy must have a 1-to-1 mapping with the concept. If no accurate analogy exists, explain plainly instead.
 • Start by picking ONE core concept and challenging the user's understanding of it.
 • If the user says "I don't know," reframe the question simpler — never penalize.`,
 
@@ -99,7 +101,7 @@ RULES:
 • For true/false ("tf"): A statement that is clearly true or false. Include "correctAnswer" (boolean) and "explanation".
 • For fill-in-the-blank ("fib"): A sentence with one key term removed. Include "answer" (the missing term) and "explanation".
 • For essay: A thought-provoking prompt requiring a 5-paragraph response. Include "rubric" (grading criteria) and "samplePoints" (3-5 key points a good essay would cover).
-• If the material is math-related, generate calculation problems, proofs, or word problems as appropriate.
+• If the material contains math: for algebra/arithmetic → generate calculation and word problems; for geometry → include proofs and constructions; for calculus → include computation and application problems. Match difficulty to the source material level.
 • Difficulty should ramp from foundational to synthesis/analysis.
 • Emphasize topics that are commonly misunderstood or complex.
 • Use RSD-safe, supportive language in all explanations.
