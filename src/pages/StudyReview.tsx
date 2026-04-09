@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, FileText, BookOpen, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, FileText, BookOpen, ChevronRight, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import Layout from "@/components/Layout";
 import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
@@ -16,10 +16,14 @@ import TextSelectionMenu from "@/components/TextSelectionMenu";
 import { useNotesInteractivity } from "@/hooks/useNotesInteractivity";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
+import { useNoteGeneration } from "@/hooks/useNoteGeneration";
+import type { NoteFormat } from "@/hooks/useNoteGeneration";
 import { useCognitiveProfile } from "@/hooks/useCognitiveProfile";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LEARNING_MODE } from "@/lib/constants";
 import InAppVideoModal from "@/components/InAppVideoModal";
 import type { SavedExplainerVideo } from "@/components/InAppVideoModal";
 import VideoBar from "@/components/VideoBar";
@@ -157,20 +161,158 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
   );
 }
 
+const STUDY_TOOL_OPTIONS: { id: StudyToolType; label: string; emoji: string }[] = [
+  { id: "mindmap", label: "Mind Map", emoji: "🗺️" },
+  { id: "flowchart", label: "Flow Chart", emoji: "📊" },
+  { id: "flashcard", label: "Flash Cards", emoji: "🃏" },
+  { id: "cloze", label: "Fill-in-Blank", emoji: "📝" },
+  { id: "socratic", label: "Argue With Me", emoji: "💬" },
+  { id: "final-exam", label: "Final Exam", emoji: "🎓" },
+];
+
+const NOTE_FORMAT_OPTIONS: { value: NoteFormat; label: string }[] = [
+  { value: "auto", label: "Auto Detect" },
+  { value: "outline", label: "Outline" },
+  { value: "cornell", label: "Cornell Notes" },
+  { value: "concept_map", label: "Concept Map" },
+  { value: "flow", label: "Flow" },
+];
+
 export default function StudyReview() {
   const location = useLocation();
   const navigate = useNavigate();
   const { generate } = useStudyToolGeneration();
+  const { generate: generateNotes, isGenerating: isReformatting, generatedHtml: reformattedHtml } = useNoteGeneration();
   const { profile } = useCognitiveProfile();
+  const { preferences } = useUserPreferences();
   const { user } = useAuth();
 
   const state = location.state as { items: ReviewItem[]; toolsToGenerate?: string[] } | null;
-  const items = state?.items || [];
+  const [items, setItems] = useState<ReviewItem[]>(state?.items || []);
   const toolsToGenerate = state?.toolsToGenerate || [];
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [generatedTools, setGeneratedTools] = useState<GeneratedTool[]>([]);
   const hasStartedGeneration = useRef(false);
+
+  // ── Study tool inline generation state ──
+  const [showToolPicker, setShowToolPicker] = useState(false);
+  const [selectedTools, setSelectedTools] = useState<Set<StudyToolType>>(new Set());
+  const [isGeneratingTools, setIsGeneratingTools] = useState(false);
+
+  // ── Reformat state ──
+  const [isReformatMenuOpen, setIsReformatMenuOpen] = useState(false);
+
+  const learningMode = preferences.dyslexia_font ? LEARNING_MODE.DYSLEXIA : preferences.adhd_font ? LEARNING_MODE.ADHD : LEARNING_MODE.NEUROTYPICAL;
+
+  const toggleTool = (id: StudyToolType) => {
+    setSelectedTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleGenerateSelectedTools = async () => {
+    if (selectedTools.size === 0 || !allNotesHtml) return;
+    setIsGeneratingTools(true);
+
+    const toolIds = Array.from(selectedTools);
+    const tools: GeneratedTool[] = toolIds.map((toolType) => ({
+      id: `gen-${toolType}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      toolType,
+      label: toolLabel[toolType] || toolType,
+      result: null,
+      generating: toolType !== "socratic",
+      noteContent: allNotesHtml,
+    }));
+    setGeneratedTools((prev) => [...prev, ...tools]);
+    setShowToolPicker(false);
+    setSelectedTools(new Set());
+
+    // Switch to the first new tool tab
+    const firstNewTabIndex = items.length + generatedTools.length;
+    setActiveIndex(firstNewTabIndex);
+
+    await Promise.all(
+      tools.filter((t) => t.toolType !== "socratic").map(async (tool) => {
+        try {
+          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined);
+          setGeneratedTools((prev) =>
+            prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
+          );
+          if (res && user) {
+            const title = `${tool.label} — ${items[0]?.title || "Notes"} — ${new Date().toLocaleDateString()}`;
+            await supabase.from("saved_study_materials").insert({
+              user_id: user.id,
+              title,
+              material_type: tool.toolType,
+              content: { raw: res },
+              note_id: items[0]?.noteId || null,
+              tags: [],
+            });
+          }
+        } catch {
+          setGeneratedTools((prev) =>
+            prev.map((t) => (t.id === tool.id ? { ...t, generating: false } : t))
+          );
+          toast.error(`Failed to generate ${tool.label}`);
+        }
+      })
+    );
+    setIsGeneratingTools(false);
+  };
+
+  const handleReformat = (format: NoteFormat) => {
+    const currentNote = items.find((i) => i.type === "note");
+    if (!currentNote) return;
+    setIsReformatMenuOpen(false);
+
+    // Strip HTML to get plain text for regeneration
+    const tmp = document.createElement("div");
+    tmp.innerHTML = currentNote.content;
+    const plainText = tmp.textContent || tmp.innerText || "";
+    if (!plainText.trim()) {
+      toast.error("Could not extract text from note to reformat.");
+      return;
+    }
+
+    generateNotes({
+      textContent: plainText,
+      learningMode,
+      extras: [],
+      profilePrompt: profile.promptAppend || undefined,
+      age: profile.age,
+      noteFormat: format,
+    });
+  };
+
+  // When reformat completes, update the note in state and save to DB
+  useEffect(() => {
+    if (!reformattedHtml || isReformatting) return;
+    const noteIndex = items.findIndex((i) => i.type === "note");
+    if (noteIndex < 0) return;
+
+    const updatedItems = [...items];
+    updatedItems[noteIndex] = { ...updatedItems[noteIndex], content: reformattedHtml };
+    setItems(updatedItems);
+    setActiveIndex(noteIndex);
+
+    // Save reformatted content to DB
+    const noteId = items[noteIndex].noteId;
+    if (noteId && user) {
+      supabase
+        .from("saved_notes")
+        .update({ content: reformattedHtml })
+        .eq("id", noteId)
+        .eq("user_id", user.id)
+        .then(({ error }) => {
+          if (error) toast.error("Failed to save reformatted notes.");
+          else toast.success("Notes reformatted and saved!");
+        });
+    }
+  }, [reformattedHtml, isReformatting]);
 
   // Combine notes content for tool generation
   const allNotesHtml = items
@@ -323,7 +465,84 @@ export default function StudyReview() {
     if (!item) return null;
 
     if (item.type === "note") {
-      return <InteractiveNoteViewer html={item.content} noteId={item.noteId} />;
+      return (
+        <div className="space-y-5">
+          {isReformatting && (
+            <div className="flex items-center gap-3 rounded-xl border border-lavender-200 dark:border-lavender-500/30 bg-lavender-50 dark:bg-lavender-500/10 p-4">
+              <Loader2 className="h-4 w-4 animate-spin text-lavender-500" />
+              <span className="text-sm font-medium text-lavender-600 dark:text-lavender-300">Reformatting notes...</span>
+            </div>
+          )}
+
+          <InteractiveNoteViewer html={item.content} noteId={item.noteId} />
+
+          {/* ── Action bar: Reformat + Generate Study Tools ── */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+            {/* Reformat row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <RefreshCw className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs font-medium text-muted-foreground">Reformat as:</span>
+              {NOTE_FORMAT_OPTIONS.filter((f) => f.value !== "auto").map((fmt) => (
+                <button
+                  key={fmt.value}
+                  onClick={() => handleReformat(fmt.value)}
+                  disabled={isReformatting}
+                  className="rounded-lg bg-lavender-100 dark:bg-lavender-500/15 px-2.5 py-1 text-[11px] font-medium text-lavender-600 dark:text-lavender-300 hover:bg-lavender-200 dark:hover:bg-lavender-500/25 transition-colors disabled:opacity-50"
+                >
+                  {fmt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Study tools row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Sparkles className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              <span className="text-xs font-medium text-muted-foreground">Generate study tools:</span>
+              {!showToolPicker ? (
+                <button
+                  onClick={() => setShowToolPicker(true)}
+                  className="rounded-lg bg-sage-100 dark:bg-sage-500/15 px-3 py-1 text-[11px] font-semibold text-sage-600 dark:text-sage-300 hover:bg-sage-200 dark:hover:bg-sage-500/25 transition-colors"
+                >
+                  Choose Tools
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {STUDY_TOOL_OPTIONS.map((tool) => (
+                    <button
+                      key={tool.id}
+                      onClick={() => toggleTool(tool.id)}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        selectedTools.has(tool.id)
+                          ? "bg-primary/15 text-primary ring-1 ring-primary/30"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {tool.emoji} {tool.label}
+                    </button>
+                  ))}
+                  <button
+                    onClick={handleGenerateSelectedTools}
+                    disabled={selectedTools.size === 0 || isGeneratingTools}
+                    className="rounded-lg bg-sage-200 dark:bg-sage-500/20 px-3 py-1 text-[11px] font-bold text-sage-700 dark:text-sage-300 hover:bg-sage-300 dark:hover:bg-sage-500/30 transition-colors disabled:opacity-40"
+                  >
+                    {isGeneratingTools ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      `Generate ${selectedTools.size > 0 ? selectedTools.size : ""}`
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setShowToolPicker(false); setSelectedTools(new Set()); }}
+                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
     }
     return renderMaterial(item);
   };
