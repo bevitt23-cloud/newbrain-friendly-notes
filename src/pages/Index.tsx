@@ -409,8 +409,8 @@ function Workspace() {
   const {
     chapterStates, isRunning: isChapterRunning, currentIndex: chapterCurrentIndex,
     completedCount: chapterCompletedCount, failedCount: chapterFailedCount,
-    totalCount: chapterTotalCount, startBackgroundGeneration, stopAfterCurrent,
-    resetChapterGeneration,
+    totalCount: chapterTotalCount, startBackgroundGeneration, startBackgroundFileGeneration,
+    stopAfterCurrent, resetChapterGeneration,
   } = useChapterGeneration();
   const [chapterBookTitle, setChapterBookTitle] = useState("");
 
@@ -460,7 +460,7 @@ function Workspace() {
   const lastGenerateDataRef = useRef<Record<string, any> | null>(null);
 
   const handleGenerate = useCallback(
-    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean; noteFormat?: string; chapterData?: ChapterGenerateData }) => {
+    (data: { textContent?: string; files?: File[]; youtubeUrl?: string; websiteUrl?: string; instructions: string; folder: string; tags: string[]; shouldSaveToLibrary: boolean; saveYouTubeVideo?: boolean; noteFormat?: string; chapterData?: ChapterGenerateData; backgroundFiles?: File[] }) => {
       lastGenerateDataRef.current = data;
       autoSavedRef.current = false;
       setSavedNoteId(null);
@@ -550,8 +550,22 @@ function Workspace() {
         age: profile.age,
         noteFormat: data.noteFormat as any,
       });
+
+      // ── Multi-file: generate remaining files in background ──
+      if (data.backgroundFiles && data.backgroundFiles.length > 0) {
+        startBackgroundFileGeneration({
+          files: data.backgroundFiles,
+          folder: data.folder,
+          tags: data.tags,
+          learningMode,
+          extras: activeExtras,
+          instructions: data.instructions,
+          profilePrompt: profile.promptAppend || undefined,
+          age: profile.age,
+        });
+      }
     },
-    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, startBackgroundGeneration, resetChapterGeneration]
+    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, startBackgroundGeneration, startBackgroundFileGeneration, resetChapterGeneration]
   );
 
   // Auto-save notes when generated

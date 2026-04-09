@@ -48,6 +48,8 @@ interface ContentUploaderProps {
     noteFormat?: string;
     /** Present when generating from detected chapters */
     chapterData?: ChapterGenerateData;
+    /** Remaining files to generate in background (multi-file upload) */
+    backgroundFiles?: File[];
   }) => void;
   isGenerating: boolean;
   uploadProgress: string;
@@ -314,7 +316,12 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
         toast.error(`${oversized.name} is too large (max 500MB per file)`);
         return;
       }
-      onGenerate({ files, ...common });
+      if (files.length > 1) {
+        // Multi-file: first file shows on workspace, rest generate to library
+        onGenerate({ files: [files[0]], backgroundFiles: files.slice(1), ...common });
+      } else {
+        onGenerate({ files, ...common });
+      }
     }
   };
 

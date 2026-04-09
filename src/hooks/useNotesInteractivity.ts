@@ -175,7 +175,17 @@ Respond with ONLY the plain-English sentence. No preamble, no "This formula mean
         recognition = new SpeechRecognition();
         recognition.continuous = true;
         recognition.interimResults = false;
-        recognition.lang = "en-US";
+        // Derive lang from user's TTS voice preference
+        let recognitionLang = "en-US";
+        try {
+          const storedUri = localStorage.getItem("bfn:tts-voice");
+          if (storedUri && typeof speechSynthesis !== "undefined") {
+            const voices = speechSynthesis.getVoices();
+            const match = voices.find((v: SpeechSynthesisVoice) => v.voiceURI === storedUri);
+            if (match?.lang) recognitionLang = match.lang;
+          }
+        } catch {}
+        recognition.lang = recognitionLang;
 
         recognition.onresult = (event: any) => {
           let transcript = "";

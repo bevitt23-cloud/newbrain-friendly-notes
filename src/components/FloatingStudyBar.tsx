@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Volume2, Timer, Music, ChevronDown, ChevronUp, GripVertical,
-  Play, Pause, RotateCcw, Volume1, VolumeX,
+  Play, Pause, RotateCcw, Volume1, VolumeX, Settings2,
   Headphones, Waves, Radio, SkipForward, X, Sparkles, Youtube,
   ExternalLink,
 } from "lucide-react";
@@ -406,24 +406,34 @@ const FloatingStudyBar = () => {
                   className="flex flex-col gap-1.5 overflow-hidden"
                 >
                   {toolButtons.map((tool) => (
-                    <button
-                      key={tool.id}
-                      onClick={() => {
-                        if (tool.id === "read" && isReading) {
-                          handleReadAloud(); // stop reading
-                        } else {
-                          setActiveTool(activeTool === tool.id ? null : tool.id);
-                        }
-                      }}
-                      title={tool.label}
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 ${
-                        (activeTool === tool.id || (tool.id === "read" && isReading))
-                          ? tool.activeBg
-                          : `${tool.bg}`
-                      }`}
-                    >
-                      <tool.icon className={`h-4 w-4 ${tool.color}`} />
-                    </button>
+                    <div key={tool.id} className="relative">
+                      <button
+                        onClick={() => {
+                          if (tool.id === "read") {
+                            handleReadAloud();
+                          } else {
+                            setActiveTool(activeTool === tool.id ? null : tool.id);
+                          }
+                        }}
+                        title={tool.label}
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200 ${
+                          (activeTool === tool.id || (tool.id === "read" && isReading))
+                            ? tool.activeBg
+                            : `${tool.bg}`
+                        }`}
+                      >
+                        <tool.icon className={`h-4 w-4 ${tool.color}`} />
+                      </button>
+                      {tool.id === "read" && (
+                        <button
+                          onClick={() => setActiveTool(activeTool === "voice-settings" ? null : "voice-settings")}
+                          title="Voice settings"
+                          className={`absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground transition-colors ${activeTool === "voice-settings" ? "ring-1 ring-primary" : ""}`}
+                        >
+                          <Settings2 className="h-2.5 w-2.5" />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </motion.div>
               )}
@@ -549,8 +559,8 @@ const FloatingStudyBar = () => {
                   </div>
                 )}
 
-                {/* ─── Read Aloud Panel ─── */}
-                {activeTool === "read" && !isReading && (
+                {/* ─── Read Aloud Voice Settings Panel ─── */}
+                {activeTool === "voice-settings" && (
                   <div className="p-4">
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-sage-500 mb-3">
                       Voice Settings

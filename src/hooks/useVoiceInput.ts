@@ -4,6 +4,10 @@ import { useState, useCallback, useRef, useEffect } from "react";
  * Hook for Web Speech Recognition (voice-to-text).
  * Returns a toggle function, listening state, and transcript.
  * Appends recognized speech to the provided setter.
+ *
+ * Reads the user's preferred TTS voice from localStorage ("bfn:tts-voice")
+ * and derives the speech recognition language from it so that STT and TTS
+ * stay in sync.
  */
 
 // Check browser support
@@ -11,6 +15,19 @@ const SpeechRecognition =
   typeof window !== "undefined"
     ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     : null;
+
+/** Derive BCP-47 lang from the user's selected TTS voice URI stored in localStorage. */
+function getRecognitionLang(): string {
+  try {
+    const storedUri = localStorage.getItem("bfn:tts-voice");
+    if (storedUri && typeof speechSynthesis !== "undefined") {
+      const voices = speechSynthesis.getVoices();
+      const match = voices.find((v) => v.voiceURI === storedUri);
+      if (match?.lang) return match.lang;
+    }
+  } catch {}
+  return "en-US";
+}
 
 export function useVoiceInput(onTranscript: (text: string) => void) {
   const [isListening, setIsListening] = useState(false);
@@ -38,7 +55,7 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = "en-US";
+    recognition.lang = getRecognitionLang();
 
     recognition.onresult = (event: any) => {
       let transcript = "";

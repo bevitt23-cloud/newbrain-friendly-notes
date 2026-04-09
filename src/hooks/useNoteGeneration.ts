@@ -362,6 +362,23 @@ export function useNoteGeneration() {
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/(?<!=["'])\*([^*\n]+)\*(?!["'])/g, "<em>$1</em>");
 
+      // Convert leaked markdown bullet lists (* item or - item) into <ul><li>
+      finalHtml = finalHtml.replace(
+        /(?:^|\n)((?:[ \t]*[*\-][ \t]+.+(?:\n|$)){2,})/gm,
+        (_match, block: string) => {
+          const items = block
+            .split(/\n/)
+            .map((line: string) => line.replace(/^[ \t]*[*\-][ \t]+/, "").trim())
+            .filter(Boolean)
+            .map((item: string) => `<li>${item}</li>`)
+            .join("");
+          return `<ul>${items}</ul>`;
+        },
+      );
+
+      // Remove any remaining stray asterisks used as bullets (single lines)
+      finalHtml = finalHtml.replace(/^[ \t]*\*[ \t]+(?![\s*])/gm, "");
+
       setGeneratedHtml(finalHtml);
 
       // 5. Trigger Quiz Generation
