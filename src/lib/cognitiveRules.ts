@@ -311,7 +311,7 @@ FORMULA TRANSLATOR RULE: ONLY wrap actual multi-symbol mathematical equations in
 
 COLOR-CODED VARIABLES RULE: Inside math-formula spans ONLY, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> where VAR_NAME is a lowercase identifier. Use consistent colors for the same variable throughout the notes.
 
-STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container. Inside it, place each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation here</div><div class="math-step-explain">plain English explanation of what just happened</div></div>. Number steps sequentially starting at 1. The UI will render these with cascading reveal.`,
+STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container. Inside it, place each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation here</div><div class="math-step-explain">detailed plain English explanation with a concrete real-world analogy for the operation</div></div>. Number steps sequentially starting at 1. NEVER skip steps or combine multiple operations into one step. Each step explanation must include a real-world analogy that grounds the abstract math in something physical. The UI will render these with cascading reveal.`,
   asd:
     "Rewrite concepts using literal, precise language. Remove all idioms, sarcasm, and abstract metaphors. Create strict 'If X, then Y' logical sequences.",
   dyslexia:

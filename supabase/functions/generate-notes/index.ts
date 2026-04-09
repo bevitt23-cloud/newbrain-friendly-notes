@@ -904,11 +904,11 @@ FORMULA TRANSLATOR: ONLY wrap actual multi-symbol mathematical equations in <spa
 
 COLOR-CODED VARIABLES: Inside math-formula spans ONLY, wrap each distinct variable in <span class="math-var" style="color: var(--math-VAR_NAME)">VAR</span> using consistent colors for the same variable throughout.
 
-STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container with each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation</div><div class="math-step-explain">plain English explanation</div></div>.`);
+STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div class="math-stepper" data-total-steps="N"> container with each step as <div class="math-step" data-step="N"><div class="math-step-equation">equation</div><div class="math-step-explain">detailed plain English explanation with a concrete real-world analogy for the operation</div></div>. NEVER skip steps or combine multiple operations. Each step explanation must include a real-world analogy that grounds the abstract math in something physical the user can visualize.`);
     }
 
     if (profileLower.includes("working memory") || profileLower.includes("executive function")) {
-      cognitiveRules.push("COGNITIVE MODIFIER (Working Memory): Break complex multi-step concepts into the 'I Do, We Do, You Do' format. Provide an explicit, numbered checklist for any multi-step process. Keep instructions highly sequential.");
+      cognitiveRules.push("COGNITIVE MODIFIER (Working Memory): Break complex multi-step concepts into the 'I Do, We Do, You Do' format. Provide an explicit, numbered checklist for any multi-step process. Keep instructions highly sequential. For math steppers: keep each step explanation under 2 sentences, bold the action verb, and start each explanation with what changed (e.g., '<strong>Subtracted</strong> 6 from both sides to isolate x').");
     }
 
     if (profileLower.includes("rsd") || profileLower.includes("rejection sensitive")) {
@@ -929,7 +929,7 @@ First, identify the subject matter of the source material and output your analys
 
 Then apply the subject-specific rules below IN ADDITION to all other formatting rules:
 
-STEM-Math: Preserve ALL formulas exactly. Show every step in worked examples — never skip steps. Add plain-English translations after every formula. Number all steps sequentially. Use the math-stepper format for all calculations.
+STEM-Math: Preserve ALL formulas exactly. Show EVERY intermediate step in worked examples — never skip steps, never combine two operations into one step, never write "simplifying" or "by inspection" without showing the actual work. Each algebraic manipulation gets its own step. Add plain-English translations after every formula. Number all steps sequentially. Use the math-stepper format for all calculations. If the user has a cognitive profile, adapt step explanations to their processing style.
 STEM-Science: Process flows must stay in sequential order. Diagrams are critical — always describe fully. Label all components. Use cause-and-effect framing for mechanisms.
 History: Chronological order. Cause-and-effect framing. Bold key figures and dates. Use timeline format for sequences of events.
 Literature: Thematic organization. Preserve all quotes exactly. Frame analysis around author intent. Character and concept motives.
@@ -987,18 +987,37 @@ When the source material contains example problems, exercises, or any step-by-st
 <div class="math-stepper" data-total-steps="N">
   <div class="math-step" data-step="1">
     <div class="math-step-equation">the equation or expression at this stage</div>
-    <div class="math-step-explain">plain English: what did we just do and WHY</div>
+    <div class="math-step-explain">detailed explanation of what we did AND why — adapted to the user's cognitive profile</div>
   </div>
   <div class="math-step" data-step="2">
-    <div class="math-step-equation">the next equation after applying the operation</div>
-    <div class="math-step-explain">plain English: what changed and why we did it</div>
+    <div class="math-step-equation">the next equation after applying ONE SINGLE operation</div>
+    <div class="math-step-explain">detailed explanation of the one thing that changed and why we did it</div>
   </div>
 </div>
+
+ZERO-SKIP POLICY (ABSOLUTE):
+- NEVER combine two operations into one step. Each individual algebraic manipulation (distributing, combining like terms, moving a term to the other side, dividing both sides, factoring, substituting) is its OWN step.
+- NEVER write "simplifying gives us..." or "after simplification..." or "by inspection..." — show the actual simplification as explicit steps.
+- NEVER jump from a complex expression to the answer. If solving 2(x+3) = 14, you need separate steps for: distributing (2x+6=14), subtracting 6 (2x=8), dividing by 2 (x=4). That is 3 steps minimum, not 1.
+- If in doubt, ADD MORE STEPS. Too many steps is always better than too few.
+
+STEP EXPLANATION DEPTH:
+Each math-step-explain MUST be 2-3 sentences minimum. It must explain:
+1. WHAT operation was performed (e.g., "We subtracted 6 from both sides")
+2. WHY we did it (e.g., "to isolate the variable term on the left side")
+3. HOW it connects to the goal (e.g., "This brings us closer to having x by itself")
+
+PROFILE-AWARE EXPLANATIONS:
+If the user has a cognitive profile, adapt step explanations accordingly:
+- Dyscalculia: Include a concrete real-world analogy for abstract operations (e.g., "Dividing both sides by 2 is like splitting a group of 8 objects into 2 equal piles — each pile has 4")
+- Working memory: Keep each explanation under 2 sentences. Bold the action verb. Start with what changed.
+- Visual-spatial: Describe the transformation visually (e.g., "The 6 'moves' from the left side to the right, flipping its sign")
+- If no profile is set, use clear, conversational plain English.
 
 Every worked example MUST include:
 1. The full problem statement in plain English BEFORE the stepper (rewrite it if the PDF garbled it)
 2. What concept this problem is testing (one sentence)
-3. The COMPLETE solution using the math-stepper format above — one step per div, each with the equation AND plain English explanation. The UI renders this as a cascading reveal where each step is shown one at a time.
+3. The COMPLETE solution using the math-stepper format above — one step per div, each showing ONE operation with a detailed explanation. The UI renders this as a cascading reveal where each step is shown one at a time.
 4. A "Common Mistake" callout AFTER the stepper: <div class="common-mistake"><strong>⚠️ Common Mistake:</strong> [what students typically get wrong on this type of problem and why]</div>
 
 DO NOT skip the math-stepper format. DO NOT use numbered lists or paragraphs for solutions. The stepper format is REQUIRED for every problem.
