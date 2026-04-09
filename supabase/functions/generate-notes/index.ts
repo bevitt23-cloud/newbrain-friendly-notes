@@ -1123,7 +1123,9 @@ CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
 1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node.
 2. NEVER leave "detailed_info" blank. NEVER use generic placeholders like "Details go here."
-3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}`;
+3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}
+
+FINAL REMINDER — MATH STEPS: If the source material contains ANY math, equations, or worked problems: show EVERY single intermediate step using the math-stepper format. Each step = ONE operation. Each explanation = teach the student what you did, why, and what to notice. NEVER skip, combine, or gloss over steps. The student must be able to follow from start to finish without needing to figure out any gap on their own.`;
 
     // ── Chapter-aware generation ──
     // When chapterContext is provided, the AI is generating notes for one
@@ -1193,7 +1195,7 @@ CRITICAL IMAGE-TO-CONTENT MATCHING RULES:
 
     contentParts.unshift({
       type: "text",
-      text: `Transform the following study material into brain-friendly notes. Your job is not just to reformat — it is to make the content genuinely understandable for a student who learns differently. Follow these priorities in order: First, explain concepts clearly before showing formulas or procedures. Second, work out example problems completely step by step — never show just an answer. Third, reconstruct any math or content that was corrupted or lost during PDF extraction using the surrounding context and your knowledge of the subject. Fourth, do not reproduce raw answer key lists — instead, select representative problems and work them out fully. Fifth, if a section heading exists but its content is missing or garbled, fill the gap using your subject knowledge and mark it with the gap-filled class. The goal is notes a student can actually learn from, not a reformatted copy of the source.${imageInstruction}${chapterPrompt}`,
+      text: `Transform the following study material into brain-friendly notes. Your job is not just to reformat — it is to TEACH. Make the content genuinely understandable for a student who learns differently. Follow these priorities in order: First, explain concepts clearly before showing formulas or procedures. Second, work out example problems completely step by step using the math-stepper format — show EVERY intermediate step (one operation per step), explain each step as if you are teaching it to the student, and NEVER skip or combine steps. Third, reconstruct any math or content that was corrupted or lost during PDF extraction using the surrounding context and your knowledge of the subject. Fourth, do not reproduce raw answer key lists — instead, select representative problems and work them out fully with every step shown. Fifth, if a section heading exists but its content is missing or garbled, fill the gap using your subject knowledge and mark it with the gap-filled class. The goal is notes a student can actually learn from — every step visible, every step explained.${imageInstruction}${chapterPrompt}`,
     });
 
     const streamResult = await callAIStream({
