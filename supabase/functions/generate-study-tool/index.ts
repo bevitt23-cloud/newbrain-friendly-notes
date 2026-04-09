@@ -14,6 +14,7 @@ DESIGN LANGUAGE RULES (apply to ALL outputs):
 • Use warm, supportive, concise language. Never use harsh or judgmental phrasing.
 • NEVER use red for incorrect answers — use neutral gray or soft orange tones instead (RSD-safe).
 • For JSON-based tools: write questions/content using plain, direct language. Short sentences under 20 words. Bold key vocabulary on first use if applicable.
+• DIFFICULTY: Study tools should be SLIGHTLY harder than the source notes themselves — push the student to think one level deeper than what was explicitly stated. If notes explain a concept, the tool should ask them to APPLY it, not just recall it. Use real-world everyday examples (food, sports, household items, social media) for application questions.
 `;
 
 const TOOL_PROMPTS: Record<string, string> = {
