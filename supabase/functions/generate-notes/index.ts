@@ -859,7 +859,7 @@ serve(async (req) => {
 Format for a reader with dyslexia:
 - ZERO DATA LOSS (CRITICAL): You are strictly forbidden from summarizing, cutting, or condensing information. Every single detail, example, mechanism, and nuance from the source text MUST be preserved in your output.
 - VISUAL PACING: To make the full depth of information readable, you must split the text into a high volume of short paragraphs. Use as many paragraphs as needed to retain 100% of the source data, but NEVER let a single paragraph exceed 3 sentences.
-- Use bullet points ONLY for actual lists, categories, or sequential steps. Do not use bullets for narrative explanations.
+- Use bullet points ONLY for actual lists, categories, or sequential steps — never for narrative explanations. Every bullet list MUST be preceded by a plain-English lead-in sentence that sets up what the list covers. Each bullet must be a complete, self-contained thought that connects logically to the one before it.
 - Avoid walls of text. Ensure every paragraph is separated by clear white space.
 - Bold key terms on first use using <strong> tags. NEVER use asterisks for bold.
 - Avoid idioms, sarcasm, and abstract metaphors. Use literal, concrete language.
@@ -869,8 +869,8 @@ Format for a reader with dyslexia:
 Format for a reader with ADHD:
 - ZERO DATA LOSS (CRITICAL): You are strictly forbidden from summarizing, cutting, or condensing information. Every single detail, example, mechanism, and nuance from the source text MUST be preserved in your output.
 - VISUAL PACING: You must retain the deep, complex information, but format it strictly for rapid visual processing. Use as many paragraphs as necessary to cover all the material, but keep every individual paragraph under 3 sentences.
-- INFORMATION HIERARCHY: Start each section with a one-line hook or "why this matters" statement. Then, provide the full context using short, punchy paragraphs. Use bullet points specifically to break out granular facts, data sets, or lists.
-- NARRATIVE PRESERVATION: Do NOT use bullet points exclusively if it destroys the narrative context of a complex topic.
+- INFORMATION HIERARCHY: Start each section with a one-line hook or "why this matters" statement. Then explain the concept in 1-2 short paragraphs before using any bullets. Bullet points are for listing specific facts, examples, components, or steps AFTER the concept has been explained. Every bullet list MUST have a lead-in sentence.
+- NARRATIVE FLOW: Bullets must make sense when read top to bottom as a connected sequence — not as isolated fragments. Each bullet should logically follow from the previous one. If a concept requires explanation or context, use a short paragraph, not a bullet. Do NOT convert entire explanations into bullet lists.
 - SKIMMABILITY: Use <strong> tags strategically on key phrases, core mechanisms, and important terms within paragraphs. This allows the reader's eye to jump through the text and grasp the full concept without reading every filler word. NEVER use asterisks or markdown bold — only HTML <strong> tags.
 - Add emoji icons to <h2> section headers for visual anchoring (if the user's cognitive profile includes a VISUAL ANCHORING instruction, follow that instruction instead — it applies to both <h2> and <h3> headers).
 - Include a "⚡ TL;DR" section at the very top (3-5 bullet summary), wrapped in a colored section: <section data-section-color="sky"><h2 data-section-color="sky">⚡ TL;DR</h2>...</section>.
@@ -962,6 +962,20 @@ MICRO-CHUNKING RULE (MANDATORY):
 - You must still preserve ALL information when splitting — nothing may be lost or summarized away.
 4. For uploaded documents (PDF, Word, PowerPoint, images), extract ALL text content.
 5. For YouTube videos, use the provided transcript as the source material.
+
+BULLET LIST QUALITY RULE (MANDATORY):
+Bullet points are for LISTING, not for EXPLAINING. Before any <ul> or <ol>, write a 1-2 sentence lead-in paragraph that explains the concept and frames what the list covers. Bullets should be used for:
+- Specific facts, dates, names, or data points
+- Components, categories, or types of something
+- Sequential steps in a process
+- Examples that illustrate a concept already explained
+
+Bullets should NEVER be used for:
+- The first introduction of a concept (use a paragraph instead)
+- Explanations of why something matters (use a paragraph)
+- Connecting two ideas together (use a paragraph with transition words)
+
+Each bullet must be a complete thought (subject + verb), not a fragment. Bullets in a list must flow logically from top to bottom — a reader should be able to follow the progression without re-reading.
 
 STEM & MATHEMATICS CONTENT RULES (apply when source material contains equations, formulas, proofs, or worked problems):
 

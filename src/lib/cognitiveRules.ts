@@ -315,9 +315,9 @@ STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculati
   asd:
     "Rewrite concepts using literal, precise language. Remove all idioms, sarcasm, and abstract metaphors. Create strict 'If X, then Y' logical sequences.",
   dyslexia:
-    "Use short sentences (under 15 words each). Avoid walls of text. Use bullet points and numbered lists extensively. Use <strong> tags to bold key terms on first use. NEVER use asterisks or markdown syntax — only HTML tags.",
+    "Use short sentences (under 15 words each). Avoid walls of text. Use bullet points and numbered lists for facts, steps, and components — but always precede a list with a plain-English sentence explaining what the list covers and why it matters. Each bullet should be a complete thought, not a fragment. Use <strong> tags to bold key terms on first use. NEVER use asterisks or markdown syntax — only HTML tags.",
   adhd:
-    "Use chunked, color-coded sections with clear headers. Start each section with a one-line hook. Use bullet points, not paragraphs. Use <strong> tags to bold the most important words. Keep each bullet under 20 words. NEVER use asterisks or markdown syntax — only HTML tags.",
+    "Use chunked, color-coded sections with clear headers. Start each section with a one-line hook. Use a MIX of short paragraphs (1-2 sentences) and bullet points — paragraphs for explaining concepts and context, bullets for listing facts, examples, or components. Each bullet must be a complete thought that connects to the one before it. NEVER use a bullet list without a lead-in sentence that explains what the list covers. Use <strong> tags to bold the most important words. NEVER use asterisks or markdown syntax — only HTML tags.",
   visual_spatial:
     "COGNITIVE MODIFIER: Visual-Spatial Processing. Whenever explaining a complex system where multiple parts form a whole, you MUST format the explanation like a 'Technical Pack' or 'Design Blueprint'. First, provide a bulleted list of the raw 'Materials' or 'Components' involved. Then, explicitly explain how these components 'stitch' or connect together to create the final structure.",
   systems_analytical:
