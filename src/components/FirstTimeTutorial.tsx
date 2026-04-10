@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Highlighter, Music, Timer, Volume2, Mic, ArrowRight } from "lucide-react";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
+import { useAuth } from "@/hooks/useAuth";
 
 /**
  * First-time tutorial overlay that appears when a user generates
  * their first set of notes. Walks them through key features.
+ *
+ * Dismissal is persisted to the user's Supabase preferences
+ * (tutorial_dismissed) so it sticks across devices, browsers, and
+ * cache clears. Falls back to localStorage for unauthenticated users.
  */
 
-const STORAGE_KEY = "bfn:tutorial_shown";
+const LOCAL_STORAGE_KEY = "bfn:tutorial_shown";
 
 interface TutorialStep {
   icon: React.ElementType;
@@ -50,20 +56,42 @@ const STEPS: TutorialStep[] = [
 ];
 
 export function useFirstTimeTutorial() {
+  const { user } = useAuth();
+  const { preferences, loading: prefsLoading, updatePreferences } = useUserPreferences();
   const [showTutorial, setShowTutorial] = useState(false);
 
   const triggerIfFirstTime = useCallback(() => {
     if (typeof window === "undefined") return;
-    const shown = localStorage.getItem(STORAGE_KEY);
+
+    // Authenticated users: check the persisted Supabase preference.
+    // While preferences are still loading, do nothing — the next
+    // trigger call after load will make the correct decision.
+    if (user) {
+      if (prefsLoading) return;
+      if (!preferences.tutorial_dismissed) {
+        setShowTutorial(true);
+      }
+      return;
+    }
+
+    // Unauthenticated users: fall back to localStorage so they
+    // still aren't pestered across visits in the same browser.
+    const shown = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!shown) {
       setShowTutorial(true);
     }
-  }, []);
+  }, [user, prefsLoading, preferences.tutorial_dismissed]);
 
   const dismiss = useCallback(() => {
     setShowTutorial(false);
-    localStorage.setItem(STORAGE_KEY, "true");
-  }, []);
+    if (user) {
+      // Persist to Supabase so the tutorial never reappears for this
+      // user on any device.
+      void updatePreferences({ tutorial_dismissed: true });
+    } else {
+      localStorage.setItem(LOCAL_STORAGE_KEY, "true");
+    }
+  }, [user, updatePreferences]);
 
   return { showTutorial, triggerIfFirstTime, dismiss };
 }

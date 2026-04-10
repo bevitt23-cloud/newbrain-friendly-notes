@@ -38,6 +38,7 @@ export interface UserPreferences {
   why_care_default: boolean;
   mindmap_default: boolean;
   flowchart_default: boolean;
+  tutorial_dismissed: boolean;
 }
 
 const DEFAULTS: UserPreferences = {
@@ -74,6 +75,7 @@ const DEFAULTS: UserPreferences = {
   why_care_default: true,
   mindmap_default: false,
   flowchart_default: false,
+  tutorial_dismissed: false,
 };
 
 interface UserPreferencesContextValue {
@@ -154,6 +156,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
           why_care_default: d.why_care_default ?? true,
           mindmap_default: d.mindmap_default ?? false,
           flowchart_default: d.flowchart_default ?? false,
+          tutorial_dismissed: d.tutorial_dismissed ?? false,
         });
       }
       setLoading(false);

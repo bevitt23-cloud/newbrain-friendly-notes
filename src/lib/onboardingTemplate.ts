@@ -274,10 +274,10 @@ function getTraitDemoBlocks(traits: CognitiveTrait[]): string {
   if (traits.includes("prioritization_fatigue")) {
     blocks.push(`<section data-section-color="amber">
 <h2 data-section-color="amber" id="section-hierarchy-demo">How Information Hierarchy Works</h2>
-<p>Your notes will label every piece of information by importance so you never have to guess what to focus on:</p>
-<p><strong>Core Concept:</strong> Memory has three stages — encoding, storage, and retrieval.</p>
-<p><strong>Context:</strong> The hippocampus handles initial encoding, while the neocortex stores long-term memories. This transfer happens during sleep.</p>
-<p><strong>Example:</strong> Reading a fact aloud while writing it down uses three sensory channels, making encoding much stronger than silent reading alone.</p>
+<p>Your notes rank every piece of information by importance so you never have to guess what to focus on. The biggest, boldest text is what you must remember. The rest fills in context.</p>
+<p class="priority-primary"><strong>Memory has three stages — encoding, storage, and retrieval.</strong></p>
+<p class="priority-secondary">The hippocampus handles initial encoding, while the neocortex stores long-term memories. This transfer happens during sleep.</p>
+<p class="priority-tertiary"><em>Reading a fact aloud while writing it down uses three sensory channels, making encoding much stronger than silent reading alone.</em></p>
 </section>`);
   }
 

@@ -1002,7 +1002,7 @@ STEP-BY-STEP MATH: When solving or demonstrating a calculation, output a <div cl
     }
 
     if (profileLower.includes("working memory") || profileLower.includes("executive function")) {
-      cognitiveRules.push("COGNITIVE MODIFIER (Working Memory): Break complex multi-step concepts into the 'I Do, We Do, You Do' format. Provide an explicit, numbered checklist for any multi-step process. Keep instructions highly sequential. For math steppers: keep each step explanation under 2 sentences, bold the action verb, and start each explanation with what changed (e.g., '<strong>Subtracted</strong> 6 from both sides to isolate x').");
+      cognitiveRules.push("COGNITIVE MODIFIER (Working Memory): Break complex multi-step concepts into an explicit numbered <ol> checklist. Use a 3-beat scaffold per concept: (1) a fully worked example the student just reads, (2) a guided walkthrough phrased 'Now let's try this together — ...', (3) a do-it-yourself prompt phrased 'Your turn — try this one:'. Do NOT label the beats with meta-terms like 'I Do', 'We Do', 'You Do' — just write the instructions directly. Keep instructions highly sequential. For math steppers: keep each step explanation under 2 sentences, bold the action verb, and start each explanation with what changed (e.g., '<strong>Subtracted</strong> 6 from both sides to isolate x').");
     }
 
     if (profileLower.includes("rsd") || profileLower.includes("rejection sensitive")) {
