@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Map, GitBranch, Layers, FileText, MessageCircle, GraduationCap,
-  Loader2, Tag, Plus, X, ChevronUp,
+  Loader2, Tag, Plus, X, ChevronUp, Hash, Clock,
 } from "lucide-react";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
@@ -37,7 +37,29 @@ interface GeneratedTab {
   result: string | null;
   generating: boolean;
   saved: boolean;
+  /** Snapshot of the timer config used when this tab was generated (final-exam only) */
+  timerMinutes?: number;
 }
+
+// Final Exam configuration — mirrors LibraryStudySession so the
+// workspace and library pickers produce identical exams.
+interface ExamConfig {
+  questionCount: number;
+  timerMinutes: number;
+  mcEnabled: boolean;
+  tfEnabled: boolean;
+  fibEnabled: boolean;
+  essayEnabled: boolean;
+}
+
+const DEFAULT_EXAM_CONFIG: ExamConfig = {
+  questionCount: 20,
+  timerMinutes: 30,
+  mcEnabled: true,
+  tfEnabled: true,
+  fibEnabled: true,
+  essayEnabled: false,
+};
 
 interface StudyToolsInlineProps {
   notesHtml: string;
@@ -58,10 +80,18 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
   const [activeTab, setActiveTab] = useState("picker");
   const [selected, setSelected] = useState<Set<StudyToolType>>(new Set());
 
+  // Exam config — only visible when final-exam is the active selection
+  const [examConfig, setExamConfig] = useState<ExamConfig>(DEFAULT_EXAM_CONFIG);
+  const [showExamConfig, setShowExamConfig] = useState(false);
+
   const toggleTool = (id: StudyToolType) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      // Auto-show/hide the exam config panel when final-exam is toggled
+      if (id === "final-exam") {
+        setShowExamConfig(next.has(id));
+      }
       return next;
     });
   };
@@ -94,17 +124,33 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
       result: null,
       generating: toolId !== "socratic",
       saved: false,
+      // Snapshot the current timer config so edits after generation
+      // don't retroactively change this tab's exam timer
+      timerMinutes: toolId === "final-exam" ? examConfig.timerMinutes : undefined,
     }));
     setTabs((prev) => [...prev, ...newTabs]);
     setActiveTab(newTabs[0].id);
     setSelected(new Set());
+    setShowExamConfig(false);
 
     await Promise.all(
       newTabs
         .filter((t) => t.toolId !== "socratic")
         .map(async (tab) => {
           try {
-            const res = await generate(tab.toolId, notesHtml, profile.promptAppend || undefined);
+            // Build the extra prompt. For final-exam, append the exam
+            // config so the AI generates the right number/type of
+            // questions. Everything else just uses the profile prompt.
+            let extraPrompt = profile.promptAppend || "";
+            if (tab.toolId === "final-exam") {
+              const types: string[] = [];
+              if (examConfig.mcEnabled) types.push("multiple-choice");
+              if (examConfig.tfEnabled) types.push("true/false");
+              if (examConfig.fibEnabled) types.push("fill-in-the-blank");
+              if (examConfig.essayEnabled) types.push("essay");
+              extraPrompt += `\n\nGENERATE EXACTLY ${examConfig.questionCount} questions. Question types to include: ${types.join(", ") || "multiple-choice"}. ${examConfig.essayEnabled ? "Include 1-2 essay questions (5-paragraph format). " : ""}Distribute question types evenly across the selection. Emphasize topics the student commonly misses.`;
+            }
+            const res = await generate(tab.toolId, notesHtml, extraPrompt || undefined);
             setTabs((prev) =>
               prev.map((t) => (t.id === tab.id ? { ...t, result: res, generating: false } : t))
             );
@@ -118,7 +164,7 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
           }
         })
     );
-  }, [selected, notesHtml, generate, profile.promptAppend, autoSave]);
+  }, [selected, notesHtml, generate, profile.promptAppend, autoSave, examConfig]);
 
   const isAnyGenerating = tabs.some((t) => t.generating);
 
@@ -151,14 +197,12 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
         case "cloze": return <ClozeNotes data={tab.result} />;
         case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
         case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;
-        case "final-exam": {
-          try {
-            const examData = JSON.parse(tab.result);
-            return <FinalExam data={examData} />;
-          } catch {
-            return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
-          }
-        }
+        case "final-exam":
+          // FinalExam parses the JSON internally — pass the raw
+          // string, not a pre-parsed object. Also pass the per-tab
+          // timer snapshot so the countdown matches what the user
+          // configured at generation time.
+          return <FinalExam data={tab.result} timerMinutes={tab.timerMinutes} />;
         default: return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
       }
     })();
@@ -248,6 +292,82 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
                   );
                 })}
               </div>
+
+              {/* Final Exam configuration — mirrors LibraryStudySession */}
+              <AnimatePresence>
+                {showExamConfig && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+                      <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <GraduationCap className="h-4 w-4 text-primary" /> Exam Configuration
+                      </h3>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                            <Hash className="h-3 w-3" /> Question Count
+                          </label>
+                          <input
+                            id="workspace-exam-question-count"
+                            name="workspaceExamQuestionCount"
+                            type="number"
+                            min={5}
+                            max={100}
+                            value={examConfig.questionCount}
+                            onChange={(e) => setExamConfig((p) => ({ ...p, questionCount: Number(e.target.value) || 20 }))}
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> Timer (minutes, 0 = off)
+                          </label>
+                          <input
+                            id="workspace-exam-timer-minutes"
+                            name="workspaceExamTimerMinutes"
+                            type="number"
+                            min={0}
+                            max={300}
+                            value={examConfig.timerMinutes}
+                            onChange={(e) => setExamConfig((p) => ({ ...p, timerMinutes: Number(e.target.value) || 0 }))}
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Question Types</label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { key: "mcEnabled", label: "Multiple Choice" },
+                            { key: "tfEnabled", label: "True / False" },
+                            { key: "fibEnabled", label: "Fill in Blank" },
+                            { key: "essayEnabled", label: "Essay" },
+                          ].map(({ key, label }) => (
+                            <button
+                              key={key}
+                              onClick={() => setExamConfig((p) => ({ ...p, [key]: !(p as any)[key] }))}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+                                (examConfig as any)[key]
+                                  ? "border-primary/30 bg-primary/10 text-primary"
+                                  : "border-border text-muted-foreground hover:bg-muted"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <button
                 disabled={selected.size === 0 || (!notesHtml && !selected.has("socratic")) || isAnyGenerating}
                 onClick={handleGenerate}
