@@ -784,6 +784,188 @@ body.dyslexia-active .generated-notes {
   color: hsl(210 50% 65%);
 }
 
+/* ─── Cornell Notes Format ─────────────────────────────────────
+   Two-column layout: narrow cue column (questions/keywords) on
+   the left, wider notes column (details) on the right, with a
+   summary strip beneath each section. Visible vertical/horizontal
+   lines help the user distinguish sides and categories.
+   ─────────────────────────────────────────────────────────────── */
+.generated-notes .cornell-section {
+  display: grid;
+  grid-template-columns: minmax(140px, 26%) 1fr;
+  margin: 1rem 0;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: hsl(var(--card));
+}
+.generated-notes .cornell-cue {
+  padding: 1rem 0.875rem;
+  background: hsl(var(--muted) / 0.55);
+  border-right: 2px solid hsl(var(--border));
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  line-height: 1.5;
+}
+.generated-notes .cornell-cue p,
+.generated-notes .cornell-cue ul,
+.generated-notes .cornell-cue ol {
+  margin: 0 0 0.5rem 0;
+}
+.generated-notes .cornell-cue p:last-child,
+.generated-notes .cornell-cue ul:last-child,
+.generated-notes .cornell-cue ol:last-child {
+  margin-bottom: 0;
+}
+.generated-notes .cornell-notes {
+  padding: 1rem 1.125rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+  background: hsl(var(--card));
+}
+.generated-notes .cornell-notes p,
+.generated-notes .cornell-notes ul,
+.generated-notes .cornell-notes ol {
+  margin: 0 0 0.625rem 0;
+}
+.generated-notes .cornell-notes p:last-child,
+.generated-notes .cornell-notes ul:last-child,
+.generated-notes .cornell-notes ol:last-child {
+  margin-bottom: 0;
+}
+.generated-notes .cornell-summary {
+  margin: 0 0 1rem 0;
+  padding: 0.875rem 1.125rem;
+  border: 2px solid hsl(var(--border));
+  border-top: none;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  background: hsl(var(--muted) / 0.35);
+  font-size: 0.875rem;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.55;
+}
+.generated-notes .cornell-summary::before {
+  content: "Summary: ";
+  font-style: normal;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.6875rem;
+  margin-right: 0.375rem;
+}
+/* When a cornell-summary immediately follows a cornell-section,
+   merge them so they look like one continuous block. */
+.generated-notes .cornell-section + .cornell-summary {
+  margin-top: -1rem;
+  border-top: 2px solid hsl(var(--border));
+}
+.dark .generated-notes .cornell-section,
+.dark .generated-notes .cornell-summary {
+  border-color: hsl(var(--border));
+}
+.dark .generated-notes .cornell-cue {
+  background: hsl(var(--muted) / 0.35);
+  border-right-color: hsl(var(--border));
+}
+
+/* Mobile: stack the cornell columns vertically with a horizontal
+   divider so the relationship is still clear. */
+@media (max-width: 640px) {
+  .generated-notes .cornell-section {
+    grid-template-columns: 1fr;
+  }
+  .generated-notes .cornell-cue {
+    border-right: none;
+    border-bottom: 2px solid hsl(var(--border));
+  }
+}
+
+/* ─── Tables ───────────────────────────────────────────────────
+   AI-generated tables often arrived borderless, making it hard
+   to see which cells belong together. Force visible borders on
+   every table, header, and cell.
+   ─────────────────────────────────────────────────────────────── */
+.generated-notes table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  background: hsl(var(--card));
+}
+.generated-notes thead {
+  background: hsl(var(--muted) / 0.7);
+}
+.generated-notes thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(var(--foreground));
+  border-bottom: 2px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--border));
+}
+.generated-notes thead th:last-child {
+  border-right: none;
+}
+.generated-notes tbody td,
+.generated-notes tbody th {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  border-right: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  line-height: 1.55;
+  vertical-align: top;
+}
+.generated-notes tbody td:last-child,
+.generated-notes tbody th:last-child {
+  border-right: none;
+}
+.generated-notes tbody tr:last-child td,
+.generated-notes tbody tr:last-child th {
+  border-bottom: none;
+}
+.generated-notes tbody tr:nth-child(even) {
+  background: hsl(var(--muted) / 0.25);
+}
+.generated-notes tbody th {
+  background: hsl(var(--muted) / 0.5);
+  font-weight: 600;
+}
+.dark .generated-notes tbody tr:nth-child(even) {
+  background: hsl(var(--muted) / 0.15);
+}
+.dark .generated-notes tbody th {
+  background: hsl(var(--muted) / 0.3);
+}
+.generated-notes table caption {
+  caption-side: top;
+  padding: 0.5rem 0 0.75rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+}
+
+/* Fallback: if an AI-generated table slipped through without a
+   <thead>, style the first row as the header */
+.generated-notes table:not(:has(thead)) tr:first-child td,
+.generated-notes table:not(:has(thead)) tr:first-child th {
+  background: hsl(var(--muted) / 0.7);
+  font-weight: 700;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
 /* Hide accidental AI-generated mind map/flow chart lists */
 .prose ul.mindmap-data,
 .prose ul.flowchart-data {

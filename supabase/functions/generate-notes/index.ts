@@ -880,14 +880,108 @@ Format for a reader with ADHD:
 
     // 0. Note format instruction
     const NOTE_FORMAT_PROMPTS: Record<string, string> = {
-      outline: "NOTE FORMAT: Use Outline format. Organize content with a clear heading hierarchy (H1 → H2 → H3). Use bulleted and numbered lists under each heading. Group related ideas under descriptive sub-headers.",
-      cornell: "NOTE FORMAT: Use Cornell Notes format. Structure each section with two columns: a narrow left CUE COLUMN containing keywords, questions, or prompts, and a wider right NOTES COLUMN containing the detailed content. At the end of each major section, add a SUMMARY row with 2-3 sentences capturing the key takeaway. Use this HTML structure: <div class=\"cornell-section\"><div class=\"cornell-cue\">cue/question</div><div class=\"cornell-notes\">detailed notes</div></div> and <div class=\"cornell-summary\">summary</div>.",
-      concept_map: "NOTE FORMAT: Use Concept Map format. Organize content around relationships between ideas rather than linear flow. For each concept, explicitly label its relationships to other concepts using tags like CAUSES, LEADS TO, IS A TYPE OF, CONTRASTS WITH, DEPENDS ON. Use connection markers and group related concepts visually with sub-sections.",
-      flow: "NOTE FORMAT: Use Flow/Sequential format. Present content as a numbered sequence of steps, stages, or events. Each step should include: the step number (Step N of Total), what happens, why it happens, and what it leads to. Use arrow notation (→) between steps to show progression.",
+      outline: `NOTE FORMAT: Outline (strict heading hierarchy).
+STRUCTURE RULES:
+- Use <h1> for the document title (one only).
+- Use <h2> inside every <section> for the top-level topic of that section.
+- Under each <h2>, use <h3> for sub-topics. If a sub-topic has further granularity, use <h4>.
+- Directly beneath every heading, use <ul> or <ol> to list the points that belong to it. Every bullet list MUST be preceded by a 1-2 sentence lead-in paragraph that explains what the list covers.
+- Bullets must be short (under 15 words each) and factual. Sub-bullets (nested <ul>) are allowed for details of a parent bullet.
+- Use <ol> (numbered) ONLY when order matters (steps, rankings, chronology). Otherwise use <ul>.
+- Every <h2>, <h3>, <h4> MUST have content beneath it — never leave a heading empty.
+- Each section still gets a cycling data-section-color ("sage", "lavender", "peach", "sky", "amber").`,
+      cornell: `NOTE FORMAT: Cornell Notes (two-column cue/notes layout with summary).
+MANDATORY HTML STRUCTURE — every section in the body must follow this pattern:
+
+<section data-section-color="sage">
+  <h2 data-section-color="sage">Section Title Here</h2>
+  <div class="cornell-section">
+    <div class="cornell-cue">
+      <p>A keyword, key term, or recall question</p>
+      <p>Another cue (one per concept covered in the notes column)</p>
+    </div>
+    <div class="cornell-notes">
+      <p>The actual explanation, definition, example, or details that answer each cue.</p>
+      <ul>
+        <li>Supporting fact or component</li>
+        <li>Another supporting point</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cornell-summary">A 2-3 sentence synthesis of the whole section — the single biggest takeaway a student should remember.</div>
+</section>
+
+CORNELL RULES (STRICT):
+1. Every section MUST contain exactly one <div class="cornell-section"> immediately followed by exactly one <div class="cornell-summary">. Do not nest them. Do not skip the summary.
+2. The cornell-cue column is NARROW and ONLY contains: (a) keywords/key terms, (b) study questions that probe the content on the right, or (c) prompts to recall a concept. NEVER put long explanations in the cue column. One short line per cue. 3-6 cues per section is ideal.
+3. The cornell-notes column is WIDER and contains the actual content — full sentences, examples, <ul>/<ol> lists, <strong> key terms, jargon spans, and any other allowed HTML. This is where the depth lives.
+4. Cues and notes are vertically aligned: the first cue should map to the top of the notes explanation; the second cue to the next chunk; etc. Think "question on the left, answer on the right".
+5. The cornell-summary at the end must be 2-3 sentences that tie the whole section together — not a restatement of the cues, but a synthesis.
+6. Do NOT wrap content in <table> or use any table tags for Cornell Notes — use only the divs specified above. The CSS handles the two-column grid layout.
+7. Every bullet inside the notes column still follows the BULLET LIST QUALITY RULE (lead-in sentence before any <ul>/<ol>).
+8. Every section still gets a cycling data-section-color attribute.`,
+      concept_map: `NOTE FORMAT: Concept Map (relationship-focused, non-linear).
+STRUCTURE RULES:
+- Organize by CONCEPTS, not by chronology or narrative flow.
+- For each concept, the <h2> or <h3> is the concept name.
+- Directly under each concept heading, include a <p class="concept-relationships"> that lists the relationships this concept has to other concepts in the notes. Use these exact relationship labels in <strong> tags: <strong>CAUSES:</strong>, <strong>LEADS TO:</strong>, <strong>IS A TYPE OF:</strong>, <strong>CONTRASTS WITH:</strong>, <strong>DEPENDS ON:</strong>, <strong>EXAMPLE OF:</strong>, <strong>PART OF:</strong>. Use only the relationships that actually apply.
+  Example: <p class="concept-relationships"><strong>CAUSES:</strong> inflation, currency devaluation. <strong>CONTRASTS WITH:</strong> deflation. <strong>DEPENDS ON:</strong> central bank policy.</p>
+- After the relationships paragraph, write the full explanation of the concept in plain language.
+- Group related concepts together by placing them in the same <section>. A section can contain multiple concepts that share a theme.
+- The final section MUST be titled "Concept Connections" and contain a numbered <ol> that walks the student through the top 5-8 most important links between concepts, each written as a complete sentence: "Concept A <strong>causes</strong> Concept B because..."`,
+      flow: `NOTE FORMAT: Flow / Sequential (numbered step-by-step process).
+STRUCTURE RULES:
+- The entire document is structured as a numbered sequence of steps or stages.
+- Each major step is its own <section> with <h2>Step N of Total: [what happens]</h2>. The "N of Total" numbering is mandatory (e.g., "Step 3 of 7: Oxidative Phosphorylation").
+- Inside each step section, use exactly these three sub-headings:
+  <h3>What Happens</h3> followed by 1-2 paragraphs describing the action or state change.
+  <h3>Why It Happens</h3> followed by 1-2 paragraphs explaining the cause, purpose, or mechanism.
+  <h3>What It Leads To</h3> followed by 1 paragraph naming the next step and what hand-off occurs.
+- Between sections, place a transition element: <p class="flow-arrow">→ Next: [name of next step]</p>
+- The final step's "What It Leads To" should describe the end state or outcome of the full sequence.
+- If the source material is not naturally sequential, identify the implicit order (cause → effect → consequence) and impose it. If there is no order at all, fall back to Outline format instead of forcing Flow.`,
     };
+
+    // AUTO mode: inject a decision tree so the AI actually chooses a
+    // concrete format based on the content, instead of defaulting to
+    // the general tutor voice. The AI picks ONE format and applies its
+    // full instructions, then logs its choice in the verification comment.
+    const AUTO_FORMAT_DECISION = `NOTE FORMAT: Auto-detect. You MUST choose exactly ONE of the four formats below based on the content, then apply that format's full rules to the entire output. Do NOT mix formats. Do NOT fall back to a generic layout.
+
+FORMAT DECISION TREE (evaluate in order — stop at the first match):
+
+1. FLOW — Choose this if the source material is PRIMARILY a sequential process, procedure, lifecycle, algorithm, historical chronology with strict cause-effect ordering, surgical/medical protocol, recipe, tutorial, or anything where the order of steps is load-bearing (changing the order would break understanding). Signals: numbered steps in the source, words like "first/then/next/finally", "phase", "stage", "cycle", process diagrams, flowcharts.
+
+2. CORNELL NOTES — Choose this if the source is exam-prep, flashcard-style content, definition-heavy (glossaries, vocabulary, clinical terms), OR if the student is clearly studying for recall/memorization. Signals: lots of term-definition pairs, Q&A material, "key terms" sections, anatomy labels, medical/legal/foreign-language vocabulary, test review sheets.
+
+3. CONCEPT MAP — Choose this if the content is about RELATIONSHIPS between abstract ideas rather than a linear story or procedure. Signals: philosophy, economics concepts, ecosystem interactions, political science theories, literary themes, psychological frameworks where multiple concepts interconnect but have no strict order. The content "branches" rather than "flows".
+
+4. OUTLINE — Default fallback. Choose this if none of the above match clearly: textbook chapter summaries, lecture notes covering many loosely-related topics, overview articles, general study material where the hierarchy of topics is the most useful organizing principle.
+
+EXECUTION:
+- Once you pick a format, apply that format's FULL rules block (structure, HTML tags, required elements) to every section of the output.
+- Record your choice in the verification comment at the end: <!-- verification: ...chosen_format: [outline|cornell|concept_map|flow], format_reason: "one sentence explaining why" -->
+- If you are genuinely torn between two formats (50/50), prefer in this priority: Flow > Cornell > Concept Map > Outline.
+
+The four format rule sets are:
+
+${NOTE_FORMAT_PROMPTS.outline}
+
+---
+
+${NOTE_FORMAT_PROMPTS.cornell}
+
+---
+
+${NOTE_FORMAT_PROMPTS.concept_map}
+
+---
+
+${NOTE_FORMAT_PROMPTS.flow}`;
+
     const formatStr = noteFormat && typeof noteFormat === "string" && noteFormat !== "auto" && NOTE_FORMAT_PROMPTS[noteFormat]
       ? `\n\n${NOTE_FORMAT_PROMPTS[noteFormat]}`
-      : "";
+      : `\n\n${AUTO_FORMAT_DECISION}`;
 
     // 1. Process standard profile and age
     let profileStr = profilePrompt && typeof profilePrompt === "string" ? `\n\nUSER COGNITIVE PROFILE:\n${profilePrompt}` : "";
@@ -1074,8 +1168,41 @@ If the PDF extraction has clearly dropped a concept (the notes reference somethi
 
 SAFE GAP-FILLING: If ANY of the three conditions above are NOT met — or if the missing content is a proprietary study, a specific statistic, a lecturer's personal opinion, or anything you cannot verify with certainty — do NOT guess. Instead insert: <div class="missing-context"><strong>⚠️ Note:</strong> A specific detail was lost in the document extraction here. Check your original source for this information.</div>
 
-TABLE AND CLASSIFICATION RULE:
-When the source contains a classification table (e.g. number sets, properties of operations, truth tables), reconstruct it as a complete, accurate HTML table. Do not write "implied specific number" or leave cells empty. Use your knowledge of the subject to fill in what the PDF failed to extract. Every cell must have real content.
+TABLE AND CLASSIFICATION RULE (MANDATORY HTML STRUCTURE):
+When the source contains tabular data — classification tables, number sets, properties of operations, truth tables, comparison charts, data tables, timelines with columns, or any information where rows and columns carry meaning — reconstruct it as a FULLY STRUCTURED HTML table. Borderless or ambiguous tables make it impossible for students to tell which cells belong together, so you MUST use the following structure for EVERY table:
+
+<table>
+  <caption>One-line description of what this table shows</caption>
+  <thead>
+    <tr>
+      <th>Column 1 Header</th>
+      <th>Column 2 Header</th>
+      <th>Column 3 Header</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">Row Label</th>
+      <td>Cell content</td>
+      <td>Cell content</td>
+    </tr>
+    <tr>
+      <th scope="row">Row Label</th>
+      <td>Cell content</td>
+      <td>Cell content</td>
+    </tr>
+  </tbody>
+</table>
+
+ABSOLUTE TABLE REQUIREMENTS:
+1. Every table MUST have <thead> wrapping the header row and <tbody> wrapping the data rows. NEVER output a table without both.
+2. Column headers MUST use <th> tags (never <td>). If the leftmost column is a row label (category name, term, year, etc.), use <th scope="row"> for those cells too — this helps screen readers AND makes them visually distinct.
+3. Every table MUST have a <caption> element as the first child explaining in one sentence what the table shows. This helps the student understand what they're looking at before reading the cells.
+4. Every cell MUST have real content. NEVER write "[value]", "implied", "same as above", "TBD", "—", or leave cells empty. If the source didn't explicitly provide a cell value but you can deduce it from context or established knowledge, fill it in. If you truly cannot, write the actual best-guess text with a parenthetical note like "(approximate)".
+5. Keep cells concise — under 20 words per cell. If longer explanation is needed, put it in a paragraph before or after the table and keep the cell itself a short label or key value.
+6. Always write a 1-2 sentence lead-in paragraph before the table that names what the table is about and what pattern the student should notice. Never drop a table in cold.
+7. Never use a <table> to fake a two-column layout for regular prose. Tables are ONLY for true tabular data where rows and columns represent a relationship. For Cornell Notes layout, use the cornell-section divs — NOT a table.
+8. Do NOT add inline style attributes to tables, rows, or cells. The generated-notes CSS handles all borders, spacing, header styling, and row alternation automatically.
 
 FACTUAL ERROR HANDLING:
 If you detect content in the source material that is factually incorrect based on established knowledge, flag it for the student:
@@ -1152,7 +1279,7 @@ After generating the notes, verify:
 3. Nothing was added from outside the source material
 4. All images/figures were handled
 Output as a hidden HTML comment at the very end of your output:
-<!-- verification: sections_covered: [count], key_terms_preserved: [count], hallucination_check: pass -->
+<!-- verification: sections_covered: [count], key_terms_preserved: [count], hallucination_check: pass, chosen_format: [outline|cornell|concept_map|flow|fixed], format_reason: "[one sentence — if Auto mode, explain why you picked this format; if a format was user-specified, write 'user-specified']" -->
 
 STUDY TOOL RECOMMENDATIONS:
 At the very end of the notes (after all content sections), add a hidden div for the UI to parse:
