@@ -285,6 +285,7 @@ export default function StudyReview() {
       profilePrompt: profile.promptAppend || undefined,
       age: profile.age,
       noteFormat: format,
+      energyMode: preferences.energy_mode || "full",
     });
   };
 

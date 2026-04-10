@@ -546,6 +546,7 @@ function Workspace() {
             extras: activeExtras,
             profilePrompt: profile.promptAppend || undefined,
             age: profile.age,
+            energyMode: preferences.energy_mode || "full",
           });
         }
         return;
@@ -573,10 +574,11 @@ function Workspace() {
           instructions: data.instructions,
           profilePrompt: profile.promptAppend || undefined,
           age: profile.age,
+          energyMode: preferences.energy_mode || "full",
         });
       }
     },
-    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, startBackgroundGeneration, startBackgroundFileGeneration, resetChapterGeneration]
+    [generate, learningMode, activeExtras, profile.promptAppend, profile.age, preferences.energy_mode, startBackgroundGeneration, startBackgroundFileGeneration, resetChapterGeneration]
   );
 
   // Auto-save notes when generated

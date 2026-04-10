@@ -51,6 +51,8 @@ export interface ChapterGenerationOptions {
   profilePrompt?: string;
   /** User age */
   age?: number;
+  /** Energy mode: "full" (default) or "low" */
+  energyMode?: string;
 }
 
 export interface BackgroundFileOptions {
@@ -70,6 +72,8 @@ export interface BackgroundFileOptions {
   profilePrompt?: string;
   /** User age */
   age?: number;
+  /** Energy mode: "full" (default) or "low" */
+  energyMode?: string;
 }
 
 /* ─── SSE stream reader (mirrors useNoteGeneration logic) ─── */
@@ -204,7 +208,7 @@ export function useChapterGeneration() {
    */
   const startBackgroundGeneration = useCallback(
     async (opts: ChapterGenerationOptions) => {
-      const { backgroundChapters, allChapters, bookTitle, parentFolder, tags, learningMode, extras, profilePrompt, age } = opts;
+      const { backgroundChapters, allChapters, bookTitle, parentFolder, tags, learningMode, extras, profilePrompt, age, energyMode } = opts;
 
       if (backgroundChapters.length === 0) return;
 
@@ -275,14 +279,21 @@ export function useChapterGeneration() {
             bookTitle,
           };
 
+          // Filter heavy extras when in low battery mode
+          const LOW_BATTERY_EXTRAS = new Set(["tldr", "jargon", "simplify"]);
+          const filteredExtras = energyMode === "low"
+            ? extras.filter((e) => LOW_BATTERY_EXTRAS.has(e))
+            : extras;
+
           const payload = {
             textContent: chapter.text,
             learningMode,
-            extras,
+            extras: filteredExtras,
             instructions: "",
             profilePrompt: profilePrompt || undefined,
             age: age ?? null,
             chapterContext,
+            energyMode: energyMode || "full",
           };
 
           const html = await streamGenerateNotes(accessToken, payload);
@@ -385,7 +396,7 @@ export function useChapterGeneration() {
    */
   const startBackgroundFileGeneration = useCallback(
     async (opts: BackgroundFileOptions) => {
-      const { files, folder, tags, learningMode, extras, instructions, profilePrompt, age } = opts;
+      const { files, folder, tags, learningMode, extras, instructions, profilePrompt, age, energyMode } = opts;
 
       if (files.length === 0) return;
 
@@ -444,13 +455,20 @@ export function useChapterGeneration() {
             throw new Error(`Could not extract text from ${file.name}`);
           }
 
+          // Filter heavy extras when in low battery mode
+          const LOW_BATTERY_EXTRAS = new Set(["tldr", "jargon", "simplify"]);
+          const filteredExtras = energyMode === "low"
+            ? extras.filter((e) => LOW_BATTERY_EXTRAS.has(e))
+            : extras;
+
           const payload = {
             textContent,
             learningMode,
-            extras,
+            extras: filteredExtras,
             instructions: instructions || "",
             profilePrompt: profilePrompt || undefined,
             age: age ?? null,
+            energyMode: energyMode || "full",
           };
 
           const html = await streamGenerateNotes(accessToken, payload);
