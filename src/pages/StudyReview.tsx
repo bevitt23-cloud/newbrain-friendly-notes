@@ -13,7 +13,9 @@ import SocraticDebate from "@/components/study-tools/SocraticDebate";
 import FinalExam from "@/components/study-tools/FinalExam";
 import FunFactLink from "@/components/study-tools/FunFactLink";
 import TextSelectionMenu from "@/components/TextSelectionMenu";
+import JargonTooltip from "@/components/JargonTooltip";
 import { useNotesInteractivity } from "@/hooks/useNotesInteractivity";
+import { useJargonTooltip } from "@/hooks/useJargonTooltip";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
 import { useNoteGeneration } from "@/hooks/useNoteGeneration";
@@ -74,6 +76,7 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
   const loadedRef = useRef(false);
 
   useNotesInteractivity(containerRef, html);
+  const jargonTooltip = useJargonTooltip(containerRef, html);
 
   // Load sticky notes from DB
   useEffect(() => {
@@ -133,6 +136,7 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
         onStickyNotesChange={setStickyNotes}
         onVideoQuery={setVideoQuery}
       />
+      <JargonTooltip tooltip={jargonTooltip} />
       <div
         ref={containerRef}
         onClick={handleNoteClick}

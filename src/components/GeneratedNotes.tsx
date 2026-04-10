@@ -5,7 +5,9 @@ import { RotateCcw, Save, Loader2, Sparkles, Download, Map, GitBranch } from "lu
 import { Button } from "@/components/ui/button";
 import TextSelectionMenu from "@/components/TextSelectionMenu";
 import type { StickyNoteData } from "@/components/TextSelectionMenu";
+import JargonTooltip from "@/components/JargonTooltip";
 import { useNotesInteractivity } from "@/hooks/useNotesInteractivity";
+import { useJargonTooltip } from "@/hooks/useJargonTooltip";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 import FunFactLink from "@/components/study-tools/FunFactLink";
@@ -44,13 +46,6 @@ interface GeneratedNotesProps {
   onSaveVideo?: (video: SavedExplainerVideo) => void;
 }
 
-interface JargonTooltipState {
-  term: string;
-  definition: string;
-  x: number;
-  y: number;
-}
-
 function applyBionic(html: string): string {
   return html.replace(/>([^<]+)</g, (match, text: string) => {
     const bionicText = text.replace(/\b(\w{2,})\b/g, (word: string) => {
@@ -87,7 +82,6 @@ const GeneratedNotes = ({
   const [videoQuery, setVideoQuery] = useState<string | null>(null);
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const [flowChartOpen, setFlowChartOpen] = useState(false);
-  const [jargonTooltip, setJargonTooltip] = useState<JargonTooltipState | null>(null);
   const [pipImage, setPipImage] = useState<{ src: string; alt: string } | null>(null);
   const { preferences } = useUserPreferences();
 
@@ -96,110 +90,7 @@ const GeneratedNotes = ({
     document.body.classList.toggle("dyslexia-active", preferences.dyslexia_font);
   }, [preferences.dyslexia_font]);
 
-  // Controlled tooltip for jargon definitions avoids pseudo-element hover flicker.
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    let touchTimer: ReturnType<typeof setTimeout> | null = null;
-    let activeTouchTarget: HTMLElement | null = null;
-
-    const updateTooltip = (target: HTMLElement | null) => {
-      if (!target) {
-        setJargonTooltip(null);
-        return;
-      }
-
-      const definition = target.getAttribute("data-definition")?.trim();
-      const term = target.textContent?.trim() || "Term";
-      if (!definition) {
-        setJargonTooltip(null);
-        return;
-      }
-
-      const rect = target.getBoundingClientRect();
-      setJargonTooltip({
-        term,
-        definition,
-        x: rect.left + rect.width / 2,
-        y: rect.top - 10,
-      });
-    };
-
-    const getJargonTarget = (node: EventTarget | null) => {
-      if (!(node instanceof HTMLElement)) return null;
-      return node.closest(".jargon") as HTMLElement | null;
-    };
-
-    const onMouseOver = (e: MouseEvent) => {
-      updateTooltip(getJargonTarget(e.target));
-    };
-
-    const onMouseOut = (e: MouseEvent) => {
-      const current = getJargonTarget(e.target);
-      const next = getJargonTarget(e.relatedTarget);
-      if (current && current === next) return;
-      if (!next) setJargonTooltip(null);
-    };
-
-    const onFocusIn = (e: FocusEvent) => {
-      updateTooltip(getJargonTarget(e.target));
-    };
-
-    const onFocusOut = (e: FocusEvent) => {
-      if (!getJargonTarget(e.relatedTarget)) {
-        setJargonTooltip(null);
-      }
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      const target = getJargonTarget(e.target);
-      if (!target) return;
-      activeTouchTarget = target;
-      touchTimer = setTimeout(() => {
-        updateTooltip(target);
-      }, 350);
-    };
-
-    const onTouchEnd = () => {
-      if (touchTimer) {
-        clearTimeout(touchTimer);
-        touchTimer = null;
-      }
-      activeTouchTarget = null;
-      setTimeout(() => setJargonTooltip(null), 120);
-    };
-
-    const onScroll = () => {
-      if (!activeTouchTarget) {
-        setJargonTooltip(null);
-        return;
-      }
-      updateTooltip(activeTouchTarget);
-    };
-
-    container.addEventListener("mouseover", onMouseOver);
-    container.addEventListener("mouseout", onMouseOut);
-    container.addEventListener("focusin", onFocusIn);
-    container.addEventListener("focusout", onFocusOut);
-    container.addEventListener("touchstart", onTouchStart, { passive: true });
-    container.addEventListener("touchend", onTouchEnd);
-    container.addEventListener("touchcancel", onTouchEnd);
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", onScroll);
-
-    return () => {
-      if (touchTimer) clearTimeout(touchTimer);
-      container.removeEventListener("mouseover", onMouseOver);
-      container.removeEventListener("mouseout", onMouseOut);
-      container.removeEventListener("focusin", onFocusIn);
-      container.removeEventListener("focusout", onFocusOut);
-      container.removeEventListener("touchstart", onTouchStart);
-      container.removeEventListener("touchend", onTouchEnd);
-      container.removeEventListener("touchcancel", onTouchEnd);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [html]);
+  const jargonTooltip = useJargonTooltip(containerRef, html);
 
   useNotesInteractivity(containerRef, html);
   useMathSteppers(containerRef, html, isGenerating);
@@ -359,25 +250,7 @@ const GeneratedNotes = ({
           stickyNotes={stickyNotes}
           onStickyNotesChange={onStickyNotesChange}
         />
-        {jargonTooltip && (
-          <div
-            className="pointer-events-none fixed z-[70] w-72 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-full"
-            style={{
-              left: Math.min(Math.max(jargonTooltip.x, 160), window.innerWidth - 160),
-              top: Math.max(jargonTooltip.y, 12),
-            }}
-          >
-            <div className="rounded-xl border border-border bg-popover px-3 py-2.5 shadow-xl shadow-black/10">
-              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {jargonTooltip.term}
-              </p>
-              <p className="text-sm leading-snug text-popover-foreground">
-                {jargonTooltip.definition}
-              </p>
-            </div>
-            <div className="mx-auto h-3 w-3 -translate-y-[1px] rotate-45 border-b border-r border-border bg-popover" />
-          </div>
-        )}
+        <JargonTooltip tooltip={jargonTooltip} />
         <div
           ref={containerRef}
           onClick={handleNoteClick}
