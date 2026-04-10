@@ -366,7 +366,6 @@ const ContentUploader = ({ onGenerate, isGenerating, uploadProgress }: ContentUp
               onDrop={handleDrop}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onClick={() => fileInputRef.current?.click()}
               className={`relative flex min-h-[140px] sm:min-h-[180px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed transition-all duration-300 ${
                 dragOver
                   ? "border-sage-600 bg-sage-200 dark:border-sage-300 dark:bg-sage-500/30 scale-[1.01]"
