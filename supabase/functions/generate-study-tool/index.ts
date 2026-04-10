@@ -160,12 +160,69 @@ serve(async (req) => {
     const jsonTools = new Set(["flashcard", "mindmap", "flowchart", "cloze", "final-exam"]);
     const useJsonMode = jsonTools.has(tool);
 
-    const result = await callAI({
+    // Tool-specific max output tokens. Mind maps, flow charts, and
+    // final exams produce much larger JSON than flashcards or cloze
+    // exercises. The previous shared 8192 budget truncated mind maps
+    // (~25 nodes × 3 sentences of detailed_info) and final exams
+    // (~20+ questions with explanations and rubrics) mid-string,
+    // which the client then silently failed to parse.
+    const TOOL_MAX_TOKENS: Record<string, number> = {
+      flashcard: 8192,
+      cloze: 4096,
+      mindmap: 16384,
+      flowchart: 16384,
+      "final-exam": 32768,
+      socratic: 4096,
+    };
+    const toolMaxTokens = TOOL_MAX_TOKENS[tool] ?? 8192;
+
+    // First attempt — whichever model callAI picks (Gemini, then Claude)
+    let result = await callAI({
       systemPrompt,
       messages,
-      maxTokens: 8192,
+      maxTokens: toolMaxTokens,
       jsonMode: useJsonMode,
     });
+
+    // For JSON tools, validate that the response actually parses.
+    // If Gemini truncated mid-string or returned malformed JSON,
+    // retry with a larger token budget. If that also fails, surface
+    // a clear error to the client instead of returning garbage.
+    if (useJsonMode && result.content) {
+      const stripped = result.content
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/i, "")
+        .trim();
+      try {
+        JSON.parse(stripped);
+      } catch (firstErr) {
+        console.warn(`[generate-study-tool] ${tool}: first attempt JSON parse failed, retrying with larger budget`, firstErr);
+        // Retry once with a much larger budget. Gemini 2.5 Flash
+        // supports up to 65k output tokens; Claude Sonnet 4 supports
+        // up to 64k — both well above our retry budget.
+        result = await callAI({
+          systemPrompt,
+          messages,
+          maxTokens: Math.min(toolMaxTokens * 2, 48000),
+          jsonMode: useJsonMode,
+        });
+        const retryStripped = (result.content || "")
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```\s*$/i, "")
+          .trim();
+        try {
+          JSON.parse(retryStripped);
+        } catch (secondErr) {
+          console.error(`[generate-study-tool] ${tool}: retry also failed, returning error`, secondErr);
+          return new Response(
+            JSON.stringify({
+              error: `The AI returned an incomplete ${tool} response. This usually means the output was too large. Please try again with a shorter source note, or contact support if it keeps happening.`,
+            }),
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
 
     return new Response(
       JSON.stringify({ result: result.content }),
