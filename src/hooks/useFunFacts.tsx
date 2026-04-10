@@ -49,11 +49,25 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
 
-      const raw = data?.result || "";
-      // Parse JSON from response
-      const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      return parsed as { fact: string; search_query: string };
+      // Edge function now returns { fact, search_query } pre-parsed.
+      // Fall back to legacy { result: "<json string>" } shape in case
+      // an older edge function revision is still deployed.
+      if (data && typeof data.fact === "string") {
+        return { fact: data.fact, search_query: data.search_query ?? "" };
+      }
+      if (data && typeof data.result === "string") {
+        const cleaned = data.result
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```\s*$/i, "")
+          .trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          return parsed as { fact: string; search_query: string };
+        } catch {
+          throw new Error("AI returned malformed fun fact. Please try again.");
+        }
+      }
+      throw new Error("Empty response from fun fact service.");
     } catch (e) {
       console.error("Fun fact generation failed:", e);
       const msg = e instanceof Error ? e.message : String(e);

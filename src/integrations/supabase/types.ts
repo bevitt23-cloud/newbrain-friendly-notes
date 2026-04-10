@@ -45,8 +45,10 @@ export type Database = {
         Row: {
           age: number | null
           created_at: string
+          gender: string | null
           hyper_fixation: string | null
           id: string
+          region: string | null
           traits: string[]
           updated_at: string
           user_id: string
@@ -56,8 +58,10 @@ export type Database = {
         Insert: {
           age?: number | null
           created_at?: string
+          gender?: string | null
           hyper_fixation?: string | null
           id?: string
+          region?: string | null
           traits?: string[]
           updated_at?: string
           user_id: string
@@ -67,8 +71,10 @@ export type Database = {
         Update: {
           age?: number | null
           created_at?: string
+          gender?: string | null
           hyper_fixation?: string | null
           id?: string
+          region?: string | null
           traits?: string[]
           updated_at?: string
           user_id?: string
@@ -279,6 +285,7 @@ export type Database = {
           safe_to_fail: boolean
           simplify_default: boolean
           tldr_default: boolean
+          tutorial_dismissed: boolean
           updated_at: string
           user_id: string
           why_care_default: boolean
@@ -321,6 +328,7 @@ export type Database = {
           safe_to_fail?: boolean
           simplify_default?: boolean
           tldr_default?: boolean
+          tutorial_dismissed?: boolean
           updated_at?: string
           user_id: string
           why_care_default?: boolean
@@ -363,6 +371,7 @@ export type Database = {
           safe_to_fail?: boolean
           simplify_default?: boolean
           tldr_default?: boolean
+          tutorial_dismissed?: boolean
           updated_at?: string
           user_id?: string
           why_care_default?: boolean

@@ -57,11 +57,40 @@ Output ONLY valid JSON, no markdown fences.`;
     const result = await callAI({
       systemPrompt,
       messages: [{ role: "user", content: userMessage }],
-      maxTokens: 512,
+      maxTokens: 1024,
+      jsonMode: true,
     });
 
+    // Parse the AI output server-side so the client never deals with
+    // raw JSON strings. Strip any stray markdown fences the model may
+    // still emit despite jsonMode, then parse. Return a clean object.
+    const cleaned = result.content
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/i, "")
+      .trim();
+
+    let parsed: { fact?: string; search_query?: string };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (parseErr) {
+      console.error("generate-fun-fact: JSON parse failed", parseErr, "raw:", cleaned);
+      return new Response(
+        JSON.stringify({ error: "AI did not return valid JSON. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const fact = typeof parsed.fact === "string" ? parsed.fact.trim() : "";
+    const searchQuery = typeof parsed.search_query === "string" ? parsed.search_query.trim() : "";
+    if (!fact) {
+      return new Response(
+        JSON.stringify({ error: "AI returned an empty fact. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({ result: result.content }),
+      JSON.stringify({ fact, search_query: searchQuery }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

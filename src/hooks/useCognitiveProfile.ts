@@ -106,26 +106,18 @@ export function useCognitiveProfile() {
         wizard_completed: true,
       };
       if (age !== undefined) payload.age = age;
+      // Merge demographics into the single upsert so there's no separate
+      // PATCH request that can 400 silently if the columns don't exist.
+      if (demographics?.gender !== undefined) payload.gender = demographics.gender;
+      if (demographics?.region !== undefined) payload.region = demographics.region;
 
-      // Upsert core profile
+      // Upsert core profile + demographics atomically
       const { error } = await supabase
         .from("cognitive_profiles" as any)
         .upsert(payload, { onConflict: "user_id" });
 
-      // Save demographics separately (columns may not exist if migration hasn't run)
-      if (!error && demographics && (demographics.gender !== undefined || demographics.region !== undefined)) {
-        const demoPayload: any = {};
-        if (demographics.gender !== undefined) demoPayload.gender = demographics.gender;
-        if (demographics.region !== undefined) demoPayload.region = demographics.region;
-        try {
-          await supabase
-            .from("cognitive_profiles" as any)
-            .update(demoPayload)
-            .eq("user_id", user.id);
-        } catch {
-          // Demographics columns may not exist yet — non-critical
-          console.warn("[Profile] Demographics save skipped — columns may not exist yet");
-        }
+      if (error) {
+        console.error("[Profile] Save failed:", error);
       }
 
       if (!error) {
