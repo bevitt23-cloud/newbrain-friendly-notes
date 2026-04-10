@@ -69,6 +69,37 @@ function toClaudeMessages(messages: Array<{ role: string; content: string | any[
 
 // ─── Non-streaming call ───
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Fetch with retry on 429 (Too Many Requests) or 503 (Service Unavailable).
+ * Uses exponential backoff: 1s → 2s → 4s, max 3 attempts.
+ */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  attempts = 3,
+): Promise<Response> {
+  let lastResp: Response | null = null;
+  for (let i = 0; i < attempts; i++) {
+    const resp = await fetch(url, init);
+    if (resp.ok) return resp;
+
+    // Only retry on transient rate-limit / overload responses
+    const isRetryable = resp.status === 429 || resp.status === 503 || resp.status === 529;
+    if (!isRetryable || i === attempts - 1) {
+      return resp;
+    }
+
+    // Clone so the body can still be read after the retry decision
+    lastResp = resp.clone();
+    const delay = 1000 * 2 ** i; // 1s, 2s, 4s
+    console.warn(`[callAI] got ${resp.status}, retrying in ${delay}ms (attempt ${i + 1}/${attempts})`);
+    await sleep(delay);
+  }
+  return lastResp!;
+}
+
 export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
   const { systemPrompt, messages, maxTokens = 4096, jsonMode = false } = opts;
 
@@ -96,7 +127,7 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
         geminiBody.response_format = { type: "json_object" };
       }
 
-      const resp = await fetch(
+      const resp = await fetchWithRetry(
         "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         {
           method: "POST",
@@ -132,7 +163,7 @@ export async function callAI(opts: CallAIOptions): Promise<CallAIResult> {
         claudeMessages.push({ role: "assistant", content: "{" });
       }
 
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      const resp = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "x-api-key": ANTHROPIC_API_KEY,

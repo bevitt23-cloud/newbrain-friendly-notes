@@ -108,33 +108,33 @@ export default function LibraryStudySession() {
     setSelected(new Set());
     setShowExamConfig(false);
 
-    await Promise.all(
-      newTabs
-        .filter((t) => t.toolId !== "socratic")
-        .map(async (tab) => {
-          try {
-            // For final exam, pass exam config as profilePrompt addition
-            let extraPrompt = profile.promptAppend || "";
-            if (tab.toolId === "final-exam") {
-              const types = [];
-              if (examConfig.mcEnabled) types.push("multiple-choice");
-              if (examConfig.tfEnabled) types.push("true/false");
-              if (examConfig.fibEnabled) types.push("fill-in-the-blank");
-              if (examConfig.essayEnabled) types.push("essay");
-              extraPrompt += `\n\nGENERATE EXACTLY ${examConfig.questionCount} questions. Question types to include: ${types.join(", ")}. ${examConfig.essayEnabled ? "Include 1-2 essay questions (5-paragraph format). " : ""}Distribute question types evenly across the selection. Emphasize topics the student commonly misses.`;
-            }
-            const res = await generate(tab.toolId as StudyToolType, notesHtml, extraPrompt || undefined);
-            setTabs((prev) =>
-              prev.map((t) => (t.id === tab.id ? { ...t, result: res, generating: false } : t))
-            );
-          } catch {
-            setTabs((prev) =>
-              prev.map((t) => (t.id === tab.id ? { ...t, generating: false } : t))
-            );
-            toast.error(`Failed to generate ${tab.label}`);
-          }
-        })
-    );
+    // Generate SEQUENTIALLY to avoid hitting the AI provider's
+    // per-user concurrency limit. Parallel calls caused one of two
+    // concurrent tools (typically the mind map) to fail silently.
+    const generatable = newTabs.filter((t) => t.toolId !== "socratic");
+    for (const tab of generatable) {
+      try {
+        // For final exam, pass exam config as profilePrompt addition
+        let extraPrompt = profile.promptAppend || "";
+        if (tab.toolId === "final-exam") {
+          const types = [];
+          if (examConfig.mcEnabled) types.push("multiple-choice");
+          if (examConfig.tfEnabled) types.push("true/false");
+          if (examConfig.fibEnabled) types.push("fill-in-the-blank");
+          if (examConfig.essayEnabled) types.push("essay");
+          extraPrompt += `\n\nGENERATE EXACTLY ${examConfig.questionCount} questions. Question types to include: ${types.join(", ")}. ${examConfig.essayEnabled ? "Include 1-2 essay questions (5-paragraph format). " : ""}Distribute question types evenly across the selection. Emphasize topics the student commonly misses.`;
+        }
+        const res = await generate(tab.toolId as StudyToolType, notesHtml, extraPrompt || undefined);
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, result: res, generating: false } : t))
+        );
+      } catch {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, generating: false } : t))
+        );
+        toast.error(`Failed to generate ${tab.label}`);
+      }
+    }
   }, [selected, notesHtml, generate, profile.promptAppend, examConfig]);
 
   const closeTab = (tabId: string) => {

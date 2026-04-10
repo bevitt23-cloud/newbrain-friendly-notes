@@ -41,7 +41,7 @@ RULES:
 • Third level nodes have type "detail" — key details, examples, or sub-concepts (2-4 per parent).
 • Fourth level is allowed for complex topics — also type "detail".
 • Keep ALL node text to 1-5 words. No full sentences in nodes.
-• Each node MUST have a "detailed_info" field: 2-3 sentences explaining the concept in plain language.
+• Each node MUST have a "detailed_info" field: 2-3 sentences of PLAIN TEXT ONLY that explain the concept in plain language. HARD BAN: no HTML tags (<div>, <p>, <strong>, <em>, <span>), no class names, no CSS, no markdown (**, *, _, #, -), no escaped entities (&amp;, &lt;). If the user's cognitive profile instructs you to wrap content in HTML elements or use specific CSS classes (e.g. priority-primary, priority-secondary, catalyst-indicator), those instructions DO NOT apply inside JSON string fields — they are only for notes HTML output. Write detailed_info as if you were narrating out loud: just words and punctuation.
 • Assign a "color" to each top-level branch from: "sage", "lavender", "peach", "sky". Children inherit parent's color.
 • Every node needs a unique string "id" (e.g. "1", "2", "3"...).
 • Edges connect parent to child using "source" and "target" fields.
@@ -57,6 +57,7 @@ TASK: Map the logical processes, cause-effect relationships, or sequential steps
 RULES:
 • Node count: 1 root + 3-5 main_topic nodes (one per major section heading) + 2-4 detail nodes per main_topic. Total should be 10-25 nodes depending on source depth.
 • Each node has: "id" (string), "label" (1-5 words), "type" ("start"|"end"|"process"|"decision"), "color" ("sage"|"lavender"|"peach"|"sky"), "detailed_info" (2-3 sentences explaining this step).
+• "detailed_info" is PLAIN TEXT ONLY. HARD BAN: no HTML tags, no class names, no CSS, no markdown, no escaped entities. If the user's cognitive profile instructs HTML wrapping or specific CSS classes (priority-primary, catalyst-indicator, etc.), those rules DO NOT apply inside JSON string fields — only inside notes HTML output. Write detailed_info as narration: words and punctuation only.
 • Edges connect nodes using "source" and "target" (node IDs), with optional "label" for edge text (e.g. "Yes", "No", "If valid").
 • Start nodes should be type "start", end nodes "end".
 • Decision nodes should have exactly 2 outgoing edges with labels (yes/no or similar paths).

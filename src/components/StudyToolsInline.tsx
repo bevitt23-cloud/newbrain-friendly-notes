@@ -133,37 +133,39 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
     setSelected(new Set());
     setShowExamConfig(false);
 
-    await Promise.all(
-      newTabs
-        .filter((t) => t.toolId !== "socratic")
-        .map(async (tab) => {
-          try {
-            // Build the extra prompt. For final-exam, append the exam
-            // config so the AI generates the right number/type of
-            // questions. Everything else just uses the profile prompt.
-            let extraPrompt = profile.promptAppend || "";
-            if (tab.toolId === "final-exam") {
-              const types: string[] = [];
-              if (examConfig.mcEnabled) types.push("multiple-choice");
-              if (examConfig.tfEnabled) types.push("true/false");
-              if (examConfig.fibEnabled) types.push("fill-in-the-blank");
-              if (examConfig.essayEnabled) types.push("essay");
-              extraPrompt += `\n\nGENERATE EXACTLY ${examConfig.questionCount} questions. Question types to include: ${types.join(", ") || "multiple-choice"}. ${examConfig.essayEnabled ? "Include 1-2 essay questions (5-paragraph format). " : ""}Distribute question types evenly across the selection. Emphasize topics the student commonly misses.`;
-            }
-            const res = await generate(tab.toolId, notesHtml, extraPrompt || undefined);
-            setTabs((prev) =>
-              prev.map((t) => (t.id === tab.id ? { ...t, result: res, generating: false } : t))
-            );
-            // Auto-save
-            if (res) autoSave(tab, res);
-          } catch {
-            setTabs((prev) =>
-              prev.map((t) => (t.id === tab.id ? { ...t, generating: false } : t))
-            );
-            toast.error(`Failed to generate ${tab.label}`);
-          }
-        })
-    );
+    // IMPORTANT: generate tools SEQUENTIALLY, not in parallel.
+    // Parallel generation caused concurrent requests to hit the AI
+    // provider's per-user concurrency limit and the second call
+    // (usually mind map) would fail. Serial generation is slower
+    // but reliable.
+    const generatable = newTabs.filter((t) => t.toolId !== "socratic");
+    for (const tab of generatable) {
+      try {
+        // Build the extra prompt. For final-exam, append the exam
+        // config so the AI generates the right number/type of
+        // questions. Everything else just uses the profile prompt.
+        let extraPrompt = profile.promptAppend || "";
+        if (tab.toolId === "final-exam") {
+          const types: string[] = [];
+          if (examConfig.mcEnabled) types.push("multiple-choice");
+          if (examConfig.tfEnabled) types.push("true/false");
+          if (examConfig.fibEnabled) types.push("fill-in-the-blank");
+          if (examConfig.essayEnabled) types.push("essay");
+          extraPrompt += `\n\nGENERATE EXACTLY ${examConfig.questionCount} questions. Question types to include: ${types.join(", ") || "multiple-choice"}. ${examConfig.essayEnabled ? "Include 1-2 essay questions (5-paragraph format). " : ""}Distribute question types evenly across the selection. Emphasize topics the student commonly misses.`;
+        }
+        const res = await generate(tab.toolId, notesHtml, extraPrompt || undefined);
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, result: res, generating: false } : t))
+        );
+        // Auto-save
+        if (res) autoSave(tab, res);
+      } catch {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, generating: false } : t))
+        );
+        toast.error(`Failed to generate ${tab.label}`);
+      }
+    }
   }, [selected, notesHtml, generate, profile.promptAppend, autoSave, examConfig]);
 
   const isAnyGenerating = tabs.some((t) => t.generating);
