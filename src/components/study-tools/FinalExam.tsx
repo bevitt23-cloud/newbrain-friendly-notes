@@ -5,6 +5,7 @@ import {
   Flag, Send, Loader2, AlertTriangle,
 } from "lucide-react";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 
 interface MCQuestion {
   type: "mc";
@@ -46,6 +47,7 @@ interface FinalExamProps {
 
 export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalExamProps) {
   const { track } = useTelemetry();
+  const { markComplete } = useToolEngagement("final_exam");
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -121,6 +123,7 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
     const finalScore = questions.reduce((acc, _, i) => acc + (isCorrect(i) === true ? 1 : 0), 0);
     const percent = total ? Math.round((finalScore / total) * 100) : 0;
     track("final_exam_complete", { score: finalScore, total, percent });
+    markComplete();
   };
 
   const isCorrect = (idx: number): boolean | null => {

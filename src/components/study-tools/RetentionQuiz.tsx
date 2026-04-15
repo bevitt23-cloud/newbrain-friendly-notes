@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, ChevronRight, RotateCcw, Trophy } from "lucide-react";
 import FunFactLink from "@/components/study-tools/FunFactLink";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 
 interface QuizQuestion {
   question: string;
@@ -19,6 +20,7 @@ interface RetentionQuizProps {
 
 const RetentionQuiz = ({ questions, topic, notesContext }: RetentionQuizProps) => {
   const { track } = useTelemetry();
+  const { markComplete } = useToolEngagement("quiz");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -42,6 +44,7 @@ const RetentionQuiz = ({ questions, topic, notesContext }: RetentionQuizProps) =
     if (currentIndex + 1 >= total) {
       setFinished(true);
       track("quiz_complete", { score, total, topic, percent: Math.round((score / total) * 100) });
+      markComplete();
     } else {
       setCurrentIndex((i) => i + 1);
       setSelectedAnswer(null);

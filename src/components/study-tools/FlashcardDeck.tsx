@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RotateCcw, ChevronLeft, ChevronRight, Check, Star, Eye, Keyboard } from "lucide-react";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 
 interface Card {
   id: string;
@@ -11,6 +12,7 @@ interface Card {
 
 export default function FlashcardDeck({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
   const { track } = useTelemetry();
+  const { markComplete } = useToolEngagement("flashcard");
   const [cards, setCards] = useState<Card[]>([]);
   const [parseError, setParseError] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -64,6 +66,7 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
     track("flashcard_rated", { cardId: card.id, rating: "mastered", cardIndex: current, totalCards: cards.length });
     if (newMastered.size === cards.length) {
       track("flashcard_session_complete", { totalCards: cards.length, mastered: newMastered.size });
+      markComplete();
     }
     goNext();
   };
@@ -72,6 +75,7 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
     track("flashcard_rated", { cardId: card.id, rating: "review_again", cardIndex: current, totalCards: cards.length });
     if (current === cards.length - 1) {
       track("flashcard_session_complete", { totalCards: cards.length, mastered: mastered.size });
+      markComplete();
     }
     goNext();
   };

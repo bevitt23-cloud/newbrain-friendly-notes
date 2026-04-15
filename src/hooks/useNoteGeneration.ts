@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { isClientExtractable, extractTextFromFile } from "@/lib/extractTextFromFile";
 import { isImageFile, extractImages, injectImages, appendUnreferencedImages, MAX_IMAGES, type EncodedImage } from "@/lib/imageUtils";
 import { extractPdfImages } from "@/lib/pdfImageExtraction";
+import { useTelemetry } from "@/hooks/useTelemetry";
 
 export interface QuizQuestion {
   question: string;
@@ -47,6 +48,7 @@ export interface GenerateOptions {
 }
 
 export function useNoteGeneration() {
+  const { track } = useTelemetry();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generatedHtml, setGeneratedHtml] = useState("");
@@ -56,6 +58,21 @@ export function useNoteGeneration() {
   const ageRef = useRef<number | null>(null);
 
   const generate = useCallback(async (opts: GenerateOptions) => {
+    const generationStart = Date.now();
+    // Determine source type for research analytics
+    const sourceType = opts.youtubeUrl
+      ? "youtube"
+      : opts.websiteUrl
+        ? "website"
+        : opts.chapterContext
+          ? "chapter"
+          : Array.isArray(opts.files) && opts.files.length > 0
+            ? "file"
+            : "text";
+    const fileExtensions = (opts.files || [])
+      .map((f) => f.name.split(".").pop()?.toLowerCase())
+      .filter(Boolean) as string[];
+
     setIsGenerating(true);
     setError(null);
     setGeneratedHtml("");
@@ -380,6 +397,24 @@ export function useNoteGeneration() {
 
       setGeneratedHtml(finalHtml);
 
+      // Research telemetry — note generation succeeded
+      track("notes_generated", {
+        source_type: sourceType,
+        file_count: (opts.files || []).length,
+        file_extensions: fileExtensions,
+        extras: Array.isArray(opts.extras) ? opts.extras : [],
+        learning_mode: opts.learningMode,
+        instructions_provided: !!(opts.instructions && opts.instructions.trim()),
+        has_chapter_context: !!opts.chapterContext,
+        chapter_index: opts.chapterContext?.chapterIndex,
+        total_chapters: opts.chapterContext?.totalChapters,
+        book_title: opts.chapterContext?.bookTitle,
+        image_count: encodedImages.length,
+        input_chars: combinedTextContent.length,
+        output_chars: finalHtml.length,
+        duration_ms: Date.now() - generationStart,
+      });
+
       // 5. Trigger Quiz Generation
       const shouldQuiz = payload.extras.includes("retention_quiz");
       if (shouldQuiz && finalHtml.length > 100) {
@@ -408,11 +443,16 @@ export function useNoteGeneration() {
       console.error("[NoteGen] Generation failed:", msg);
       setError(msg);
       toast.error(msg, { duration: 8000 });
+      track("notes_generation_failed", {
+        source_type: sourceType,
+        error_message: msg.slice(0, 200),
+        duration_ms: Date.now() - generationStart,
+      });
     } finally {
       setIsGenerating(false);
       setUploadProgress("");
     }
-  }, []);
+  }, [track]);
 
   const reset = useCallback(() => {
     setIsGenerating(false);

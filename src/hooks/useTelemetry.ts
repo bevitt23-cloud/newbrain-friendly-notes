@@ -12,6 +12,11 @@ export type TelemetryEventType =
   | "setting_toggled"
   | "assessment_completed"
   | "energy_slider_used"
+  // Note lifecycle (research-critical)
+  | "notes_generated"
+  | "notes_generation_failed"
+  | "note_viewed"
+  | "material_viewed"
   // Study tool tracking
   | "flashcard_flip"
   | "flashcard_rated"
@@ -77,6 +82,8 @@ export function useTelemetry() {
       if (!user) return;
       // Respect user's insights preference — don't collect if disabled
       if (!preferences.insights_enabled) return;
+      // Respect research data sharing consent — required for research-quality data
+      if ((preferences as Record<string, unknown>).research_data_shared === false) return;
       try {
         const enriched = {
           ...eventData,

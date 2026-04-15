@@ -15,6 +15,7 @@ import "@xyflow/react/dist/style.css";
 import dagre from "@dagrejs/dagre";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Download, Loader2 } from "lucide-react";
 import { exportDiagramToPdf } from "@/lib/exportDiagramPdf";
@@ -288,6 +289,7 @@ function layoutWithDagre(
 export default function FlowChart({ html, data: rawData }: { html?: string; data?: string }) {
   const { preferences } = useUserPreferences();
   const { track } = useTelemetry();
+  useToolEngagement("flowchart");
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);

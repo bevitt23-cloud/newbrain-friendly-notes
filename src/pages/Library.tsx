@@ -24,6 +24,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useFunFacts } from "@/hooks/useFunFacts";
+import { useTelemetry } from "@/hooks/useTelemetry";
 import { DEFAULT_FOLDER } from "@/lib/constants";
 import { matchesFolderOrDescendant } from "@/lib/folderUtils";
 import FolderTree from "@/components/library/FolderTree";
@@ -60,6 +61,7 @@ interface SavedMaterial {
 const Library = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { track } = useTelemetry();
 
   const [notes, setNotes] = useState<SavedNote[]>([]);
   const [materials, setMaterials] = useState<SavedMaterial[]>([]);
@@ -99,6 +101,15 @@ const Library = () => {
   // View handlers — navigate to full-screen review
   const viewNote = (note: SavedNote) => {
     if (!note.content) return;
+    track("note_viewed", {
+      note_id: note.id,
+      folder: note.folder,
+      learning_mode: note.learning_mode,
+      is_favorite: !!note.is_favorite,
+      tag_count: (note.tags || []).length,
+      content_chars: note.content.length,
+      days_since_created: Math.floor((Date.now() - new Date(note.created_at).getTime()) / 86400000),
+    });
     navigate("/library/review", {
       state: {
         items: [{ id: note.id, title: note.title, type: "note" as const, content: note.content, noteId: note.id }],
@@ -108,6 +119,12 @@ const Library = () => {
 
   const viewMaterial = (mat: SavedMaterial) => {
     const raw = typeof mat.content?.raw === "string" ? mat.content.raw : JSON.stringify(mat.content);
+    track("material_viewed", {
+      material_id: mat.id,
+      material_type: mat.material_type,
+      is_favorite: !!mat.is_favorite,
+      has_linked_note: !!mat.note_id,
+    });
     navigate("/library/review", {
       state: {
         items: [{

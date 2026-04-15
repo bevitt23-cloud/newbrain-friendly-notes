@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Send, Loader2, Flag, MessageCircle, Mic, MicOff } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +16,7 @@ interface Message {
 
 export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
   const { track } = useTelemetry();
+  const { markComplete } = useToolEngagement("socratic");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ export default function SocraticDebate({ notesHtml }: { notesHtml: string }) {
   const handleYield = () => {
     const totalTurns = messages.filter((m) => m.role === "user").length;
     track("socratic_session_end", { totalTurns, topic: notesHtml.slice(0, 100) });
+    markComplete();
     sendMessage("I yield! Please reveal the key answer and summarize what we discussed.");
   };
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw, Star } from "lucide-react";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 
 interface ClozeData {
   text?: string;
@@ -12,6 +13,7 @@ interface ClozeData {
 
 export default function ClozeNotes({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
   const { track } = useTelemetry();
+  const { markComplete } = useToolEngagement("cloze");
   const [cloze, setCloze] = useState<ClozeData | null>(null);
   const [parseError, setParseError] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
@@ -81,6 +83,7 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
       if (allDone) {
         const correctCount = blanks.length;
         track("cloze_session_complete", { totalBlanks: blanks.length, correctCount });
+        markComplete();
       }
     } else {
       setIncorrect((p) => ({ ...p, [blankId]: true }));

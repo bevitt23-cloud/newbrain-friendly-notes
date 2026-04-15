@@ -44,6 +44,12 @@ interface GeneratedNotesProps {
   onStickyNotesChange?: (notes: StickyNoteData[]) => void;
   savedVideos?: SavedExplainerVideo[];
   onSaveVideo?: (video: SavedExplainerVideo) => void;
+  /** For behavioral telemetry — identifies which note the user is reading */
+  noteId?: string;
+  /** Source of the content being displayed */
+  behaviorSource?: "generated" | "library_note" | "library_material" | "chapter";
+  /** Material type when behaviorSource === "library_material" */
+  materialType?: string;
 }
 
 function applyBionic(html: string): string {
@@ -77,6 +83,9 @@ const GeneratedNotes = ({
   onStickyNotesChange,
   savedVideos,
   onSaveVideo,
+  noteId,
+  behaviorSource,
+  materialType,
 }: GeneratedNotesProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [videoQuery, setVideoQuery] = useState<string | null>(null);
@@ -97,7 +106,11 @@ const GeneratedNotes = ({
   const { sections: navSections, activeSectionId, scrollToSection } = useJumpToNav(containerRef, html);
 
   // Research behavioral sensors — tracks scroll thrashing, dwell time, etc.
-  useBehavioralSensors(containerRef);
+  useBehavioralSensors(containerRef, {
+    note_id: noteId,
+    source: behaviorSource,
+    material_type: materialType,
+  });
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;

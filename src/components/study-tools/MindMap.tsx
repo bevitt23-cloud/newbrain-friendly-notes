@@ -16,6 +16,7 @@ import { hierarchy } from "d3-hierarchy";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useTelemetry } from "@/hooks/useTelemetry";
+import { useToolEngagement } from "@/hooks/useToolEngagement";
 import { X, Download, Loader2 } from "lucide-react";
 import { exportDiagramToPdf } from "@/lib/exportDiagramPdf";
 
@@ -350,6 +351,7 @@ function radialLayout(
 export default function MindMap({ html, data: rawData }: { html?: string; data?: string }) {
   const { preferences } = useUserPreferences();
   const { track } = useTelemetry();
+  useToolEngagement("mindmap");
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);

@@ -50,7 +50,19 @@ function getViewportCenterElement(): string {
   return getNearestSectionId(el);
 }
 
-export function useBehavioralSensors(containerRef: React.RefObject<HTMLElement | null>) {
+export interface BehavioralContext {
+  /** The note being read, if any */
+  note_id?: string;
+  /** Whether this is a freshly generated note, a saved library view, or a chapter */
+  source?: "generated" | "library_note" | "library_material" | "chapter";
+  /** Material type when source === "library_material" */
+  material_type?: string;
+}
+
+export function useBehavioralSensors(
+  containerRef: React.RefObject<HTMLElement | null>,
+  context?: BehavioralContext,
+) {
   const { track } = useTelemetry();
   const sessionRef = useRef<SessionData>({
     startTime: Date.now(),
@@ -98,8 +110,11 @@ export function useBehavioralSensors(containerRef: React.RefObject<HTMLElement |
       total_sections_viewed: s.sectionsViewed.size,
       total_sections_available: s.totalSections,
       bailout_element_id: getViewportCenterElement(),
+      note_id: context?.note_id,
+      source: context?.source,
+      material_type: context?.material_type,
     });
-  }, [track]);
+  }, [track, context?.note_id, context?.source, context?.material_type]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -201,6 +216,8 @@ export function useBehavioralSensors(containerRef: React.RefObject<HTMLElement |
         track("text_highlighted_no_action", {
           word_count: wordCount,
           section_id: sel.anchorNode ? getNearestSectionId(sel.anchorNode.parentElement) : "unknown",
+          note_id: context?.note_id,
+          source: context?.source,
         });
       }, 5000);
     };
