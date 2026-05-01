@@ -769,9 +769,28 @@ serve(async (req) => {
       if (websiteText && websiteText.length > 200) {
         const trimmed = websiteText.slice(0, 100000);
         console.log(`Website extraction succeeded for ${normalizedWebsiteUrl}: ${trimmed.length} chars`);
+        // Try to pull the page's natural title from the first <h1>, <h2>,
+        // or any "Title:" / "## " line in the extracted text. This gives
+        // the AI a clean source-title hint instead of relying on the URL.
+        let pageTitle = "";
+        const h1Match = trimmed.match(/<h1[^>]*>([\s\S]+?)<\/h1>/i);
+        if (h1Match) {
+          pageTitle = h1Match[1].replace(/<[^>]+>/g, "").trim();
+        }
+        if (!pageTitle) {
+          const titleTagMatch = trimmed.match(/<title[^>]*>([\s\S]+?)<\/title>/i);
+          if (titleTagMatch) pageTitle = titleTagMatch[1].replace(/<[^>]+>/g, "").trim();
+        }
+        if (!pageTitle) {
+          const mdHeaderMatch = trimmed.match(/^#\s+(.+)$/m);
+          if (mdHeaderMatch) pageTitle = mdHeaderMatch[1].trim();
+        }
+        const titleHint = pageTitle && pageTitle.length > 3 && pageTitle.length < 200
+          ? `Page Title: ${pageTitle}\n\n`
+          : "";
         contentParts.push({
           type: "text",
-          text: `--- Content from ${normalizedWebsiteUrl} ---\n${trimmed}`,
+          text: `--- Content from ${normalizedWebsiteUrl} ---\n${titleHint}${trimmed}`,
         });
       } else {
         console.error(`All extraction strategies failed for ${normalizedWebsiteUrl}`);
@@ -1218,7 +1237,23 @@ ${modePrompt}
 OUTPUT FORMAT:
 Return valid HTML using: <h1>, <section>, <h2>, <h3>, <p>, <ul>, <li>, <ol>, <strong>, <em>, <span>.
 CRITICAL: NEVER use markdown syntax. No asterisks (*) for bold, italic, or bullet points — ALWAYS use HTML tags <strong> and <em> instead. No markdown headers (#), no markdown lists (- item or * item), no markdown code fences. All lists MUST use <ul><li> or <ol><li> HTML tags. Output MUST be pure, clean HTML with zero markdown artifacts. If you catch yourself writing "* " or "- " at the start of a line, STOP and rewrite it as <li>.
-CRITICAL: Start with a single <h1> tag containing a clear, descriptive title based on the SUBJECT of the material (e.g. "Cell Biology & Mitosis", "World War II: Key Events", "Introduction to Python Programming"). Do NOT use generic titles like "Study Notes".
+CRITICAL: Start with a single <h1> tag containing a clear, descriptive title that matches the source material the user uploaded. The title MUST reflect the actual document or video the user gave you, not a generic subject area. Apply this priority order:
+
+  1. If the source material starts with "Video Title: <title>" (YouTube) or contains "Page Title: <title>" right after the URL marker (web article), use that title verbatim as the H1, lightly cleaned (strip channel watermarks like "| Khan Academy", site name suffixes like "— Wikipedia", "| NYT", drop episode numbers if they're noisy). Example: "Video Title: How Mitochondria Work — Khan Academy" → <h1>How Mitochondria Work</h1>.
+
+  2. If the source begins with "--- Content from <filename> ---" or "--- Content from <url> ---" without a Page Title hint, use the filename or URL as the title basis:
+     - Strip the file extension (.pdf, .docx, .pptx, .txt, .md, .csv, .html).
+     - Replace underscores and dashes with spaces.
+     - Apply Title Case.
+     - If the filename is clearly descriptive (e.g. "Chapter 5 Photosynthesis.pdf" → "Chapter 5: Photosynthesis"; "Freud_Defense_Mechanisms.docx" → "Freud's Defense Mechanisms"; "supply-and-demand-notes.pdf" → "Supply and Demand"), use that.
+     - For URLs, derive from the page's natural topic if obvious from the path (e.g. "...wikipedia.org/wiki/French_Revolution" → "The French Revolution").
+     - If the filename is GENERIC or noisy (e.g. "Document1.pdf", "Untitled.docx", "scan_2024_01.pdf", "IMG_1234.jpg", "lecture3.pdf", random hashes), DO NOT use it — derive the title from the actual content instead.
+
+  3. If neither a filename nor video title is available (raw pasted text), derive a 3-7 word descriptive title from the dominant subject of the content (e.g. "Mitosis: Cell Division Stages", "World War II: Key Events", "Introduction to Python Programming").
+
+  4. NEVER use generic titles: "Study Notes", "Notes", "Document", "Untitled", "Lecture Notes", "Material", "Chapter Notes", or anything that doesn't tell the user what the content is about.
+
+  5. Keep the H1 under 10 words. If the source title is longer, shorten it while preserving the topic.
 CRITICAL: Wrap EACH major section in a <section data-section-color="COLOR"> tag, where COLOR cycles through: "sage", "lavender", "peach", "sky", "amber".
 Place the <h2> INSIDE the <section> (do NOT put data-section-color on the h2, put it on the section AND the h2).
 Wrap the entire output in a single <div>.
