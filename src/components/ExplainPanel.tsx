@@ -48,6 +48,30 @@ function splitIntoSections(content: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * If a section starts with a leading <p><strong>...</strong></p> heading
+ * (e.g. "🧒 In Plain Terms" or "🎓 Detailed Explanation"), pull that text
+ * out so it can be used as the card's badge label, and return the body
+ * with the heading line removed. Falls back to null if the section has
+ * no leading bold heading.
+ */
+function extractSectionHeading(section: string): { title: string | null; body: string } {
+  const headingPatterns = [
+    /^\s*<p>\s*<strong>([\s\S]+?)<\/strong>\s*<\/p>\s*/i,
+    /^\s*<strong>([\s\S]+?)<\/strong>\s*(?:<br\s*\/?>)?\s*/i,
+  ];
+  for (const pattern of headingPatterns) {
+    const match = section.match(pattern);
+    if (match) {
+      const raw = match[1].replace(/<[^>]+>/g, "").trim();
+      if (raw && raw.length <= 60) {
+        return { title: raw, body: section.slice(match[0].length).trim() };
+      }
+    }
+  }
+  return { title: null, body: section };
+}
+
 function renderSectionContent(section: string): ReactNode {
   if (/<[a-z][\s\S]*>/i.test(section)) {
     return <div className="explain-rich-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(section) }} />;
@@ -230,25 +254,39 @@ const ExplainPanel = ({ selectedText, notesContext, open, onClose }: ExplainPane
 
                     {chatMessages.map((msg, i) => {
                       if (msg.role === "assistant") {
-                        const theme = ASSISTANT_SECTION_THEMES[i % ASSISTANT_SECTION_THEMES.length];
                         const sections = splitIntoSections(msg.content);
 
                         return (
                           <div key={i} className="space-y-3">
-                            {sections.map((section, sectionIndex) => (
-                              <div
-                                key={`${i}-${sectionIndex}`}
-                                className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}
-                              >
-                                <div className="mb-3 flex items-center gap-2">
-                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${theme.badge}`}>
-                                    <MessageCircleQuestion className={`h-3.5 w-3.5 ${theme.icon}`} />
-                                    {sectionIndex === 0 ? "Main idea" : `Detail ${sectionIndex}`}
-                                  </span>
+                            {sections.map((section, sectionIndex) => {
+                              const { title, body } = extractSectionHeading(section);
+                              // Pin the layman card to sage and the detailed card
+                              // to lavender so the visual rhythm is predictable
+                              // (warm/inviting for plain-terms, focused for depth).
+                              // Fall back to the rotating theme for any other cards.
+                              const isLayman = !!title && /plain\s*terms|in plain|like i'?m|simple|tldr|tl;dr/i.test(title);
+                              const isDetailed = !!title && /detailed|deeper|in[- ]?depth|technical|full explanation/i.test(title);
+                              const theme = isLayman
+                                ? ASSISTANT_SECTION_THEMES[0]
+                                : isDetailed
+                                  ? ASSISTANT_SECTION_THEMES[2]
+                                  : ASSISTANT_SECTION_THEMES[(i + sectionIndex) % ASSISTANT_SECTION_THEMES.length];
+                              const badgeLabel = title ?? (sectionIndex === 0 ? "Main idea" : `Detail ${sectionIndex}`);
+                              return (
+                                <div
+                                  key={`${i}-${sectionIndex}`}
+                                  className={`rounded-2xl border p-4 shadow-sm ${theme.card}`}
+                                >
+                                  <div className="mb-3 flex items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${theme.badge}`}>
+                                      <MessageCircleQuestion className={`h-3.5 w-3.5 ${theme.icon}`} />
+                                      {badgeLabel}
+                                    </span>
+                                  </div>
+                                  {renderSectionContent(body)}
                                 </div>
-                                {renderSectionContent(section)}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         );
                       }

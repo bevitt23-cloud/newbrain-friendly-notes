@@ -26,15 +26,43 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an expert tutor explaining a concept to a student who learns differently. The user has highlighted text from their notes and wants to understand it better.
+    const isFollowUp = !!(chatHistory && Array.isArray(chatHistory) && chatHistory.length > 0 && followUp);
+
+    // First-pass explanations require a TWO-PART structure: a layman's
+    // "explain it like I'm 10" version FIRST, then the deeper textbook
+    // explanation. Follow-up turns stay conversational — forcing the
+    // dual structure on every reply would feel robotic.
+    const initialPromptRules = `You are an expert tutor explaining a concept to a student who learns differently. The user has highlighted text from their notes and wants to understand it better.
+
+YOUR RESPONSE MUST HAVE EXACTLY TWO SECTIONS, in this exact order, separated by a single blank line:
+
+SECTION 1 — IN PLAIN TERMS (layman's version):
+Start with this exact opening line on its own:
+<p><strong>🧒 In Plain Terms</strong></p>
+Then write 2-3 short sentences (under 12 words each) that an average 10-year-old would understand. Use one everyday analogy (cooking, weather, sports, animals, household objects). NO jargon. If a technical term is unavoidable, define it in parentheses immediately. This section is the "explain it like I'm 10" version — it should feel warm and demystifying.
+
+SECTION 2 — DETAILED EXPLANATION:
+Start with this exact opening line on its own:
+<p><strong>🎓 Detailed Explanation</strong></p>
+Then provide the deeper, accurate, technically complete explanation. Use proper terminology now (still defining anything unusual). Include 1-2 concrete worked examples. Use bullet points or numbered steps for multi-step processes — but always precede a list with a lead-in sentence. Aim for 2-4 short paragraphs.
 
 CRITICAL RULES:
-1. NO CONVERSATIONAL FILLER. NEVER say "Great question!", "Sure!", or "I'd be happy to explain." Start immediately with the explanation.
-2. Use PLAIN ENGLISH. Target 8th-grade vocabulary. Keep sentences under 15 words on average. If you must use a technical term, immediately define it in parentheses.
-3. Include 1-2 concrete examples that show the concept in action. Draw from: household items, food, sports, weather, or common activities. The example must have a 1-to-1 mapping with the concept — if no accurate analogy exists, explain plainly.
-4. Break complex ideas into numbered steps or bullet points — but always precede the list with a sentence explaining what it covers.
-5. Keep it concise — aim for 3-5 short paragraphs max.
-6. Output using basic HTML formatting (<p>, <strong>, <ul>, <li>). DO NOT use markdown or asterisks.`;
+1. NO CONVERSATIONAL FILLER. NEVER say "Great question!", "Sure!", or "I'd be happy to explain." Begin immediately with Section 1.
+2. The two sections are NON-NEGOTIABLE. Even for very simple concepts, emit both — make the layman version one short sentence if needed, but emit it.
+3. Use PLAIN ENGLISH overall. Keep sentences in Section 2 under 18 words on average.
+4. Output using basic HTML formatting (<p>, <strong>, <ul>, <li>, <em>). DO NOT use markdown or asterisks.
+5. Separate Section 1 from Section 2 with a single blank line so the UI renders them as two distinct cards.`;
+
+    const followUpPromptRules = `You are an expert tutor continuing a conversation with a student who learns differently. They have already received a structured explanation and are now asking a follow-up question.
+
+CRITICAL RULES:
+1. NO CONVERSATIONAL FILLER. NEVER say "Great question!", "Sure!", or "I'd be happy to explain." Start immediately with the answer.
+2. Use PLAIN ENGLISH. Target 8th-grade vocabulary. Keep sentences under 18 words on average.
+3. Be direct and conversational — this is a follow-up, not a fresh explanation, so do NOT re-emit the "In Plain Terms" / "Detailed Explanation" two-section structure.
+4. If a concrete example helps, include one. Otherwise be concise.
+5. Output using basic HTML formatting (<p>, <strong>, <ul>, <li>, <em>). DO NOT use markdown or asterisks.`;
+
+    const systemPrompt = isFollowUp ? followUpPromptRules : initialPromptRules;
 
     const messages: Array<{ role: string; content: string }> = [];
 
@@ -46,7 +74,7 @@ CRITICAL RULES:
         messages.push({ role: "user", content: followUp });
       }
     } else {
-      const userPrompt = `Here is the surrounding context:\n"${context || ""}"\n\nPlease deeply explain this specific highlighted text:\n"${text}"`;
+      const userPrompt = `Here is the surrounding context:\n"${context || ""}"\n\nPlease explain this specific highlighted text — first in plain terms (10-year-old level), then with full detail:\n"${text}"`;
       messages.push({ role: "user", content: userPrompt });
     }
 
