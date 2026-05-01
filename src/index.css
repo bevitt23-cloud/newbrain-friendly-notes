@@ -923,14 +923,71 @@ body.dyslexia-active .generated-notes {
    ─────────────────────────────────────────────────────────────── */
 .generated-notes table {
   width: 100%;
-  margin: 1rem 0;
+  margin: 0;
   border-collapse: separate;
   border-spacing: 0;
   border: 2px solid hsl(var(--border));
   border-radius: 0.75rem;
   overflow: hidden;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   background: hsl(var(--card));
+}
+
+/* Wrapper injected at runtime around every table so wide tables
+   scroll horizontally instead of overflowing the notes container,
+   and so the "expand" button has a positioning context. */
+.generated-notes .note-table-wrapper {
+  position: relative;
+  margin: 1rem 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
+.generated-notes .note-table-wrapper > table {
+  font-size: 0.8125rem;
+}
+.generated-notes .note-table-wrapper .note-table-expand {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card) / 0.92);
+  backdrop-filter: blur(4px);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  z-index: 2;
+  opacity: 0.85;
+}
+.generated-notes .note-table-wrapper .note-table-expand:hover {
+  opacity: 1;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.5);
+}
+.generated-notes .note-table-wrapper .note-table-expand svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Expanded-table dialog: same table styles, larger font for readability. */
+.generated-notes.expanded-table-view table,
+.generated-notes.expanded-table-view .note-table-wrapper > table {
+  font-size: 0.95rem;
+  width: 100%;
+}
+.generated-notes.expanded-table-view td,
+.generated-notes.expanded-table-view th {
+  padding: 0.875rem 1.125rem;
 }
 .generated-notes thead {
   background: hsl(var(--muted) / 0.7);

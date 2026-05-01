@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useBehavioralSensors } from "@/hooks/useBehavioralSensors";
 import { motion } from "framer-motion";
-import { RotateCcw, Save, Loader2, Sparkles, Download, Map, GitBranch } from "lucide-react";
+import { RotateCcw, Save, Loader2, Sparkles, Download, Map, GitBranch, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import TextSelectionMenu from "@/components/TextSelectionMenu";
 import type { StickyNoteData } from "@/components/TextSelectionMenu";
@@ -92,6 +92,7 @@ const GeneratedNotes = ({
   const [mindMapOpen, setMindMapOpen] = useState(false);
   const [flowChartOpen, setFlowChartOpen] = useState(false);
   const [pipImage, setPipImage] = useState<{ src: string; alt: string } | null>(null);
+  const [expandedTableHTML, setExpandedTableHTML] = useState<string | null>(null);
   const { preferences } = useUserPreferences();
 
   // Toggle dyslexia-active body class from global preferences
@@ -111,6 +112,33 @@ const GeneratedNotes = ({
     source: behaviorSource,
     material_type: materialType,
   });
+
+  // Wrap every <table> in a scrollable container with an "Expand" button so
+  // wide tables stay inside the notes column and the user can click to view
+  // the full table in a large dialog.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || isGenerating) return;
+
+    const tables = container.querySelectorAll("table");
+    tables.forEach((table) => {
+      const parent = table.parentElement;
+      if (parent && parent.classList.contains("note-table-wrapper")) return;
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "note-table-wrapper";
+      table.parentNode?.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "note-table-expand";
+      btn.title = "Click to enlarge table";
+      btn.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Expand';
+      wrapper.appendChild(btn);
+    });
+  }, [html, isGenerating]);
 
   const handleNoteClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -132,6 +160,16 @@ const GeneratedNotes = ({
       if (img) {
         setPipImage({ src: img.src, alt: img.alt || "Image" });
       }
+      return;
+    }
+
+    // Handle table expand — clicking the "Expand" button enlarges the table
+    const expandBtn = target.closest(".note-table-expand") as HTMLElement | null;
+    if (expandBtn) {
+      e.preventDefault();
+      const wrapper = expandBtn.closest(".note-table-wrapper");
+      const table = wrapper?.querySelector("table");
+      if (table) setExpandedTableHTML(table.outerHTML);
       return;
     }
   };
@@ -351,6 +389,23 @@ const GeneratedNotes = ({
           </DialogHeader>
           <div className="flex-1 h-full min-h-0">
             <FlowChart html={html} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enlarged Table Dialog */}
+      <Dialog open={!!expandedTableHTML} onOpenChange={(v) => !v && setExpandedTableHTML(null)}>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
+            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+              <Maximize2 className="h-5 w-5 text-primary" />
+              Table View
+            </DialogTitle>
+          </DialogHeader>
+          <div className="generated-notes expanded-table-view flex-1 min-h-0 overflow-auto p-6">
+            {expandedTableHTML && (
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(expandedTableHTML) }} />
+            )}
           </div>
         </DialogContent>
       </Dialog>
