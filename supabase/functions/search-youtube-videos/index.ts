@@ -13,11 +13,22 @@ import { callAI } from "../_shared/callAI.ts";
 
 const ACADEMIC_NOISE = /\bet\s+al\.?\b|\bdoi:|\(\s*\d{4}\s*\)|\b\d{4}\)/i;
 
+const STOPWORDS = new Set([
+  "the","a","an","and","or","but","of","to","in","on","at","for","with","by","from","as","is","are","was","were","be","been","being",
+  "this","that","these","those","it","its","their","they","them","there","here","which","who","whom","what","when","where","why","how",
+  "we","us","our","you","your","he","she","his","her","i","me","my",
+  "had","has","have","having","do","does","did","done","doing","can","could","should","would","may","might","must","will","shall",
+  "also","just","only","very","more","most","such","some","any","all","each","every","other","another","than","then","so","not",
+  "found","shown","showed","demonstrated","reported","studied","investigated","examined","observed","noted","reveals","revealed","suggests","suggested","indicates","indicated","appears","appeared","seems","seemed","like","including","such","with","without",
+  "significant","significantly","increased","decreased","reduced","elevated","normalized","altered","affected","resulted","resulting","caused","causing","leading","led","produced","produces",
+  "effect","effects","result","results","finding","findings","study","studies","research","analysis","data","level","levels","group","groups","subject","subjects",
+]);
+
 function looksLikeProse(query: string): boolean {
   const wordCount = query.trim().split(/\s+/).length;
   const hasMultipleSentences = (query.match(/[.!?]\s+[A-Z]/g) || []).length >= 1;
   const hasParentheticals = (query.match(/\([^)]{8,}\)/g) || []).length >= 1;
-  return wordCount > 12 || hasMultipleSentences || hasParentheticals || ACADEMIC_NOISE.test(query);
+  return wordCount > 10 || hasMultipleSentences || hasParentheticals || ACADEMIC_NOISE.test(query);
 }
 
 function heuristicCleanup(query: string): string {
@@ -36,36 +47,174 @@ function heuristicCleanup(query: string): string {
     .trim();
 }
 
+/**
+ * Strip common chatty AI wrappers that survive the system prompt:
+ *   "Query: foo bar"
+ *   "Search query: foo bar"
+ *   "Here's the query: foo bar"
+ *   "**foo bar**"
+ *   "```\nfoo bar\n```"
+ *   trailing commentary after a blank line
+ */
+function unwrapAIQuery(raw: string): string {
+  let s = raw.trim();
+  // Take only up to the first blank line (drop trailing commentary)
+  s = s.split(/\n\s*\n/)[0].trim();
+  // Strip code fences
+  s = s.replace(/^```(?:\w+)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+  // Strip "Query:" / "Search query:" / "Here's the query:" prefixes
+  s = s.replace(/^(?:final\s+)?(?:youtube\s+)?(?:search\s+)?query\s*[:=]\s*/i, "");
+  s = s.replace(/^(?:here(?:'|’)?s|here\s+is)\s+(?:the|a|your)\s+(?:search\s+)?query\s*[:.]\s*/i, "");
+  s = s.replace(/^(?:answer|result|output)\s*[:=]\s*/i, "");
+  // Strip a single line of leading/trailing markdown emphasis
+  s = s.replace(/^\*\*(.+)\*\*$/, "$1").replace(/^\*(.+)\*$/, "$1");
+  // Strip wrapping quotes/backticks
+  s = s.replace(/^["'`]+|["'`]+$/g, "").trim();
+  // Take only the first line if multi-line survives
+  s = s.split(/\n/)[0].trim();
+  return s;
+}
+
+/**
+ * Heuristic keyword extraction for the fallback path. Picks the
+ * most-distinctive content tokens (acronyms, hyphenated compounds,
+ * capitalized terms, multi-syllable words) and skips common stopwords.
+ * Used both when AI distillation fails AND as a "simpler retry" if
+ * the first YouTube search returns 0 results.
+ */
+function extractKeyTerms(text: string, max: number = 6): string[] {
+  const cleaned = heuristicCleanup(text);
+  // Tokenize keeping hyphens and apostrophes inside words
+  const tokens = cleaned.split(/[\s,.!?;:()"—]+/).filter(Boolean);
+
+  type Scored = { token: string; score: number; idx: number };
+  const scored: Scored[] = tokens.map((t, idx) => {
+    const lower = t.toLowerCase();
+    if (STOPWORDS.has(lower) || lower.length < 3) return { token: t, score: 0, idx };
+    let score = 1;
+    // Acronyms (all caps, 2-6 chars): high value (HPA, ACTH, DNA)
+    if (/^[A-Z]{2,6}$/.test(t)) score += 6;
+    // Hyphenated compounds (hypothalamic-pituitary-adrenal, magnesium-depleted): high
+    else if (t.includes("-") && t.length >= 6) score += 4;
+    // Capitalized non-sentence-start (proper nouns / technical terms)
+    else if (/^[A-Z][a-z]+/.test(t) && idx > 0) score += 2;
+    // Long words tend to be technical
+    if (t.length >= 9) score += 1;
+    if (t.length >= 12) score += 1;
+    return { token: t, score, idx };
+  }).filter((s) => s.score > 0);
+
+  // Dedup case-insensitively, keep first occurrence
+  const seen = new Set<string>();
+  const deduped: Scored[] = [];
+  for (const s of scored) {
+    const key = s.token.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(s);
+  }
+
+  // Take top N by score, then sort back into original document order
+  // (preserves natural noun-phrase grouping like "HPA axis")
+  return deduped
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max)
+    .sort((a, b) => a.idx - b.idx)
+    .map((s) => s.token);
+}
+
 async function distillQuery(rawQuery: string): Promise<string> {
   const cleaned = heuristicCleanup(rawQuery);
-  // If after cleanup it's already short, skip the AI call.
-  if (cleaned.split(/\s+/).length <= 10 && !ACADEMIC_NOISE.test(cleaned)) {
+  if (cleaned.split(/\s+/).length <= 8 && !ACADEMIC_NOISE.test(cleaned)) {
     return cleaned;
   }
 
   try {
     const result = await callAI({
       systemPrompt:
-        `You convert long, citation-laden academic prose into a short YouTube search query for a student looking for a visual explainer video.\n\nRULES:\n- Output 5 to 9 words.\n- Identify the central concept or mechanism the passage is about, NOT the study or its authors.\n- Strip ALL author names, citations, year references, and parenthetical asides.\n- Strip filler verbs ("found that", "showed", "demonstrated").\n- Append exactly ONE format qualifier: "explained" (default), "step by step" (procedures/calculations), "animated" (biological/chemical/physical mechanisms), "diagram walkthrough" (anatomy/structures), or "visual explanation" (abstract theories).\n- Output ONLY the query string. No quotes, no preamble, no JSON.`,
+        `You convert academic prose into a short YouTube search query for a student looking for a visual explainer video.
+
+Output STRICT JSON in this exact shape:
+{"query": "<5-9 word search query>", "core_terms": "<2-4 word core concept only, no qualifier>"}
+
+RULES for "query":
+- 5 to 9 words total.
+- Identify the central concept, mechanism, or system being described — NOT the study, its authors, or what the researchers did.
+- Strip ALL author names, citations, year references, parenthetical asides, and filler verbs ("found that", "showed", "demonstrated", "reported").
+- Append exactly ONE format qualifier at the end: "explained" (default), "step by step" (procedures/calculations), "animated" (biological/chemical/physical mechanisms), "diagram walkthrough" (anatomy/structures), or "visual explanation" (abstract theories).
+
+RULES for "core_terms":
+- 2 to 4 words. The naked concept name only — no qualifier, no verbs.
+- Used as a fallback search if the full query returns nothing.
+
+Output ONLY the JSON object. No preamble, no commentary, no markdown fences.`,
       messages: [
         {
           role: "user",
-          content: `Convert this passage into a YouTube search query:\n\n"""${rawQuery.slice(0, 2000)}"""`,
+          content: `Convert this passage into a YouTube search query and core terms:\n\n"""${rawQuery.slice(0, 2000)}"""`,
         },
       ],
-      maxTokens: 80,
+      maxTokens: 200,
+      jsonMode: true,
     });
-    const distilled = (result.content || "").replace(/^["'`]+|["'`]+$/g, "").trim().split(/\n/)[0].trim();
+
+    const raw = result.content || "";
+    // First, try to parse as JSON (the structured path)
+    try {
+      const cleanedJson = raw
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/i, "")
+        .trim();
+      const start = cleanedJson.indexOf("{");
+      const end = cleanedJson.lastIndexOf("}");
+      if (start !== -1 && end > start) {
+        const parsed = JSON.parse(cleanedJson.slice(start, end + 1));
+        if (typeof parsed.query === "string" && parsed.query.trim().length > 3) {
+          const q = unwrapAIQuery(parsed.query);
+          if (q && q.split(/\s+/).length >= 3 && q.length < 200) {
+            return q;
+          }
+        }
+      }
+    } catch {
+      // Fall through to plain-text unwrapping
+    }
+
+    // Plain-text fallback: unwrap chatty prefixes/fences
+    const distilled = unwrapAIQuery(raw);
     if (distilled && distilled.split(/\s+/).length >= 3 && distilled.length < 200) {
       return distilled;
     }
   } catch (err) {
-    console.warn("Query distillation via AI failed, falling back to heuristic cleanup:", err);
+    console.warn("Query distillation via AI failed, falling back to keyword extraction:", err);
   }
 
-  // Fallback — heuristic cleanup, capped at 10 words.
-  const words = cleaned.split(/\s+/).slice(0, 10);
-  return words.join(" ");
+  // Final fallback — extract top key terms heuristically and append "explained".
+  const keyTerms = extractKeyTerms(rawQuery, 5);
+  if (keyTerms.length > 0) {
+    return keyTerms.join(" ") + " explained";
+  }
+  // Last resort: cleaned + truncate
+  return cleaned.split(/\s+/).slice(0, 8).join(" ");
+}
+
+/**
+ * If a query returned 0 results, try progressively simpler variations.
+ * Strips qualifiers, then uses just the top 2-4 key terms.
+ */
+function buildRetryQuery(distilled: string, originalRaw: string): string | null {
+  // Try 1: drop the trailing format qualifier
+  const qualifier = /\s+(explained|animated|step by step|diagram walkthrough|visual explanation)\s*$/i;
+  const withoutQualifier = distilled.replace(qualifier, "").trim();
+  if (withoutQualifier && withoutQualifier !== distilled && withoutQualifier.split(/\s+/).length >= 2) {
+    return withoutQualifier;
+  }
+  // Try 2: top 3 key terms from the original raw text
+  const keyTerms = extractKeyTerms(originalRaw, 3);
+  if (keyTerms.length >= 2) {
+    return keyTerms.join(" ");
+  }
+  return null;
 }
 
 const corsHeaders = {
@@ -188,34 +337,75 @@ serve(async (req) => {
       );
     }
 
-    // Try each key until one works
-    let data: Record<string, unknown> | null = null;
-    for (const key of keysToTry) {
-      data = await tryInnerTubeSearch(key, searchQuery);
-      if (data) {
-        console.log(`InnerTube search succeeded with key ${key.substring(0, 12)}...`);
-        break;
+    // Helper: run an InnerTube search across all keys, return parsed videos
+    // (or empty array if YouTube returns no matches, null if all keys failed)
+    async function searchAndParse(q: string): Promise<{ videos: ReturnType<typeof parseVideoResults>; failed: boolean }> {
+      let data: Record<string, unknown> | null = null;
+      for (const key of keysToTry) {
+        data = await tryInnerTubeSearch(key, q);
+        if (data) {
+          console.log(`InnerTube search ok via key ${key.substring(0, 12)}... for "${q}"`);
+          break;
+        }
       }
+      if (!data) return { videos: [], failed: true };
+      return { videos: parseVideoResults(data), failed: false };
     }
 
-    if (!data) {
+    // Attempt 1 — distilled query
+    let attempt = await searchAndParse(searchQuery);
+    let queryUsed = searchQuery;
+    let queryAttempts: string[] = [searchQuery];
+
+    if (attempt.failed) {
       return new Response(
         JSON.stringify({ error: "Could not fetch explainer videos right now. All API keys failed." }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    const videos = parseVideoResults(data).map((video, index) => ({
+    // Attempt 2 — if 0 results, retry with a simpler query (no qualifier
+    // or just the top key terms). Niche academic topics often need this.
+    if (attempt.videos.length === 0) {
+      const retryQuery = buildRetryQuery(searchQuery, normalizedQuery);
+      if (retryQuery && retryQuery !== searchQuery) {
+        console.log(`No results for "${searchQuery}" — retrying with "${retryQuery}"`);
+        queryAttempts.push(retryQuery);
+        attempt = await searchAndParse(retryQuery);
+        if (!attempt.failed && attempt.videos.length > 0) {
+          queryUsed = retryQuery;
+        }
+      }
+    }
+
+    // Attempt 3 — last resort: top 2 key terms only, no qualifier
+    if (attempt.videos.length === 0) {
+      const keyTerms = extractKeyTerms(normalizedQuery, 2);
+      if (keyTerms.length >= 2) {
+        const lastResort = keyTerms.join(" ");
+        if (!queryAttempts.includes(lastResort)) {
+          console.log(`Still no results — last-resort query: "${lastResort}"`);
+          queryAttempts.push(lastResort);
+          attempt = await searchAndParse(lastResort);
+          if (!attempt.failed && attempt.videos.length > 0) {
+            queryUsed = lastResort;
+          }
+        }
+      }
+    }
+
+    const videos = attempt.videos.map((video, index) => ({
       ...video,
-      rationale: buildRationale(searchQuery, video.title, video.duration, index),
+      rationale: buildRationale(queryUsed, video.title, video.duration, index),
     }));
 
     if (videos.length === 0) {
       return new Response(
         JSON.stringify({
-          error: "No explainer videos found for this topic.",
-          searchQuery,
+          error: "No explainer videos found for this topic. Try selecting a shorter, more specific phrase.",
+          searchQuery: queryUsed,
           originalQuery: normalizedQuery,
+          queryAttempts,
         }),
         {
           status: 404,
@@ -227,8 +417,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         videos,
-        searchQuery,
+        searchQuery: queryUsed,
         originalQuery: normalizedQuery,
+        queryAttempts,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
