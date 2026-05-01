@@ -51,6 +51,10 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveToast, setSaveToast] = useState<string | null>(null);
+  // The query the edge function actually used to search YouTube. May
+  // differ from `searchQuery` (the user's raw highlight) when the
+  // edge function distilled a long passage into a concise query.
+  const [resolvedQuery, setResolvedQuery] = useState<string | null>(null);
 
   const normalizeQuery = (query: string) => query.trim().toLowerCase().replace(/\s+/g, " ");
   const selectionKey = `bfn:lastExplainer:${normalizeQuery(searchQuery)}`;
@@ -87,6 +91,9 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
       }
 
       const nextVideos = Array.isArray(data?.videos) ? data.videos as VideoChoice[] : [];
+      const distilled = typeof data?.searchQuery === "string" ? data.searchQuery : null;
+      setResolvedQuery(distilled && distilled !== searchQuery.trim() ? distilled : null);
+
       if (nextVideos.length === 0) {
         setVideos([]);
         setError(data?.error || "No explainer videos found for this topic.");
@@ -147,19 +154,26 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
       }}
     >
       <div className="relative mx-4 w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
-          <p className="text-sm font-medium text-foreground truncate pr-4">
-            🎥 Visual Explainer: {searchQuery.replace(/\b(simple|easy)?\s*(explanation|explainer)?\s*(for|aimed at)?\s*\d+[\s-]*(year[\s-]*old|yo)\b/gi, "").replace(/\b(for students|for kids|for beginners|ADHD friendly|simple visual)\b/gi, "").replace(/\s{2,}/g, " ").trim()}
-          </p>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
-            onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close video</span>
-          </Button>
+        <div className="flex flex-col gap-1 px-4 py-3 border-b border-border bg-muted/50">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-medium text-foreground truncate pr-4">
+              🎥 Visual Explainer: {(resolvedQuery || searchQuery).replace(/\b(simple|easy)?\s*(explanation|explainer)?\s*(for|aimed at)?\s*\d+[\s-]*(year[\s-]*old|yo)\b/gi, "").replace(/\b(for students|for kids|for beginners|ADHD friendly|simple visual)\b/gi, "").replace(/\s{2,}/g, " ").trim()}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
+              onClick={onClose}
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close video</span>
+            </Button>
+          </div>
+          {resolvedQuery && (
+            <p className="text-[11px] text-muted-foreground line-clamp-1" title={searchQuery}>
+              Refined from your selection: <span className="font-medium text-foreground">{resolvedQuery}</span>
+            </p>
+          )}
         </div>
 
         <div className="grid gap-0 md:grid-cols-[1.35fr_0.9fr]">
