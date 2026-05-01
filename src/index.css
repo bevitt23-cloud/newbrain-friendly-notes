@@ -825,19 +825,27 @@ body.dyslexia-active .generated-notes {
   display: grid;
   grid-template-columns: minmax(140px, 26%) 1fr;
   margin: 1rem 0;
-  border: 2px solid hsl(var(--border));
+  border: 2px solid hsl(var(--section-sage-border));
   border-radius: 0.75rem;
   overflow: hidden;
-  background: hsl(var(--card));
+  background: hsl(var(--section-sage-bg));
 }
 .generated-notes .cornell-cue {
+  /* min-width: 0 lets grid items shrink below their intrinsic content
+     width, which prevents long words/links from clipping the column.
+     overflow-wrap + word-break + hyphens make sure the content wraps
+     rather than spilling into the hidden overflow. */
+  min-width: 0;
   padding: 1rem 0.875rem;
-  background: hsl(var(--muted) / 0.55);
-  border-right: 2px solid hsl(var(--border));
+  background: hsl(var(--section-sky-bg) / 0.85);
+  border-right: 2px solid hsl(var(--section-sage-border));
   font-size: 0.875rem;
   font-weight: 600;
   color: hsl(var(--foreground));
   line-height: 1.5;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .generated-notes .cornell-cue p,
 .generated-notes .cornell-cue ul,
@@ -850,11 +858,16 @@ body.dyslexia-active .generated-notes {
   margin-bottom: 0;
 }
 .generated-notes .cornell-notes {
+  /* Same anti-clipping rules as .cornell-cue. */
+  min-width: 0;
   padding: 1rem 1.125rem;
   font-size: 0.9375rem;
   line-height: 1.6;
   color: hsl(var(--foreground));
-  background: hsl(var(--card));
+  background: hsl(var(--section-sage-bg));
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .generated-notes .cornell-notes p,
 .generated-notes .cornell-notes ul,
@@ -869,14 +882,14 @@ body.dyslexia-active .generated-notes {
 .generated-notes .cornell-summary {
   margin: 0 0 1rem 0;
   padding: 0.875rem 1.125rem;
-  border: 2px solid hsl(var(--border));
+  border: 2px solid hsl(var(--section-sage-border));
   border-top: none;
   border-bottom-left-radius: 0.75rem;
   border-bottom-right-radius: 0.75rem;
-  background: hsl(var(--muted) / 0.35);
+  background: hsl(var(--section-amber-bg) / 0.7);
   font-size: 0.875rem;
   font-style: italic;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
   line-height: 1.55;
 }
 .generated-notes .cornell-summary::before {
