@@ -61,13 +61,19 @@ Output ONLY valid JSON, no markdown fences.`;
       jsonMode: true,
     });
 
-    // Parse the AI output server-side so the client never deals with
-    // raw JSON strings. Strip any stray markdown fences the model may
-    // still emit despite jsonMode, then parse. Return a clean object.
-    const cleaned = result.content
+    const rawContent = result.content ?? "";
+    const cleaned = rawContent
       .replace(/^```(?:json)?\s*/i, "")
       .replace(/\s*```\s*$/i, "")
       .trim();
+
+    if (!cleaned) {
+      console.error("generate-fun-fact: AI returned empty content");
+      return new Response(
+        JSON.stringify({ error: "AI returned an empty response. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     let parsed: { fact?: string; search_query?: string };
     try {

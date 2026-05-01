@@ -919,18 +919,24 @@ body.dyslexia-active .generated-notes {
 /* ─── Tables ───────────────────────────────────────────────────
    AI-generated tables often arrived borderless, making it hard
    to see which cells belong together. Force visible borders on
-   every table, header, and cell.
+   every table, header, and cell. Use a dedicated darker border
+   color so row/column separators are clearly readable; the global
+   --border is too faint for dense tabular data.
    ─────────────────────────────────────────────────────────────── */
 .generated-notes table {
+  --table-border: 240 10% 70%;
   width: 100%;
   margin: 1rem 0;
   border-collapse: separate;
   border-spacing: 0;
-  border: 2px solid hsl(var(--border));
+  border: 2px solid hsl(var(--table-border));
   border-radius: 0.75rem;
   overflow: hidden;
   font-size: 0.9375rem;
   background: hsl(var(--card));
+}
+.dark .generated-notes table {
+  --table-border: 224 14% 32%;
 }
 .generated-notes thead {
   background: hsl(var(--muted) / 0.7);
@@ -943,8 +949,8 @@ body.dyslexia-active .generated-notes {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: hsl(var(--foreground));
-  border-bottom: 2px solid hsl(var(--border));
-  border-right: 1px solid hsl(var(--border));
+  border-bottom: 2px solid hsl(var(--table-border));
+  border-right: 1px solid hsl(var(--table-border));
 }
 .generated-notes thead th:last-child {
   border-right: none;
@@ -952,8 +958,8 @@ body.dyslexia-active .generated-notes {
 .generated-notes tbody td,
 .generated-notes tbody th {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid hsl(var(--border));
-  border-right: 1px solid hsl(var(--border));
+  border-bottom: 1px solid hsl(var(--table-border));
+  border-right: 1px solid hsl(var(--table-border));
   color: hsl(var(--foreground));
   line-height: 1.55;
   vertical-align: top;
@@ -994,7 +1000,7 @@ body.dyslexia-active .generated-notes {
 .generated-notes table:not(:has(thead)) tr:first-child th {
   background: hsl(var(--muted) / 0.7);
   font-weight: 700;
-  border-bottom: 2px solid hsl(var(--border));
+  border-bottom: 2px solid hsl(var(--table-border));
 }
 
 /* Hide accidental AI-generated mind map/flow chart lists */

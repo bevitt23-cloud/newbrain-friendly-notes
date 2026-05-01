@@ -43,15 +43,18 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
   const generateFunFact = useCallback(async (topic: string, context?: string, interests?: string[]) => {
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-fun-fact", {
-        body: { topic, context, interests },
-      });
+      let data: any;
+      let error: any;
+      try {
+        ({ data, error } = await supabase.functions.invoke("generate-fun-fact", {
+          body: { topic, context, interests },
+        }));
+      } catch (invokeErr) {
+        throw new Error("The fun fact service returned an invalid response. Please try again.");
+      }
 
       if (error) throw error;
 
-      // Edge function now returns { fact, search_query } pre-parsed.
-      // Fall back to legacy { result: "<json string>" } shape in case
-      // an older edge function revision is still deployed.
       if (data && typeof data.fact === "string") {
         return { fact: data.fact, search_query: data.search_query ?? "" };
       }
