@@ -53,7 +53,29 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
         throw new Error("The fun fact service returned an invalid response. Please try again.");
       }
 
-      if (error) throw error;
+      // Supabase wraps non-2xx responses in a FunctionsHttpError whose .context
+      // is the raw Response. Read its body to surface the actual edge-function
+      // error message instead of the generic "non-2xx status code".
+      if (error) {
+        const ctxResponse: Response | undefined = error?.context;
+        if (ctxResponse && typeof ctxResponse.text === "function") {
+          try {
+            const bodyText = await ctxResponse.text();
+            let serverMsg = bodyText;
+            try {
+              const json = JSON.parse(bodyText);
+              if (json?.error) serverMsg = String(json.error);
+            } catch { /* not JSON, use raw text */ }
+            console.error("Fun fact edge-function error body:", serverMsg);
+            throw new Error(serverMsg || "Fun fact service is unavailable.");
+          } catch (readErr) {
+            if (readErr instanceof Error && readErr.message && readErr.message !== "Fun fact service is unavailable.") {
+              throw readErr;
+            }
+          }
+        }
+        throw error;
+      }
 
       if (data && typeof data.fact === "string") {
         return { fact: data.fact, search_query: data.search_query ?? "" };
@@ -74,10 +96,14 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error("Fun fact generation failed:", e);
       const msg = e instanceof Error ? e.message : String(e);
+      const isMissingKeys = msg.includes("All AI models") || msg.includes("non-2xx");
+      const isAuthIssue = msg.toLowerCase().includes("authentication") || msg.includes("401");
       toast.error("Fun fact generation failed", {
-        description: msg.includes("non-2xx")
-          ? "The AI service may not be configured. Please check that your API keys are set in Supabase Function Secrets."
-          : msg,
+        description: isAuthIssue
+          ? "Please sign in again — your session may have expired."
+          : isMissingKeys
+            ? "The AI service isn't configured. Add GEMINI_KEY or ANTHROPIC_KEY in Supabase → Edge Functions → Secrets."
+            : msg,
       });
       return null;
     } finally {
