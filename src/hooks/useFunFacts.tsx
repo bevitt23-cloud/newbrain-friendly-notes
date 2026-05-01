@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -21,9 +21,31 @@ interface FunFactContextValue {
 
 const FunFactContext = createContext<FunFactContextValue | null>(null);
 
+const SHOWN_FACTS_KEY = "bfn:funfact-history";
+const SHOWN_FACTS_CAP = 30;
+
+function loadShownFacts(): string[] {
+  try {
+    const raw = localStorage.getItem(SHOWN_FACTS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((s) => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistShownFacts(facts: string[]) {
+  try {
+    localStorage.setItem(SHOWN_FACTS_KEY, JSON.stringify(facts.slice(-SHOWN_FACTS_CAP)));
+  } catch { /* localStorage may be full or unavailable */ }
+}
+
 export function FunFactProvider({ children }: { children: ReactNode }) {
   const [savedFacts, setSavedFacts] = useState<SavedFunFact[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  // Ref so updates between rapid clicks don't get overwritten by stale closures.
+  const shownFactsRef = useRef<string[]>(loadShownFacts());
 
   const saveFact = useCallback((fact: string, searchQuery: string) => {
     const newFact: SavedFunFact = {
@@ -47,7 +69,12 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
       let error: any;
       try {
         ({ data, error } = await supabase.functions.invoke("generate-fun-fact", {
-          body: { topic, context, interests },
+          body: {
+            topic,
+            context,
+            interests,
+            previousFacts: shownFactsRef.current.slice(-SHOWN_FACTS_CAP),
+          },
         }));
       } catch (invokeErr) {
         throw new Error("The fun fact service returned an invalid response. Please try again.");
@@ -78,6 +105,11 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
       }
 
       if (data && typeof data.fact === "string") {
+        const newFact = data.fact.trim();
+        if (newFact) {
+          shownFactsRef.current = [...shownFactsRef.current, newFact].slice(-SHOWN_FACTS_CAP);
+          persistShownFacts(shownFactsRef.current);
+        }
         return { fact: data.fact, search_query: data.search_query ?? "" };
       }
       if (data && typeof data.result === "string") {
@@ -86,8 +118,13 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
           .replace(/\s*```\s*$/i, "")
           .trim();
         try {
-          const parsed = JSON.parse(cleaned);
-          return parsed as { fact: string; search_query: string };
+          const parsed = JSON.parse(cleaned) as { fact: string; search_query: string };
+          const newFact = typeof parsed.fact === "string" ? parsed.fact.trim() : "";
+          if (newFact) {
+            shownFactsRef.current = [...shownFactsRef.current, newFact].slice(-SHOWN_FACTS_CAP);
+            persistShownFacts(shownFactsRef.current);
+          }
+          return parsed;
         } catch {
           throw new Error("AI returned malformed fun fact. Please try again.");
         }
