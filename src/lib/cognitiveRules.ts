@@ -336,6 +336,41 @@ STEP-BY-STEP MATH RULE: When solving a math problem or demonstrating a calculati
 
 const STRENGTH_TRAITS: CognitiveTrait[] = ["visual_spatial", "systems_analytical", "strict_procedural"];
 
+// Human-readable trait labels. The server-side note generator gates
+// extra cognitive modifiers via `profileLower.includes(...)` substring
+// checks (see supabase/functions/generate-notes/index.ts ~line 994+).
+// Those checks look for literal phrases like "dyscalculia",
+// "working memory", "rsd", and "rejection sensitive". The trait IDs
+// (e.g. "working_memory") use underscores, so we MUST emit the
+// space-separated, human-readable label here — otherwise the server
+// gates silently never fire and the cognitive modifiers are dead code.
+const TRAIT_LABELS: Record<CognitiveTrait, string> = {
+  dyslexia: "dyslexia",
+  adhd: "adhd",
+  asd: "autism spectrum",
+  dyscalculia: "dyscalculia",
+  dysgraphia_motor: "dysgraphia (motor)",
+  dysgraphia_expression: "dysgraphia (expression)",
+  working_memory: "working memory",
+  ef_planning: "executive function planning",
+  dopamine_regulation: "dopamine regulation",
+  rsd: "rsd / rejection sensitive dysphoria",
+  interest_based: "interest-based nervous system",
+  cognitive_burnout: "cognitive burnout",
+  high_cognitive_load: "high cognitive load",
+  sensory_hypo: "sensory hypo-arousal",
+  visual_spatial: "visual-spatial processing",
+  systems_analytical: "systems-analytical processing",
+  strict_procedural: "strict procedural processing",
+  demand_avoidant: "demand avoidant",
+  prioritization_fatigue: "prioritization fatigue",
+  visual_mapper: "visual mapper",
+};
+
+function labelTraitPrompt(trait: CognitiveTrait, body: string): string {
+  return `[TRAIT: ${TRAIT_LABELS[trait]}]\n${body}`;
+}
+
 export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation?: string | null): string {
   const parts: string[] = [];
 
@@ -345,7 +380,9 @@ export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation
 
   // Strengths first — frame as primary teaching strategy
   if (strengths.length > 0) {
-    const strengthPrompts = strengths.map((t) => TRAIT_PROMPTS[t]).filter(Boolean);
+    const strengthPrompts = strengths
+      .map((t) => (TRAIT_PROMPTS[t] ? labelTraitPrompt(t, TRAIT_PROMPTS[t]!) : null))
+      .filter((s): s is string => !!s);
     if (strengthPrompts.length > 0) {
       parts.push(
         "LEARNING STRENGTHS (lean into these as your PRIMARY teaching strategy — the user processes information best this way):\n" +
@@ -356,7 +393,9 @@ export function buildProfilePromptAppend(traits: CognitiveTrait[], hyperFixation
 
   // Accommodations second — frame as load-reducers
   if (accommodations.length > 0) {
-    const accomPrompts = accommodations.map((t) => TRAIT_PROMPTS[t]).filter(Boolean);
+    const accomPrompts = accommodations
+      .map((t) => (TRAIT_PROMPTS[t] ? labelTraitPrompt(t, TRAIT_PROMPTS[t]!) : null))
+      .filter((s): s is string => !!s);
     if (accomPrompts.length > 0) {
       parts.push(
         "ACCOMMODATIONS (reduce cognitive load in these areas):\n" +

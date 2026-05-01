@@ -79,7 +79,15 @@ export function useNoteGeneration() {
     setUploadProgress("");
     setQuizQuestions([]);
     setIsGeneratingQuiz(false);
-    ageRef.current = opts.age ?? null;
+    // Coerce age to a real number so server-side `typeof age === "number"`
+    // checks don't silently skip the age-based reading-level adjustment.
+    const coercedAge: number | null =
+      typeof opts.age === "number" && Number.isFinite(opts.age)
+        ? opts.age
+        : opts.age != null && opts.age !== ""
+          ? Number.isFinite(Number(opts.age)) ? Number(opts.age) : null
+          : null;
+    ageRef.current = coercedAge;
 
     try {
       // 1. Normalize text to prevent "undefined" string coercion
@@ -237,7 +245,7 @@ export function useNoteGeneration() {
         extras: Array.isArray(opts.extras) ? opts.extras : [],
         instructions: typeof opts.instructions === "string" ? opts.instructions : "",
         profilePrompt: typeof opts.profilePrompt === "string" ? opts.profilePrompt : undefined,
-        age: opts.age ?? null,
+        age: coercedAge,
         noteFormat: opts.noteFormat || "auto",
         energyMode: opts.energyMode || "full",
       };
@@ -416,7 +424,7 @@ export function useNoteGeneration() {
       });
 
       // 5. Trigger Quiz Generation
-      const shouldQuiz = payload.extras.includes("retention_quiz");
+      const shouldQuiz = (payload.extras as string[]).includes("retention_quiz");
       if (shouldQuiz && finalHtml.length > 100) {
         setIsGeneratingQuiz(true);
         fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-retention-quiz`, {
@@ -426,7 +434,13 @@ export function useNoteGeneration() {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${session?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ notesHtml: finalHtml, age: ageRef.current }),
+          body: JSON.stringify({
+            notesHtml: finalHtml,
+            age: ageRef.current,
+            learningMode: payload.learningMode,
+            energyMode: payload.energyMode,
+            profilePrompt: payload.profilePrompt,
+          }),
         })
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
