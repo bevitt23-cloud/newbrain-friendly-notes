@@ -950,18 +950,25 @@ STRUCTURE RULES:
 
 FORMAT DECISION TREE (evaluate in order — stop at the first match):
 
-1. FLOW — Choose this if the source material is PRIMARILY a sequential process, procedure, lifecycle, algorithm, historical chronology with strict cause-effect ordering, surgical/medical protocol, recipe, tutorial, or anything where the order of steps is load-bearing (changing the order would break understanding). Signals: numbered steps in the source, words like "first/then/next/finally", "phase", "stage", "cycle", process diagrams, flowcharts.
+HARD ROUTES — apply these BEFORE the decision tree:
+- Research papers, peer-reviewed journal articles, review articles, meta-analyses, case reports, conference papers, preprints (arXiv, bioRxiv, PMC/PubMed Central, Nature, NEJM, Lancet, JAMA, Cell, Science, etc.) → ALWAYS use OUTLINE. These have an Abstract → Introduction → Methods → Results → Discussion structure that maps perfectly to a hierarchical outline. Do NOT pick Cornell just because the paper uses medical or technical vocabulary — research papers are not flashcard material.
+- News articles, blog posts, opinion pieces, encyclopedia entries (Wikipedia, etc.) → OUTLINE.
+- Glossary documents that are literally a list of "term: definition" pairs → CORNELL.
 
-2. CORNELL NOTES — Choose this if the source is exam-prep, flashcard-style content, definition-heavy (glossaries, vocabulary, clinical terms), OR if the student is clearly studying for recall/memorization. Signals: lots of term-definition pairs, Q&A material, "key terms" sections, anatomy labels, medical/legal/foreign-language vocabulary, test review sheets.
+If none of the hard routes match, evaluate in order — stop at the first match:
+
+1. FLOW — Choose this if the source material is PRIMARILY a sequential process, procedure, lifecycle, algorithm, historical chronology with strict cause-effect ordering, surgical/medical protocol, recipe, tutorial, or anything where the order of steps is load-bearing (changing the order would break understanding). Signals: numbered steps in the source, words like "first/then/next/finally", "phase", "stage", "cycle", process diagrams, flowcharts. Do NOT pick Flow just because the source mentions a process — pick Flow only if the WHOLE document is structured as ordered steps.
+
+2. CORNELL NOTES — Choose this ONLY if the source is structurally a list of term→definition pairs that a student would memorize for recall. Required structural signal: at least 60% of the substantive content can be cleanly expressed as discrete "term: definition" or "Q: A" units. Examples that DO qualify: vocab lists, language flashcard decks, exam-review sheets, anatomy term sheets, key-term glossaries, board-exam study guides. Examples that DO NOT qualify (these are NOT Cornell, even if they contain technical vocabulary): research papers, journal articles, textbook chapters, lecture notes, articles about a medical/legal topic, case studies, news pieces. The mere presence of clinical/legal/foreign-language vocabulary is NOT a Cornell signal — the source must literally be shaped like a flashcard deck.
 
 3. CONCEPT MAP — Choose this if the content is about RELATIONSHIPS between abstract ideas rather than a linear story or procedure. Signals: philosophy, economics concepts, ecosystem interactions, political science theories, literary themes, psychological frameworks where multiple concepts interconnect but have no strict order. The content "branches" rather than "flows".
 
-4. OUTLINE — Default fallback. Choose this if none of the above match clearly: textbook chapter summaries, lecture notes covering many loosely-related topics, overview articles, general study material where the hierarchy of topics is the most useful organizing principle.
+4. OUTLINE — Default. Choose this for textbook chapter summaries, lecture notes covering many loosely-related topics, overview articles, research papers, journal articles, news/blog articles, and general study material where the hierarchy of topics is the most useful organizing principle. When in doubt, pick Outline.
 
 EXECUTION:
 - Once you pick a format, apply that format's FULL rules block (structure, HTML tags, required elements) to every section of the output.
 - Record your choice in the verification comment at the end: <!-- verification: ...chosen_format: [outline|cornell|concept_map|flow], format_reason: "one sentence explaining why" -->
-- If you are genuinely torn between two formats (50/50), prefer in this priority: Flow > Cornell > Concept Map > Outline.
+- If you are genuinely torn between two formats (50/50), prefer in this priority: Outline > Flow > Concept Map > Cornell. Cornell is the most specialized format and should be the LAST resort, not a tie-breaker default.
 
 The four format rule sets are:
 
