@@ -279,11 +279,10 @@
    ═══════════════════════════════════════════ */
 
 .generated-notes {
-  @apply space-y-8;
   max-width: 960px;
   margin-left: auto;
   margin-right: auto;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .generated-notes > h1,
@@ -291,13 +290,27 @@
   display: none; /* Title shown in header bar instead */
 }
 
-/* Section cards — NO transition (prevents dark mode flash) */
+/* Section cards — calmer treatment: soft tint background (preserves
+   ADHD-friendly visual chunking) + a clean colored left-accent stripe
+   for category cue + subtle elevation shadow so sections feel like
+   cards rather than flat rainbow boxes. NO transition (prevents dark
+   mode flash). */
 .generated-notes > section,
 .generated-notes > div > section {
-  @apply rounded-2xl p-6 md:p-7;
-  margin-bottom: 2rem;
-  border-width: 1px;
-  border-style: solid;
+  @apply rounded-2xl p-6 md:p-8;
+  margin-bottom: 2.25rem;
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-left-width: 5px;
+  box-shadow:
+    0 1px 2px 0 hsl(0 0% 0% / 0.04),
+    0 4px 14px -6px hsl(0 0% 0% / 0.06);
+}
+.dark .generated-notes > section,
+.dark .generated-notes > div > section {
+  border-color: hsl(var(--border) / 0.4);
+  box-shadow:
+    0 1px 2px 0 hsl(0 0% 0% / 0.2),
+    0 4px 14px -6px hsl(0 0% 0% / 0.25);
 }
 
 /* Generating state — stable bg prevents color-cycle flash as sections stream in.
@@ -372,33 +385,31 @@
 }
 .dark .generated-notes h2 {
   color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
 }
 
-/* ─── Headings ─── */
+/* ─── Headings ───
+   H2: Bold, larger, colored. The bottom border is gone — the section
+   tint + left-accent stripe already separate sections, so a third
+   horizontal divider was redundant visual noise. */
 .generated-notes h2 {
-  @apply text-lg font-bold mb-3 pb-2 border-b;
-  border-color: hsl(var(--border));
+  @apply text-xl font-extrabold mb-4 mt-1 tracking-tight;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.005em;
 }
 .generated-notes h2[data-section-color="sage"] {
-  @apply text-sage-600;
-  border-color: hsl(var(--sage-200));
+  color: hsl(var(--sage-500));
 }
 .generated-notes h2[data-section-color="lavender"] {
-  color: hsl(var(--lavender-400));
-  border-color: hsl(var(--lavender-200));
+  color: hsl(var(--lavender-500));
 }
 .generated-notes h2[data-section-color="peach"] {
-  color: hsl(var(--peach-400));
-  border-color: hsl(var(--peach-200));
+  color: hsl(var(--peach-500));
 }
 .generated-notes h2[data-section-color="sky"] {
-  color: hsl(var(--sky-300));
-  border-color: hsl(var(--sky-200));
+  color: hsl(var(--sky-400));
 }
 .generated-notes h2[data-section-color="amber"] {
   color: hsl(var(--amber-500));
-  border-color: hsl(var(--amber-400) / 0.3);
 }
 
 /* Dark mode h2 — lighter shades */
@@ -425,16 +436,23 @@
 
 /* ─── Text elements ─── */
 .generated-notes h3 {
-  @apply text-base font-semibold mt-4 mb-2 text-foreground;
+  @apply text-base font-bold mt-6 mb-2.5 text-foreground tracking-tight;
+}
+.generated-notes h3:first-child,
+.generated-notes h2 + h3 {
+  margin-top: 0;
 }
 .generated-notes p {
-  @apply text-[0.95rem] leading-relaxed text-foreground mb-3;
+  @apply text-[0.9375rem] leading-[1.7] text-foreground mb-3.5;
+}
+.generated-notes p:last-child {
+  margin-bottom: 0;
 }
 .generated-notes ul, .generated-notes ol {
-  @apply ml-4 mb-4 space-y-1.5;
+  @apply ml-5 mb-4 space-y-2;
 }
 .generated-notes li {
-  @apply text-[0.95rem] text-foreground leading-relaxed;
+  @apply text-[0.9375rem] text-foreground leading-[1.6] pl-1;
 }
 .generated-notes ul li {
   @apply list-disc;
@@ -442,11 +460,16 @@
 .generated-notes ol li {
   @apply list-decimal;
 }
+.generated-notes ul li::marker,
+.generated-notes ol li::marker {
+  color: hsl(var(--muted-foreground) / 0.7);
+}
 .generated-notes strong {
   @apply font-bold text-foreground;
 }
 .generated-notes em {
-  @apply italic text-muted-foreground;
+  @apply italic;
+  color: hsl(var(--foreground) / 0.85);
 }
 
 /* ─── Jargon definitions ─── */
@@ -464,20 +487,39 @@
   to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ─── Special blocks ─── */
+/* ─── Special blocks ───
+   Standardized treatment: every inset block uses the neutral card
+   surface with a colored left-accent stripe. This means a recall
+   prompt + Feynman check + write-this-down inside a single section
+   no longer compete with the section's own background tint — they
+   all read as "inset cards," differentiated only by the accent
+   stripe color. Much calmer for ADHD scanning. */
 
-/* Recall prompts — soft sky */
-.generated-notes .recall-prompt {
-  @apply mt-5 rounded-2xl p-4;
-  background: hsl(var(--sky-50));
-  border: 1px solid hsl(var(--sky-200) / 0.6);
+.generated-notes .recall-prompt,
+.generated-notes .feynman-check,
+.generated-notes .write-this-down {
+  @apply mt-5 rounded-xl p-4;
+  background: hsl(var(--card) / 0.85);
+  border: 1px solid hsl(var(--border) / 0.6);
+  border-left-width: 4px;
+}
+.dark .generated-notes .recall-prompt,
+.dark .generated-notes .feynman-check,
+.dark .generated-notes .write-this-down {
+  background: hsl(var(--background) / 0.5);
 }
 
-/* Feynman check — soft lavender */
+/* Recall — sky accent */
+.generated-notes .recall-prompt {
+  border-left-color: hsl(var(--sky-300));
+}
+/* Feynman — lavender accent */
 .generated-notes .feynman-check {
-  @apply mt-5 rounded-2xl p-4;
-  background: hsl(var(--lavender-50));
-  border: 1px solid hsl(var(--lavender-200) / 0.6);
+  border-left-color: hsl(var(--lavender-300));
+}
+/* Write This Down — peach accent */
+.generated-notes .write-this-down {
+  border-left-color: hsl(var(--peach-300));
 }
 
 .generated-notes .recall-input,
@@ -491,13 +533,6 @@
 .generated-notes .recall-feedback,
 .generated-notes .feynman-feedback {
   @apply mt-3 rounded-xl border border-border bg-card p-3 text-sm;
-}
-
-/* Write This Down — soft peach */
-.generated-notes .write-this-down {
-  @apply mt-4 rounded-2xl p-4 text-sm;
-  background: hsl(var(--peach-50));
-  border: 1px solid hsl(var(--peach-200) / 0.6);
 }
 
 /* Why Should I Care — warm amber */
