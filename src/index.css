@@ -280,7 +280,7 @@
 
 .generated-notes {
   @apply space-y-8;
-  max-width: 720px;
+  max-width: 960px;
   margin-left: auto;
   margin-right: auto;
   line-height: 1.65;
@@ -925,15 +925,18 @@ body.dyslexia-active .generated-notes {
    ─────────────────────────────────────────────────────────────── */
 .generated-notes table {
   --table-border: 240 10% 70%;
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 1rem 0;
   border-collapse: separate;
   border-spacing: 0;
   border: 2px solid hsl(var(--table-border));
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow-x: auto;
   font-size: 0.9375rem;
   background: hsl(var(--card));
+  table-layout: auto;
 }
 .dark .generated-notes table {
   --table-border: 224 14% 32%;
@@ -951,6 +954,10 @@ body.dyslexia-active .generated-notes {
   color: hsl(var(--foreground));
   border-bottom: 2px solid hsl(var(--table-border));
   border-right: 1px solid hsl(var(--table-border));
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .generated-notes thead th:last-child {
   border-right: none;
@@ -963,6 +970,10 @@ body.dyslexia-active .generated-notes {
   color: hsl(var(--foreground));
   line-height: 1.55;
   vertical-align: top;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .generated-notes tbody td:last-child,
 .generated-notes tbody th:last-child {
