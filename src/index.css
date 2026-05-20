@@ -13,13 +13,13 @@
 
     /* Soft lavender-blue blush — gentle, pleasant base */
     --background: 252 20% 94%;
-    --foreground: 230 14% 14%;
+    --foreground: 230 12% 22%;
 
     --card: 252 18% 96%;
-    --card-foreground: 230 14% 14%;
+    --card-foreground: 230 12% 22%;
 
     --popover: 252 14% 97%;
-    --popover-foreground: 230 14% 14%;
+    --popover-foreground: 230 12% 22%;
 
     /* Calming blue primary */
     --primary: 199 62% 44%;
@@ -134,13 +134,13 @@
 
     /* Deep navy base — warmer, slightly lifted */
     --background: 228 28% 7%;
-    --foreground: 220 14% 90%;
+    --foreground: 220 12% 82%;
 
     --card: 224 24% 10%;
-    --card-foreground: 220 14% 90%;
+    --card-foreground: 220 12% 82%;
 
     --popover: 224 24% 10%;
-    --popover-foreground: 220 14% 90%;
+    --popover-foreground: 220 12% 82%;
 
     /* Calming blue primary (brighter for dark) */
     --primary: 199 68% 56%;

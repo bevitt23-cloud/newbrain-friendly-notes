@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw, Star } from "lucide-react";
 import { useTelemetry } from "@/hooks/useTelemetry";
@@ -21,6 +21,9 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
   const [incorrect, setIncorrect] = useState<Record<string, boolean>>({});
   const [starred, setStarred] = useState<Set<string>>(new Set());
   const [shaking, setShaking] = useState<string | null>(null);
+  const [draggedWord, setDraggedWord] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const touchDragRef = useRef<{ word: string; startY: number } | null>(null);
 
   useEffect(() => {
     try {
@@ -28,7 +31,6 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
       const parsed = JSON.parse(cleaned);
       setCloze(parsed);
       setParseError(false);
-      // Reset all state on new data
       setUserAnswers({});
       setChecked({});
       setIncorrect({});
@@ -53,7 +55,6 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
 
   if (!cloze) return <p className="text-sm text-muted-foreground">Could not parse cloze data.</p>;
 
-  // Build segments from text + blanks format
   const segments = cloze.textSegments || (() => {
     if (!cloze.text || !cloze.blanks) return [];
     const parts = cloze.text.split("____");
@@ -81,8 +82,7 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
       setIncorrect((p) => { const n = { ...p }; delete n[blankId]; return n; });
       const allDone = blanks.length > 0 && blanks.every((b) => newChecked[b.id!] === true);
       if (allDone) {
-        const correctCount = blanks.length;
-        track("cloze_session_complete", { totalBlanks: blanks.length, correctCount });
+        track("cloze_session_complete", { totalBlanks: blanks.length, correctCount: blanks.length });
         markComplete();
       }
     } else {
@@ -109,25 +109,45 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
     setStarred(next);
   };
 
+  const handleDrop = (blankId: string, word: string) => {
+    if (checked[blankId]) return;
+    setUserAnswers((p) => ({ ...p, [blankId]: word }));
+    setDropTarget(null);
+    setDraggedWord(null);
+    setTimeout(() => handleCheck(blankId), 150);
+  };
+
   const usedWords = new Set(
     blanks.filter((b) => checked[b.id!]).map((b) => b.answer?.toLowerCase())
   );
 
+  const placedWords = new Set(
+    blanks
+      .filter((b) => !checked[b.id!] && userAnswers[b.id!])
+      .map((b) => userAnswers[b.id!]?.toLowerCase())
+  );
+
   return (
     <div className="space-y-5">
-      {/* Text with blanks */}
-      <div className="rounded-2xl border border-border bg-card p-5 text-[0.95rem] leading-relaxed text-foreground">
+      <p className="text-xs text-muted-foreground text-center">
+        Drag words from the word bank into the blanks, or tap a word then tap a blank
+      </p>
+
+      {/* Text with blanks (drop targets) */}
+      <div className="rounded-2xl border border-border bg-card p-5 text-[0.95rem] leading-[2.2] text-foreground">
         {segments?.map((seg, i) => {
           if (seg.type === "text") return <span key={i}>{seg.value}</span>;
           const blankId = seg.id!;
           const isCorrect = checked[blankId];
           const isIncorrect = incorrect[blankId];
+          const currentAnswer = userAnswers[blankId];
+          const isOver = dropTarget === blankId;
           return (
             <motion.span
               key={blankId}
               animate={shaking === blankId ? { x: [-5, 5, -5, 5, 0] } : {}}
               transition={{ duration: 0.4 }}
-              className="inline-block mx-1"
+              className="inline-block mx-1 align-middle"
             >
               {isCorrect ? (
                 <span className="inline-block rounded-lg bg-sage-100 dark:bg-sage-500/15 border border-sage-300 dark:border-sage-300/30 px-3 py-1 text-sm font-semibold text-sage-700 dark:text-sage-300">
@@ -135,18 +155,34 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1">
-                  <input
-                    id={`cloze-blank-${blankId}`}
-                    name={`clozeBlank${blankId}`}
-                    type="text"
-                    value={userAnswers[blankId] || ""}
-                    onChange={(e) => setUserAnswers({ ...userAnswers, [blankId]: e.target.value })}
-                    onKeyDown={(e) => e.key === "Enter" && handleCheck(blankId)}
-                    placeholder="..."
-                    className={`inline-block w-28 rounded-lg border-b-2 border-dashed bg-muted/30 px-2 py-1 text-center text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary ${
-                      isIncorrect ? "border-peach-300" : "border-lavender-300"
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[5rem] rounded-lg border-2 border-dashed px-3 py-1 text-sm font-medium transition-all cursor-pointer ${
+                      isOver
+                        ? "border-primary bg-primary/10 scale-105"
+                        : currentAnswer
+                          ? isIncorrect
+                            ? "border-peach-300 bg-peach-50 dark:bg-peach-500/10 text-foreground"
+                            : "border-lavender-400 bg-lavender-50 dark:bg-lavender-500/10 text-foreground"
+                          : "border-lavender-300 dark:border-lavender-300/40 bg-muted/30 text-muted-foreground/50"
                     }`}
-                  />
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDropTarget(blankId);
+                    }}
+                    onDragLeave={() => setDropTarget(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const word = e.dataTransfer.getData("text/plain");
+                      if (word) handleDrop(blankId, word);
+                    }}
+                    onClick={() => {
+                      if (draggedWord) {
+                        handleDrop(blankId, draggedWord);
+                      }
+                    }}
+                  >
+                    {currentAnswer || "..."}
+                  </span>
                   {isIncorrect && (
                     <>
                       <button onClick={() => handleTryAgain(blankId)} className="rounded-full p-1 text-muted-foreground hover:bg-muted transition-colors" title="Try Again">
@@ -164,19 +200,39 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
         })}
       </div>
 
-      {/* Word Bank */}
+      {/* Word Bank (drag sources) */}
       <div className="space-y-2">
         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Word Bank</p>
         <div className="flex flex-wrap gap-2">
           {cloze.wordBank.map((word, i) => {
             const isUsed = usedWords.has(word.toLowerCase());
+            const isPlaced = placedWords.has(word.toLowerCase());
+            const isActive = draggedWord === word;
             return (
               <span
                 key={i}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all ${
+                draggable={!isUsed}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("text/plain", word);
+                  e.dataTransfer.effectAllowed = "move";
+                  setDraggedWord(word);
+                }}
+                onDragEnd={() => setDraggedWord(null)}
+                onTouchStart={() => {
+                  if (!isUsed) setDraggedWord(word);
+                }}
+                onClick={() => {
+                  if (isUsed) return;
+                  setDraggedWord((prev) => prev === word ? null : word);
+                }}
+                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-all select-none ${
                   isUsed
-                    ? "border-sage-200 dark:border-sage-200/30 bg-sage-50 dark:bg-sage-500/10 text-sage-400 dark:text-sage-500 line-through opacity-50"
-                    : "border-lavender-200 dark:border-lavender-200/30 bg-lavender-50 dark:bg-lavender-500/10 text-foreground shadow-sm"
+                    ? "border-sage-200 dark:border-sage-200/30 bg-sage-50 dark:bg-sage-500/10 text-sage-400 dark:text-sage-500 line-through opacity-50 cursor-default"
+                    : isActive
+                      ? "border-primary bg-primary/15 text-primary ring-2 ring-primary/30 scale-105 cursor-grabbing"
+                      : isPlaced
+                        ? "border-lavender-300 dark:border-lavender-300/30 bg-lavender-50 dark:bg-lavender-500/10 text-lavender-500 opacity-60 cursor-grab"
+                        : "border-lavender-200 dark:border-lavender-200/30 bg-lavender-50 dark:bg-lavender-500/10 text-foreground shadow-sm cursor-grab hover:shadow-md hover:scale-105"
                 }`}
               >
                 {word}
@@ -184,6 +240,11 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
             );
           })}
         </div>
+        {draggedWord && (
+          <p className="text-[11px] text-primary font-medium animate-pulse">
+            Now tap a blank to place "{draggedWord}"
+          </p>
+        )}
       </div>
 
       {allCorrect && (

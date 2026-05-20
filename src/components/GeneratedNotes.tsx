@@ -53,12 +53,29 @@ interface GeneratedNotesProps {
 }
 
 function applyBionic(html: string): string {
-  return html.replace(/>([^<]+)</g, (match, text: string) => {
-    const bionicText = text.replace(/\b(\w{2,})\b/g, (word: string) => {
-      const boldLen = Math.ceil(word.length * 0.4);
-      return `<span class="bionic-bold" style="font-weight:700">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
-    });
-    return `>${bionicText}<`;
+  const SKIP_TAGS = /button|textarea|input|select|option|summary|code|pre/i;
+  const tagStack: string[] = [];
+
+  return html.replace(/<\/?([a-z][a-z0-9]*)[^>]*>|>([^<]+)</gi, (match, tagName?: string, textNode?: string) => {
+    if (tagName) {
+      if (match.startsWith("</")) {
+        tagStack.pop();
+      } else if (!match.endsWith("/>")) {
+        tagStack.push(tagName);
+      }
+      return match;
+    }
+    if (textNode) {
+      const insideSkip = tagStack.some((t) => SKIP_TAGS.test(t));
+      if (insideSkip) return match;
+
+      const bionicText = textNode.replace(/\b(\w{2,})\b/g, (word: string) => {
+        const boldLen = Math.ceil(word.length * 0.4);
+        return `<span class="bionic-bold" style="font-weight:700">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
+      });
+      return `>${bionicText}<`;
+    }
+    return match;
   });
 }
 

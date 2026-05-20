@@ -148,7 +148,7 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-16 pb-6 bg-black/80 backdrop-blur-sm overflow-y-auto"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
@@ -159,15 +159,14 @@ const InAppVideoModal = ({ searchQuery, onClose, savedVideos = [], onSaveVideo }
             <p className="text-sm font-medium text-foreground truncate pr-4">
               🎥 Visual Explainer: {(resolvedQuery || searchQuery).replace(/\b(simple|easy)?\s*(explanation|explainer)?\s*(for|aimed at)?\s*\d+[\s-]*(year[\s-]*old|yo)\b/gi, "").replace(/\b(for students|for kids|for beginners|ADHD friendly|simple visual)\b/gi, "").replace(/\s{2,}/g, " ").trim()}
             </p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
+            <button
+              type="button"
               onClick={onClose}
+              className="shrink-0 flex items-center gap-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 px-3 py-1.5 text-xs font-semibold text-destructive transition-colors"
             >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close video</span>
-            </Button>
+              <X className="h-3.5 w-3.5" />
+              Close
+            </button>
           </div>
           {resolvedQuery && (
             <p className="text-[11px] text-muted-foreground line-clamp-1" title={searchQuery}>

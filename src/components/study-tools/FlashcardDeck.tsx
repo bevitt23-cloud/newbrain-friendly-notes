@@ -10,6 +10,10 @@ interface Card {
   back: string;
 }
 
+function stripHtmlTags(text: string): string {
+  return text.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+}
+
 export default function FlashcardDeck({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
   const { track } = useTelemetry();
   const { markComplete } = useToolEngagement("flashcard");
@@ -28,7 +32,7 @@ export default function FlashcardDeck({ data, onStarQuestion }: { data: string; 
     try {
       const cleaned = data.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned);
-      setCards(parsed.map((c: any, i: number) => ({ id: c.id || String(i), front: c.front, back: c.back })));
+      setCards(parsed.map((c: any, i: number) => ({ id: c.id || String(i), front: stripHtmlTags(c.front || ""), back: stripHtmlTags(c.back || "") })));
       setParseError(false);
     } catch {
       setCards([]);
