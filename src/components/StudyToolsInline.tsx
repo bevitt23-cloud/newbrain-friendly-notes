@@ -99,7 +99,7 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
   // Auto-save generated material
   const autoSave = useCallback(async (tab: GeneratedTab, result: string) => {
     if (!user) return;
-    const title = `${tab.label}${noteTitle ? ` — ${noteTitle}` : ""} — ${new Date().toLocaleDateString()}`;
+    const title = `${noteTitle || "Notes"} — ${tab.label} — ${new Date().toLocaleDateString()}`;
     const { error } = await supabase.from("saved_study_materials").insert({
       user_id: user.id,
       title,

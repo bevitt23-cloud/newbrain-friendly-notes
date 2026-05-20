@@ -199,6 +199,64 @@ export default function StudyReview() {
   const [generatedTools, setGeneratedTools] = useState<GeneratedTool[]>([]);
   const hasStartedGeneration = useRef(false);
 
+  // ── Linked study materials modal ──
+  interface LinkedMaterial {
+    id: string;
+    title: string;
+    material_type: string;
+    content: Record<string, unknown>;
+  }
+  const [linkedMaterials, setLinkedMaterials] = useState<LinkedMaterial[]>([]);
+  const [showLinkedModal, setShowLinkedModal] = useState(false);
+  const [selectedLinked, setSelectedLinked] = useState<Set<string>>(new Set());
+  const linkedCheckedRef = useRef(false);
+
+  useEffect(() => {
+    if (linkedCheckedRef.current || !user || !items.length) return;
+    linkedCheckedRef.current = true;
+
+    const noteIds = items.filter((i) => i.type === "note" && i.noteId).map((i) => i.noteId!);
+    if (noteIds.length === 0) return;
+
+    (async () => {
+      const { data } = await supabase
+        .from("saved_study_materials")
+        .select("id, title, material_type, content")
+        .in("note_id", noteIds);
+
+      if (data && data.length > 0) {
+        const materials = data as LinkedMaterial[];
+        setLinkedMaterials(materials);
+        setSelectedLinked(new Set(materials.map((m) => m.id)));
+        setShowLinkedModal(true);
+      }
+    })();
+  }, [user, items]);
+
+  const handleOpenLinkedMaterials = () => {
+    const toOpen = linkedMaterials.filter((m) => selectedLinked.has(m.id));
+    const materialTypeLabel: Record<string, string> = {
+      flashcard: "🃏 Flash Cards",
+      mindmap: "🗺️ Mind Map",
+      flowchart: "📊 Flow Chart",
+      cloze: "📝 Fill-in-Blank",
+      socratic: "💬 Debate",
+      "final-exam": "🎓 Exam",
+    };
+    const newItems: ReviewItem[] = toOpen.map((m) => ({
+      id: m.id,
+      title: m.title,
+      type: "material" as const,
+      materialType: m.material_type,
+      content: typeof m.content === "object" && m.content !== null && "raw" in m.content
+        ? String((m.content as any).raw)
+        : JSON.stringify(m.content),
+      rawContent: m.content,
+    }));
+    setItems((prev) => [...prev, ...newItems]);
+    setShowLinkedModal(false);
+  };
+
   // ── Study tool inline generation state ──
   const [showToolPicker, setShowToolPicker] = useState(false);
   const [selectedTools, setSelectedTools] = useState<Set<StudyToolType>>(new Set());
@@ -247,7 +305,7 @@ export default function StudyReview() {
             prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
           );
           if (res && user) {
-            const title = `${tool.label} — ${items[0]?.title || "Notes"} — ${new Date().toLocaleDateString()}`;
+            const title = `${items[0]?.title || "Notes"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
             await supabase.from("saved_study_materials").insert({
               user_id: user.id,
               title,
@@ -349,12 +407,13 @@ export default function StudyReview() {
             prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
           );
           if (res && user) {
-            const title = `${tool.label} — Study Session — ${new Date().toLocaleDateString()}`;
+            const title = `${items[0]?.title || "Notes"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
             await supabase.from("saved_study_materials").insert({
               user_id: user.id,
               title,
               material_type: tool.toolType,
               content: { raw: res },
+              note_id: items[0]?.noteId || null,
               tags: [],
             });
           }
@@ -647,6 +706,86 @@ export default function StudyReview() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Linked Study Materials Modal */}
+      <AnimatePresence>
+        {showLinkedModal && linkedMaterials.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowLinkedModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            >
+              <h3 className="text-lg font-bold text-foreground mb-1">
+                Linked Study Materials
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                This note has {linkedMaterials.length} saved study tool{linkedMaterials.length !== 1 ? "s" : ""}. Would you like to open them alongside the note?
+              </p>
+
+              <div className="space-y-2 mb-5">
+                {linkedMaterials.map((mat) => {
+                  const isSelected = selectedLinked.has(mat.id);
+                  const typeEmoji: Record<string, string> = {
+                    flashcard: "🃏", mindmap: "🗺️", flowchart: "📊",
+                    cloze: "📝", socratic: "💬", "final-exam": "🎓",
+                  };
+                  return (
+                    <label
+                      key={mat.id}
+                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
+                        isSelected
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          setSelectedLinked((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(mat.id)) next.delete(mat.id);
+                            else next.add(mat.id);
+                            return next;
+                          });
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30 accent-primary"
+                      />
+                      <span className="text-base">{typeEmoji[mat.material_type] || "📄"}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{mat.title}</span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={handleOpenLinkedMaterials}
+                  disabled={selectedLinked.size === 0}
+                  className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-40"
+                >
+                  Open {selectedLinked.size > 0 ? selectedLinked.size : ""} Tool{selectedLinked.size !== 1 ? "s" : ""}
+                </button>
+                <button
+                  onClick={() => setShowLinkedModal(false)}
+                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  Skip
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }
