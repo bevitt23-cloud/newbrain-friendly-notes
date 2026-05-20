@@ -130,9 +130,9 @@ const GeneratedNotes = ({
     material_type: materialType,
   });
 
-  // Wrap every <table> in a scrollable container with an "Expand" button so
-  // wide tables stay inside the notes column and the user can click to view
-  // the full table in a large dialog.
+  // Wrap every <table> in a collapsed preview card. The full table
+  // is hidden by default — clicking the preview opens the floating
+  // overlay with download/print options (same pattern as images).
   useEffect(() => {
     const container = containerRef.current;
     if (!container || isGenerating) return;
@@ -143,17 +143,23 @@ const GeneratedNotes = ({
       if (parent && parent.classList.contains("note-table-wrapper")) return;
 
       const wrapper = document.createElement("div");
-      wrapper.className = "note-table-wrapper";
+      wrapper.className = "note-table-wrapper collapsed";
       table.parentNode?.insertBefore(wrapper, table);
       wrapper.appendChild(table);
 
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "note-table-expand";
-      btn.title = "Click to enlarge table";
-      btn.innerHTML =
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>Expand';
-      wrapper.appendChild(btn);
+      const caption = table.querySelector("caption")?.textContent?.trim() || "Data Table";
+      const colCount = table.querySelectorAll("thead th").length || table.querySelector("tr")?.children.length || 0;
+      const rowCount = table.querySelectorAll("tbody tr").length || table.querySelectorAll("tr").length - 1;
+
+      const preview = document.createElement("button");
+      preview.type = "button";
+      preview.className = "note-table-preview";
+      preview.title = "Click to view full table";
+      preview.innerHTML =
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="table-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>` +
+        `<span class="table-preview-text"><strong>${caption}</strong><span class="table-preview-meta">${colCount} columns · ${rowCount} rows</span></span>` +
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="expand-icon"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+      wrapper.insertBefore(preview, table);
     });
   }, [html, isGenerating]);
 
@@ -180,11 +186,11 @@ const GeneratedNotes = ({
       return;
     }
 
-    // Handle table expand — clicking the "Expand" button enlarges the table
-    const expandBtn = target.closest(".note-table-expand") as HTMLElement | null;
-    if (expandBtn) {
+    // Handle table preview click — opens the floating overlay
+    const tablePreview = target.closest(".note-table-preview") as HTMLElement | null;
+    if (tablePreview) {
       e.preventDefault();
-      const wrapper = expandBtn.closest(".note-table-wrapper");
+      const wrapper = tablePreview.closest(".note-table-wrapper");
       const table = wrapper?.querySelector("table");
       if (table) setExpandedTableHTML(table.outerHTML);
       return;
@@ -414,10 +420,49 @@ const GeneratedNotes = ({
       <Dialog open={!!expandedTableHTML} onOpenChange={(v) => !v && setExpandedTableHTML(null)}>
         <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
           <DialogHeader className="px-6 pt-5 pb-3 border-b border-border shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <Maximize2 className="h-5 w-5 text-primary" />
-              Table View
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                <Maximize2 className="h-5 w-5 text-primary" />
+                Table View
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!expandedTableHTML) return;
+                    const blob = new Blob(
+                      [`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left}thead{background:#f5f5f5;font-weight:700}</style></head><body>${expandedTableHTML}</body></html>`],
+                      { type: "text/html" },
+                    );
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `table-${Date.now()}.html`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+                <button
+                  onClick={() => {
+                    if (!expandedTableHTML) return;
+                    const printWindow = window.open("", "_blank");
+                    if (!printWindow) return;
+                    printWindow.document.write(
+                      `<!DOCTYPE html><html><head><title>Table</title><style>body{font-family:Arial,sans-serif;padding:24px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left}thead{background:#f0f0f0}th{font-weight:700}@media print{body{padding:0}}</style></head><body>${expandedTableHTML}</body></html>`,
+                    );
+                    printWindow.document.close();
+                    setTimeout(() => printWindow.print(), 400);
+                  }}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Print
+                </button>
+              </div>
+            </div>
           </DialogHeader>
           <div className="generated-notes expanded-table-view flex-1 min-h-0 overflow-auto p-6">
             {expandedTableHTML && (

@@ -40,6 +40,14 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatFullDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export interface NoteCardNote {
   id: string;
   title: string;
@@ -49,6 +57,7 @@ export interface NoteCardNote {
   learning_mode: string | null;
   is_favorite: boolean | null;
   updated_at: string;
+  created_at: string;
 }
 
 interface NoteCardProps {
@@ -106,6 +115,7 @@ const NoteCard = ({
               </span>
             )}
           </div>
+          <p className="text-[10px] text-muted-foreground/50 mt-0.5">{formatFullDate(note.created_at)}</p>
           {note.tags && note.tags.length > 0 && (
             <div className="flex gap-1 mt-0.5">
               {note.tags.slice(0, 3).map((tag) => (
@@ -157,10 +167,11 @@ const NoteCard = ({
         <Star className={`h-4 w-4 transition-colors ${isFav ? "fill-amber-400 text-amber-400" : "text-muted-foreground/25 hover:text-amber-400"}`} />
       </button>
 
-      {/* Title */}
-      <h3 className="text-sm font-semibold text-foreground line-clamp-2 pr-6 mb-1.5">
+      {/* Title + date */}
+      <h3 className="text-sm font-semibold text-foreground line-clamp-2 pr-6 mb-0.5">
         {note.title}
       </h3>
+      <p className="text-[10px] text-muted-foreground/50 mb-1.5">{formatFullDate(note.created_at)}</p>
 
       {/* Preview */}
       {preview && (
