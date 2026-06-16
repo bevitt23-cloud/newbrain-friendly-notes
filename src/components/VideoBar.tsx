@@ -9,6 +9,16 @@ interface VideoBarProps {
   onRemoveVideo: (videoId: string) => void;
 }
 
+/**
+ * Keep the floating bar and player clear of the sticky app header
+ * (Header is `h-14` = 56px). The player/bar render inside the `z-10`
+ * <main> stacking context, so their own z-index can never rise above the
+ * header — if they slide under it, the drag handle and close/minimize
+ * controls get hidden. Clamping the top to just below the header keeps
+ * those controls always visible and clickable.
+ */
+const HEADER_SAFE_TOP = 64;
+
 const VideoBar = ({ savedVideos, onRemoveVideo }: VideoBarProps) => {
   const {
     activeVideoId,
@@ -46,7 +56,7 @@ const VideoBar = ({ savedVideos, onRemoveVideo }: VideoBarProps) => {
       const dy = e.clientY - barDragRef.current.startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) barClickedRef.current = false;
       const newX = Math.max(0, Math.min(window.innerWidth - 48, barDragRef.current.posX + dx));
-      const newY = Math.max(0, Math.min(window.innerHeight - 48, barDragRef.current.posY + dy));
+      const newY = Math.max(HEADER_SAFE_TOP, Math.min(window.innerHeight - 48, barDragRef.current.posY + dy));
       saveBarPosition({ x: newX, y: newY });
     },
     [isBarDragging, saveBarPosition]
@@ -76,7 +86,7 @@ const VideoBar = ({ savedVideos, onRemoveVideo }: VideoBarProps) => {
       const dx = e.clientX - playerDragRef.current.startX;
       const dy = e.clientY - playerDragRef.current.startY;
       const newX = Math.max(0, Math.min(window.innerWidth - 200, playerDragRef.current.posX + dx));
-      const newY = Math.max(0, Math.min(window.innerHeight - 100, playerDragRef.current.posY + dy));
+      const newY = Math.max(HEADER_SAFE_TOP, Math.min(window.innerHeight - 100, playerDragRef.current.posY + dy));
       savePlayerPosition({ x: newX, y: newY });
     },
     [isPlayerDragging, savePlayerPosition]
@@ -95,7 +105,7 @@ const VideoBar = ({ savedVideos, onRemoveVideo }: VideoBarProps) => {
       {/* ── Floating Video Icon (collapsed bar) ── */}
       <div
         className="fixed z-[55] select-none touch-none"
-        style={{ left: barPosition.x, top: barPosition.y }}
+        style={{ left: barPosition.x, top: Math.max(HEADER_SAFE_TOP, barPosition.y) }}
       >
         {/* Icon pill */}
         <button
@@ -209,7 +219,7 @@ const VideoBar = ({ savedVideos, onRemoveVideo }: VideoBarProps) => {
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="fixed z-[60] select-none"
-            style={{ left: playerPosition.x, top: playerPosition.y }}
+            style={{ left: playerPosition.x, top: Math.max(HEADER_SAFE_TOP, playerPosition.y) }}
           >
             <div className="w-[480px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
               {/* Drag handle */}
