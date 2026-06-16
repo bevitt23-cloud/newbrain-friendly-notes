@@ -573,16 +573,27 @@ body.dyslexia-active {
   letter-spacing: 0.05em;
   line-height: 1.6;
 }
-body.dyslexia-active *:not(.bionic-bold):not(.generated-notes strong):not(.generated-notes h1):not(.generated-notes h2):not(.generated-notes h3):not(.generated-notes h4) {
+/* Flatten text to a single weight across the ENTIRE site so word shapes
+   stay stable and easier to decode for dyslexic readers — while preserving
+   emphasis (bold key terms), headings, and bionic anchors. NOTE: the
+   exceptions are written as explicit higher-specificity overrides rather
+   than chained :not() — a :not() containing a descendant selector (e.g.
+   ".generated-notes strong") is invalid CSS and silently voids the whole
+   rule, which is why weight normalization never applied. */
+body.dyslexia-active * {
   font-weight: 400 !important;
 }
+body.dyslexia-active strong,
+body.dyslexia-active b,
 body.dyslexia-active .bionic-bold {
   font-weight: 700 !important;
 }
 body.dyslexia-active h1,
 body.dyslexia-active h2,
 body.dyslexia-active h3,
-body.dyslexia-active h4 {
+body.dyslexia-active h4,
+body.dyslexia-active h5,
+body.dyslexia-active h6 {
   font-weight: 600 !important;
 }
 body.dyslexia-active p {
