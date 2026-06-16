@@ -196,7 +196,7 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
 
       switch (tab.toolId) {
         case "flashcard": return <FlashcardDeck data={tab.result} />;
-        case "cloze": return <ClozeNotes data={tab.result} />;
+        case "cloze": return <ClozeNotes data={tab.result} noteId={linkedNoteId || undefined} />;
         case "mindmap": return <div className="h-[500px]"><MindMap data={tab.result} /></div>;
         case "flowchart": return <div className="h-[500px]"><FlowChart data={tab.result} /></div>;
         case "final-exam":
@@ -204,7 +204,7 @@ const StudyToolsInline = ({ notesHtml, linkedNoteId, noteTitle }: StudyToolsInli
           // string, not a pre-parsed object. Also pass the per-tab
           // timer snapshot so the countdown matches what the user
           // configured at generation time.
-          return <FinalExam data={tab.result} timerMinutes={tab.timerMinutes} />;
+          return <FinalExam data={tab.result} timerMinutes={tab.timerMinutes} noteId={linkedNoteId || undefined} />;
         default: return <pre className="text-xs whitespace-pre-wrap">{tab.result}</pre>;
       }
     })();

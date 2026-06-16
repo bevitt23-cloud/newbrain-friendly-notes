@@ -110,9 +110,24 @@ const Library = () => {
       content_chars: note.content.length,
       days_since_created: Math.floor((Date.now() - new Date(note.created_at).getTime()) / 86400000),
     });
+    // Note is the hub: bundle every study tool / quiz attached to this note so
+    // they open together as tabs alongside the note in the review screen.
+    const attached = materials.filter((m) => m.note_id === note.id);
+    const attachedItems = attached.map((m) => ({
+      id: m.id,
+      title: m.title,
+      type: "material" as const,
+      materialType: m.material_type,
+      content: typeof m.content?.raw === "string" ? (m.content.raw as string) : JSON.stringify(m.content),
+      rawContent: m.content,
+      noteId: note.id,
+    }));
     navigate("/library/review", {
       state: {
-        items: [{ id: note.id, title: note.title, type: "note" as const, content: note.content, noteId: note.id }],
+        items: [
+          { id: note.id, title: note.title, type: "note" as const, content: note.content, noteId: note.id },
+          ...attachedItems,
+        ],
       },
     });
   };
@@ -215,6 +230,14 @@ const Library = () => {
 
   const filteredNotes = filterItems(notes);
   const filteredMaterials = filterItems(materials);
+
+  // Count study tools bundled per note (for the NoteCard badge) and find any
+  // legacy materials with no parent note so they remain reachable.
+  const materialCountByNote: Record<string, number> = {};
+  for (const m of materials) {
+    if (m.note_id) materialCountByNote[m.note_id] = (materialCountByNote[m.note_id] || 0) + 1;
+  }
+  const orphanMaterials = filteredMaterials.filter((m) => !m.note_id);
 
   // Reset visible count when filters change
   useEffect(() => {
@@ -411,10 +434,11 @@ const Library = () => {
   const handleStartStudySession = () => {
     const noteIds = new Set(selectedNoteIds);
 
-    const items: { id: string; title: string; type: "note" | "material"; materialType?: string; content: string; rawContent?: Record<string, unknown> }[] = [];
+    const items: { id: string; title: string; type: "note" | "material"; materialType?: string; content: string; rawContent?: Record<string, unknown>; noteId?: string }[] = [];
 
     notes.filter((n) => noteIds.has(n.id)).forEach((n) => {
-      if (n.content) items.push({ id: n.id, title: n.title, type: "note", content: n.content });
+      // Pass noteId so any study tools generated in the session link back to this note.
+      if (n.content) items.push({ id: n.id, title: n.title, type: "note", content: n.content, noteId: n.id });
     });
 
     materials.filter((m) => selectedMaterialIds.has(m.id)).forEach((m) => {
@@ -609,9 +633,6 @@ const Library = () => {
                 <TabsTrigger value="notes" className="gap-2">
                   <FileText className="h-4 w-4" /> Notes ({filteredNotes.length})
                 </TabsTrigger>
-                <TabsTrigger value="materials" className="gap-2">
-                  <BookOpen className="h-4 w-4" /> Study Materials ({filteredMaterials.length})
-                </TabsTrigger>
                 <TabsTrigger value="funfacts" className="gap-2">
                   <Sparkles className="h-4 w-4" /> Fun Facts
                 </TabsTrigger>
@@ -658,6 +679,7 @@ const Library = () => {
                             selected={selectedNoteIds.has(note.id)}
                             onToggleSelect={() => toggleNoteSelect(note.id)}
                             folders={allFolders}
+                            attachmentCount={materialCountByNote[note.id] || 0}
                           />
                         </motion.div>
                       ))}
@@ -673,28 +695,20 @@ const Library = () => {
                     )}
                   </div>
                 )}
-              </TabsContent>
 
-              <TabsContent value="materials">
-                {selectMode && filteredMaterials.length > 0 && (
-                  <div className="mb-3 flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={selectedMaterialIds.size === filteredMaterials.length ? deselectAll : selectAllMaterials}
-                      className="gap-1.5 text-xs"
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
-                      {selectedMaterialIds.size === filteredMaterials.length ? "Deselect All" : "Select All"}
-                    </Button>
-                  </div>
-                )}
-                {filteredMaterials.length === 0 ? (
-                  <EmptyState type="materials" />
-                ) : (
-                  <div className="grid gap-3">
-                    <AnimatePresence>
-                      {filteredMaterials.slice(0, visibleMaterialCount).map((mat) => (
+                {/* Unlinked materials: legacy study tools with no parent note.
+                    New materials are always bundled with their note and opened
+                    from it, so this only appears for older orphaned items. */}
+                {orphanMaterials.length > 0 && (
+                  <div className="mt-8">
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Unlinked materials ({orphanMaterials.length})
+                    </p>
+                    <p className="mb-3 text-xs text-muted-foreground/70">
+                      These study tools aren't attached to a note. New ones are always bundled with their note.
+                    </p>
+                    <div className="grid gap-3">
+                      {orphanMaterials.map((mat) => (
                         <MaterialCard
                           key={mat.id}
                           material={mat}
@@ -702,28 +716,14 @@ const Library = () => {
                           onDelete={() => deleteMaterial(mat.id)}
                           onView={() => viewMaterial(mat)}
                           onRegenerate={() => {
-                            const linkedNote = mat.note_id ? notes.find((n) => n.id === mat.note_id) : null;
-                            if (linkedNote?.content) {
-                              navigate("/library/study", { state: { notesHtml: linkedNote.content, noteTitle: linkedNote.title } });
-                            } else {
-                              toast.error("Source notes not found. Generate from the home page.");
-                            }
+                            toast.error("Source notes not found. Generate from the home page.");
                           }}
-                          selectMode={selectMode}
-                          isSelected={selectedMaterialIds.has(mat.id)}
-                          onToggleSelect={() => toggleMaterialSelect(mat.id)}
+                          selectMode={false}
+                          isSelected={false}
+                          onToggleSelect={() => {}}
                         />
                       ))}
-                    </AnimatePresence>
-                    {filteredMaterials.length > visibleMaterialCount && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setVisibleMaterialCount((c) => c + PAGE_SIZE)}
-                        className="w-full mt-2"
-                      >
-                        Load more ({filteredMaterials.length - visibleMaterialCount} remaining)
-                      </Button>
-                    )}
+                    </div>
                   </div>
                 )}
               </TabsContent>

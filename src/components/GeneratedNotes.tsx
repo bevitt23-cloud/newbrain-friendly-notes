@@ -12,6 +12,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 
 import FunFactLink from "@/components/study-tools/FunFactLink";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { applyBionic } from "@/lib/bionic";
 import RetentionQuiz from "@/components/study-tools/RetentionQuiz";
 import type { QuizQuestion } from "@/hooks/useNoteGeneration";
 import MindMap from "@/components/study-tools/MindMap";
@@ -50,33 +51,6 @@ interface GeneratedNotesProps {
   behaviorSource?: "generated" | "library_note" | "library_material" | "chapter";
   /** Material type when behaviorSource === "library_material" */
   materialType?: string;
-}
-
-function applyBionic(html: string): string {
-  const SKIP_TAGS = /button|textarea|input|select|option|summary|code|pre/i;
-  const tagStack: string[] = [];
-
-  return html.replace(/<\/?([a-z][a-z0-9]*)[^>]*>|>([^<]+)</gi, (match, tagName?: string, textNode?: string) => {
-    if (tagName) {
-      if (match.startsWith("</")) {
-        tagStack.pop();
-      } else if (!match.endsWith("/>")) {
-        tagStack.push(tagName);
-      }
-      return match;
-    }
-    if (textNode) {
-      const insideSkip = tagStack.some((t) => SKIP_TAGS.test(t));
-      if (insideSkip) return match;
-
-      const bionicText = textNode.replace(/\b(\w{2,})\b/g, (word: string) => {
-        const boldLen = Math.ceil(word.length * 0.4);
-        return `<span class="bionic-bold" style="font-weight:700">${word.slice(0, boldLen)}</span>${word.slice(boldLen)}`;
-      });
-      return `>${bionicText}<`;
-    }
-    return match;
-  });
 }
 
 function stripHtml(html: string): string {
@@ -359,7 +333,7 @@ const GeneratedNotes = ({
 
       {/* Retention Quiz */}
       {!isGenerating && quizQuestions && quizQuestions.length > 0 &&
-      <RetentionQuiz questions={quizQuestions} topic={autoTitle} notesContext={html} />
+      <RetentionQuiz questions={quizQuestions} topic={autoTitle} notesContext={html} noteId={noteId} />
       }
       {isGeneratingQuiz && !isGenerating &&
       <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">

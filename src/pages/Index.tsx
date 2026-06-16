@@ -622,6 +622,27 @@ function Workspace() {
     })();
   }, [generatedHtml, user, isGenerating, learningMode]);
 
+  // Persist the retention quiz alongside its note so it lives in the library bundle
+  // (the quiz arrives asynchronously after the note is saved). Runs once per note.
+  const quizSavedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user || !savedNoteId || !savedNoteTitle) return;
+    if (!Array.isArray(quizQuestions) || quizQuestions.length === 0) return;
+    if (quizSavedForRef.current === savedNoteId) return;
+    quizSavedForRef.current = savedNoteId;
+    (async () => {
+      const { error: quizErr } = await supabase.from("saved_study_materials").insert({
+        user_id: user.id,
+        title: `${savedNoteTitle} · Retention Quiz`,
+        material_type: "quiz",
+        content: { questions: quizQuestions } as unknown as import("@/integrations/supabase/types").Json,
+        note_id: savedNoteId,
+        tags: [],
+      });
+      if (quizErr) console.error("Failed to persist retention quiz:", quizErr);
+    })();
+  }, [user, savedNoteId, savedNoteTitle, quizQuestions]);
+
   // Auto-save sticky notes + saved explainer videos to the corresponding library note.
   useEffect(() => {
     if (!savedNoteId) return;
@@ -732,6 +753,8 @@ function Workspace() {
             onSaveVideo={(video) => {
               setSavedVideos((prev) => (prev.some((v) => v.videoId === video.videoId) ? prev : [...prev, video]));
             }}
+            noteId={savedNoteId || undefined}
+            behaviorSource="generated"
           />
         )}
 

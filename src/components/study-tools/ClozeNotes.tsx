@@ -11,7 +11,7 @@ interface ClozeData {
   wordBank: string[];
 }
 
-export default function ClozeNotes({ data, onStarQuestion }: { data: string; onStarQuestion?: (q: string) => void }) {
+export default function ClozeNotes({ data, onStarQuestion, noteId }: { data: string; onStarQuestion?: (q: string) => void; noteId?: string }) {
   const { track } = useTelemetry();
   const { markComplete } = useToolEngagement("cloze");
   const [cloze, setCloze] = useState<ClozeData | null>(null);
@@ -75,14 +75,14 @@ export default function ClozeNotes({ data, onStarQuestion }: { data: string; onS
     const blank = blanks.find((b) => b.id === blankId);
     if (!blank) return;
     const isCorrect = userAnswers[blankId]?.toLowerCase().trim() === blank.answer?.toLowerCase().trim();
-    track("cloze_answer", { blankId, correct: isCorrect, answer: blank.answer });
+    track("cloze_answer", { blankId, correct: isCorrect, answer: blank.answer, question: blank.answer, note_id: noteId });
     if (isCorrect) {
       const newChecked = { ...checked, [blankId]: true };
       setChecked(newChecked);
       setIncorrect((p) => { const n = { ...p }; delete n[blankId]; return n; });
       const allDone = blanks.length > 0 && blanks.every((b) => newChecked[b.id!] === true);
       if (allDone) {
-        track("cloze_session_complete", { totalBlanks: blanks.length, correctCount: blanks.length });
+        track("cloze_session_complete", { totalBlanks: blanks.length, correctCount: blanks.length, note_id: noteId });
         markComplete();
       }
     } else {

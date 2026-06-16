@@ -1,4 +1,4 @@
-import { Star, Eye, Trash2, FolderInput, Square, CheckSquare } from "lucide-react";
+import { Star, Eye, Trash2, FolderInput, Square, CheckSquare, Layers } from "lucide-react";
 import { DEFAULT_FOLDER } from "@/lib/constants";
 
 /** Card color tints based on learning mode */
@@ -71,6 +71,8 @@ interface NoteCardProps {
   selected: boolean;
   onToggleSelect: (id: string) => void;
   folders: string[];
+  /** Number of study tools / quizzes bundled with this note. */
+  attachmentCount?: number;
 }
 
 const NoteCard = ({
@@ -82,6 +84,7 @@ const NoteCard = ({
   selectMode,
   selected,
   onToggleSelect,
+  attachmentCount = 0,
 }: NoteCardProps) => {
   const colors = getCardColors(note.learning_mode);
   const preview = note.content ? stripHtml(note.content).slice(0, 140) : "";
@@ -125,6 +128,11 @@ const NoteCard = ({
           )}
         </div>
 
+        {attachmentCount > 0 && (
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70 shrink-0" title={`${attachmentCount} study tool${attachmentCount > 1 ? "s" : ""} bundled with this note`}>
+            <Layers className="h-3 w-3" />{attachmentCount}
+          </span>
+        )}
         <span className="text-[11px] text-muted-foreground/50 shrink-0">{formatDate(note.updated_at)}</span>
 
         <button
@@ -193,6 +201,11 @@ const NoteCard = ({
               {tag}
             </span>
           ))}
+          {attachmentCount > 0 && (
+            <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-sage-100/70 text-sage-600 dark:bg-sage-500/10 dark:text-sage-300" title={`${attachmentCount} study tool${attachmentCount > 1 ? "s" : ""} bundled with this note`}>
+              <Layers className="h-2.5 w-2.5" />{attachmentCount}
+            </span>
+          )}
         </div>
         <span className="text-[10px] text-muted-foreground/40 shrink-0 ml-2">{formatDate(note.updated_at)}</span>
       </div>

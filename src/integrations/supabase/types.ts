@@ -107,6 +107,44 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_fun_facts: {
+        Row: {
+          created_at: string
+          fact: string
+          id: string
+          search_query: string
+          search_url: string
+          source_note_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fact: string
+          id?: string
+          search_query?: string
+          search_url?: string
+          source_note_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fact?: string
+          id?: string
+          search_query?: string
+          search_url?: string
+          source_note_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_fun_facts_source_note_id_fkey"
+            columns: ["source_note_id"]
+            isOneToOne: false
+            referencedRelation: "saved_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       saved_notes: {
         Row: {
           category_id: string | null

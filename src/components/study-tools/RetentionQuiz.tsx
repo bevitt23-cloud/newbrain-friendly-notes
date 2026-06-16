@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, XCircle, ChevronRight, RotateCcw, Trophy } from "lucide-react";
 import FunFactLink from "@/components/study-tools/FunFactLink";
@@ -16,9 +16,11 @@ interface RetentionQuizProps {
   questions: QuizQuestion[];
   topic?: string;
   notesContext?: string;
+  /** Source note id — tags answers so adaptive generation can find weak spots. */
+  noteId?: string;
 }
 
-const RetentionQuiz = ({ questions, topic, notesContext }: RetentionQuizProps) => {
+const RetentionQuiz = ({ questions, topic, notesContext, noteId }: RetentionQuizProps) => {
   const { track } = useTelemetry();
   const { markComplete } = useToolEngagement("quiz");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,10 +28,14 @@ const RetentionQuiz = ({ questions, topic, notesContext }: RetentionQuizProps) =
   const [answered, setAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  // When the current question was first shown — used to measure answer time.
+  const questionShownAtRef = useRef<number>(Date.now());
 
   const current = questions[currentIndex];
   const isCorrect = selectedAnswer === current?.correct;
   const total = questions.length;
+
+  useEffect(() => { questionShownAtRef.current = Date.now(); }, [currentIndex]);
 
   const handleSelect = (idx: number) => {
     if (answered) return;
@@ -37,13 +43,20 @@ const RetentionQuiz = ({ questions, topic, notesContext }: RetentionQuizProps) =
     setAnswered(true);
     const correct = idx === current.correct;
     if (correct) setScore((s) => s + 1);
-    track("quiz_answer", { questionIndex: currentIndex, correct, topic });
+    track("quiz_answer", {
+      questionIndex: currentIndex,
+      correct,
+      topic,
+      note_id: noteId,
+      question: current.question,
+      answer_ms: Date.now() - questionShownAtRef.current,
+    });
   };
 
   const handleNext = () => {
     if (currentIndex + 1 >= total) {
       setFinished(true);
-      track("quiz_complete", { score, total, topic, percent: Math.round((score / total) * 100) });
+      track("quiz_complete", { score, total, topic, note_id: noteId, percent: Math.round((score / total) * 100) });
       markComplete();
     } else {
       setCurrentIndex((i) => i + 1);

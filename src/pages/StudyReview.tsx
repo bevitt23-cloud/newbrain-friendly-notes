@@ -3,9 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, FileText, BookOpen, ChevronRight, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { applyBionic } from "@/lib/bionic";
 import Layout from "@/components/Layout";
 import FlashcardDeck from "@/components/study-tools/FlashcardDeck";
 import ClozeNotes from "@/components/study-tools/ClozeNotes";
+import RetentionQuiz from "@/components/study-tools/RetentionQuiz";
 
 import MindMap from "@/components/study-tools/MindMap";
 import FlowChart from "@/components/study-tools/FlowChart";
@@ -17,6 +19,7 @@ import JargonTooltip from "@/components/JargonTooltip";
 import { useNotesInteractivity } from "@/hooks/useNotesInteractivity";
 import { useJargonTooltip } from "@/hooks/useJargonTooltip";
 import { useStudyToolGeneration } from "@/hooks/useStudyToolGeneration";
+import { useStudyWeakSpots } from "@/hooks/useStudyWeakSpots";
 import type { StudyToolType } from "@/hooks/useStudyToolGeneration";
 import { useNoteGeneration } from "@/hooks/useNoteGeneration";
 import type { NoteFormat } from "@/hooks/useNoteGeneration";
@@ -68,6 +71,7 @@ const toolLabel: Record<string, string> = {
 
 /* ── Interactive Note Viewer (mirrors GeneratedNotes interactivity) ── */
 function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string }) {
+  const { preferences } = useUserPreferences();
   const [videoQuery, setVideoQuery] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [stickyNotes, setStickyNotes] = useState<any[]>([]);
@@ -141,7 +145,7 @@ function InteractiveNoteViewer({ html, noteId }: { html: string; noteId?: string
         ref={containerRef}
         onClick={handleNoteClick}
         className="generated-notes rounded-2xl border border-border bg-card p-6 md:p-8 shadow-sm select-text cursor-text"
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(html) }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(preferences.bionic_reading ? applyBionic(html) : html) }}
       />
       {videoQuery && (
         <InAppVideoModal
@@ -199,64 +203,6 @@ export default function StudyReview() {
   const [generatedTools, setGeneratedTools] = useState<GeneratedTool[]>([]);
   const hasStartedGeneration = useRef(false);
 
-  // ── Linked study materials modal ──
-  interface LinkedMaterial {
-    id: string;
-    title: string;
-    material_type: string;
-    content: Record<string, unknown>;
-  }
-  const [linkedMaterials, setLinkedMaterials] = useState<LinkedMaterial[]>([]);
-  const [showLinkedModal, setShowLinkedModal] = useState(false);
-  const [selectedLinked, setSelectedLinked] = useState<Set<string>>(new Set());
-  const linkedCheckedRef = useRef(false);
-
-  useEffect(() => {
-    if (linkedCheckedRef.current || !user || !items.length) return;
-    linkedCheckedRef.current = true;
-
-    const noteIds = items.filter((i) => i.type === "note" && i.noteId).map((i) => i.noteId!);
-    if (noteIds.length === 0) return;
-
-    (async () => {
-      const { data } = await supabase
-        .from("saved_study_materials")
-        .select("id, title, material_type, content")
-        .in("note_id", noteIds);
-
-      if (data && data.length > 0) {
-        const materials = data as LinkedMaterial[];
-        setLinkedMaterials(materials);
-        setSelectedLinked(new Set(materials.map((m) => m.id)));
-        setShowLinkedModal(true);
-      }
-    })();
-  }, [user, items]);
-
-  const handleOpenLinkedMaterials = () => {
-    const toOpen = linkedMaterials.filter((m) => selectedLinked.has(m.id));
-    const materialTypeLabel: Record<string, string> = {
-      flashcard: "🃏 Flash Cards",
-      mindmap: "🗺️ Mind Map",
-      flowchart: "📊 Flow Chart",
-      cloze: "📝 Fill-in-Blank",
-      socratic: "💬 Debate",
-      "final-exam": "🎓 Exam",
-    };
-    const newItems: ReviewItem[] = toOpen.map((m) => ({
-      id: m.id,
-      title: m.title,
-      type: "material" as const,
-      materialType: m.material_type,
-      content: typeof m.content === "object" && m.content !== null && "raw" in m.content
-        ? String((m.content as any).raw)
-        : JSON.stringify(m.content),
-      rawContent: m.content,
-    }));
-    setItems((prev) => [...prev, ...newItems]);
-    setShowLinkedModal(false);
-  };
-
   // ── Study tool inline generation state ──
   const [showToolPicker, setShowToolPicker] = useState(false);
   const [selectedTools, setSelectedTools] = useState<Set<StudyToolType>>(new Set());
@@ -297,21 +243,25 @@ export default function StudyReview() {
     const firstNewTabIndex = items.length + generatedTools.length;
     setActiveIndex(firstNewTabIndex);
 
+    const focusAreas = await computeFocusAreas();
     await Promise.all(
       tools.filter((t) => t.toolType !== "socratic").map(async (tool) => {
         try {
-          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined);
+          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined, focusAreas);
           setGeneratedTools((prev) =>
             prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
           );
           if (res && user) {
-            const title = `${items[0]?.title || "Notes"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
+            // Always link to the source note and title after it, so the material
+            // stays bundled with its note instead of floating in the library.
+            const parentNote = items.find((i) => i.type === "note");
+            const title = `${parentNote?.title || "Study Session"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
             await supabase.from("saved_study_materials").insert({
               user_id: user.id,
               title,
               material_type: tool.toolType,
               content: { raw: res },
-              note_id: items[0]?.noteId || null,
+              note_id: parentNote?.noteId || null,
               tags: [],
             });
           }
@@ -326,7 +276,7 @@ export default function StudyReview() {
     setIsGeneratingTools(false);
   };
 
-  const handleReformat = (format: NoteFormat) => {
+  const handleReformat = async (format: NoteFormat) => {
     const currentNote = items.find((i) => i.type === "note");
     if (!currentNote) return;
     setIsReformatMenuOpen(false);
@@ -340,6 +290,7 @@ export default function StudyReview() {
       return;
     }
 
+    const focusAreas = await computeFocusAreas();
     generateNotes({
       textContent: plainText,
       learningMode,
@@ -348,6 +299,7 @@ export default function StudyReview() {
       age: profile.age,
       noteFormat: format,
       energyMode: preferences.energy_mode || "full",
+      focusAreas,
     });
   };
 
@@ -383,6 +335,10 @@ export default function StudyReview() {
     .map((i) => i.content)
     .join("\n\n");
 
+  // The note these materials belong to — tags quiz/exam/cloze telemetry for adaptive gen.
+  const primaryNoteId = items.find((i) => i.type === "note")?.noteId;
+  const { computeFocusAreas } = useStudyWeakSpots(primaryNoteId);
+
   // Generate tools on mount
   useEffect(() => {
     if (hasStartedGeneration.current || toolsToGenerate.length === 0 || !allNotesHtml) return;
@@ -398,22 +354,26 @@ export default function StudyReview() {
     }));
     setGeneratedTools(tools);
 
-    tools
+    void (async () => {
+      // Bias new tools toward what this student struggled with last time.
+      const focusAreas = await computeFocusAreas();
+      tools
       .filter((t) => t.toolType !== "socratic")
       .forEach(async (tool) => {
         try {
-          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined);
+          const res = await generate(tool.toolType, allNotesHtml, profile.promptAppend || undefined, focusAreas);
           setGeneratedTools((prev) =>
             prev.map((t) => (t.id === tool.id ? { ...t, result: res, generating: false } : t))
           );
           if (res && user) {
-            const title = `${items[0]?.title || "Notes"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
+            const parentNote = items.find((i) => i.type === "note");
+            const title = `${parentNote?.title || "Study Session"} — ${tool.label} — ${new Date().toLocaleDateString()}`;
             await supabase.from("saved_study_materials").insert({
               user_id: user.id,
               title,
               material_type: tool.toolType,
               content: { raw: res },
-              note_id: items[0]?.noteId || null,
+              note_id: parentNote?.noteId || null,
               tags: [],
             });
           }
@@ -424,6 +384,7 @@ export default function StudyReview() {
           toast.error(`Failed to generate ${tool.label}`);
         }
       });
+    })();
   }, [toolsToGenerate, allNotesHtml]);
 
   useEffect(() => {
@@ -476,10 +437,20 @@ export default function StudyReview() {
 
     switch (item.materialType) {
       case "flashcard": return <FlashcardDeck data={raw} />;
-      case "cloze": return <ClozeNotes data={raw} />;
+      case "cloze": return <ClozeNotes data={raw} noteId={item.noteId || primaryNoteId} />;
       case "mindmap": return <div className="h-[500px]"><MindMap data={raw} /></div>;
       case "flowchart": return <div className="h-[500px]"><FlowChart data={raw} /></div>;
-      case "final-exam": return <FinalExam data={raw} />;
+      case "final-exam": return <FinalExam data={raw} noteId={item.noteId || primaryNoteId} />;
+      case "quiz": {
+        let questions: unknown[] = [];
+        try {
+          const fromRaw = (item.rawContent as { questions?: unknown[] } | undefined)?.questions;
+          questions = Array.isArray(fromRaw) ? fromRaw : (JSON.parse(raw).questions ?? []);
+        } catch { questions = []; }
+        return questions.length > 0
+          ? <RetentionQuiz questions={questions as never} noteId={item.noteId || primaryNoteId} />
+          : <p className="text-sm text-muted-foreground">No quiz data.</p>;
+      }
       case "socratic": return <SocraticDebate notesHtml={item.content} />;
       default: return <pre className="text-xs whitespace-pre-wrap bg-muted/50 rounded-lg p-3">{raw}</pre>;
     }
@@ -501,7 +472,7 @@ export default function StudyReview() {
     const content = (() => {
       switch (tool.toolType) {
         case "flashcard": return <FlashcardDeck data={tool.result} />;
-        case "cloze": return <ClozeNotes data={tool.result} />;
+        case "cloze": return <ClozeNotes data={tool.result} noteId={primaryNoteId} />;
         case "mindmap": return <div className="h-[500px]"><MindMap data={tool.result} /></div>;
         case "flowchart": return <div className="h-[500px]"><FlowChart data={tool.result} /></div>;
         default: return <pre className="text-xs whitespace-pre-wrap">{tool.result}</pre>;
@@ -706,86 +677,6 @@ export default function StudyReview() {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Linked Study Materials Modal */}
-      <AnimatePresence>
-        {showLinkedModal && linkedMaterials.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-            onClick={() => setShowLinkedModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl"
-            >
-              <h3 className="text-lg font-bold text-foreground mb-1">
-                Linked Study Materials
-              </h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                This note has {linkedMaterials.length} saved study tool{linkedMaterials.length !== 1 ? "s" : ""}. Would you like to open them alongside the note?
-              </p>
-
-              <div className="space-y-2 mb-5">
-                {linkedMaterials.map((mat) => {
-                  const isSelected = selectedLinked.has(mat.id);
-                  const typeEmoji: Record<string, string> = {
-                    flashcard: "🃏", mindmap: "🗺️", flowchart: "📊",
-                    cloze: "📝", socratic: "💬", "final-exam": "🎓",
-                  };
-                  return (
-                    <label
-                      key={mat.id}
-                      className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-primary/30 bg-primary/5"
-                          : "border-border hover:bg-muted/50"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {
-                          setSelectedLinked((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(mat.id)) next.delete(mat.id);
-                            else next.add(mat.id);
-                            return next;
-                          });
-                        }}
-                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30 accent-primary"
-                      />
-                      <span className="text-base">{typeEmoji[mat.material_type] || "📄"}</span>
-                      <span className="text-sm font-medium text-foreground truncate">{mat.title}</span>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleOpenLinkedMaterials}
-                  disabled={selectedLinked.size === 0}
-                  className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors disabled:opacity-40"
-                >
-                  Open {selectedLinked.size > 0 ? selectedLinked.size : ""} Tool{selectedLinked.size !== 1 ? "s" : ""}
-                </button>
-                <button
-                  onClick={() => setShowLinkedModal(false)}
-                  className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-                >
-                  Skip
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </Layout>
   );
 }

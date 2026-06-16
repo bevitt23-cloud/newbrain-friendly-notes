@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -7,7 +7,12 @@ export interface SavedFunFact {
   fact: string;
   searchQuery: string;
   searchUrl: string;
-  savedAt: number;
+  /** ISO timestamp (from the DB created_at column). */
+  savedAt: string;
+}
+
+function searchUrlFor(query: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
 interface FunFactContextValue {
@@ -47,20 +52,66 @@ export function FunFactProvider({ children }: { children: ReactNode }) {
   // Ref so updates between rapid clicks don't get overwritten by stale closures.
   const shownFactsRef = useRef<string[]>(loadShownFacts());
 
-  const saveFact = useCallback((fact: string, searchQuery: string) => {
-    const newFact: SavedFunFact = {
-      id: `ff-${Date.now()}`,
-      fact,
-      searchQuery,
-      searchUrl: `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`,
-      savedAt: Date.now(),
-    };
-    setSavedFacts((prev) => [...prev, newFact]);
+  // Load persisted fun facts on mount (RLS scopes rows to the signed-in user).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("saved_fun_facts")
+        .select("id, fact, search_query, search_url, created_at")
+        .order("created_at", { ascending: false });
+      if (cancelled || error || !data) return;
+      setSavedFacts(
+        data.map((row) => ({
+          id: row.id,
+          fact: row.fact,
+          searchQuery: row.search_query,
+          searchUrl: row.search_url || searchUrlFor(row.search_query),
+          savedAt: row.created_at,
+        }))
+      );
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  const removeFact = useCallback((id: string) => setSavedFacts((prev) => prev.filter((f) => f.id !== id)), []);
+  const saveFact = useCallback(async (fact: string, searchQuery: string) => {
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) {
+      toast.error("Please sign in to save fun facts.");
+      return;
+    }
+    const searchUrl = searchUrlFor(searchQuery);
+    const { data, error } = await supabase
+      .from("saved_fun_facts")
+      .insert({ user_id: userId, fact, search_query: searchQuery, search_url: searchUrl })
+      .select("id, created_at")
+      .single();
+    if (error || !data) {
+      console.error("Failed to save fun fact:", error);
+      toast.error("Couldn't save that fun fact. Please try again.");
+      return;
+    }
+    setSavedFacts((prev) => [
+      { id: data.id, fact, searchQuery, searchUrl, savedAt: data.created_at },
+      ...prev,
+    ]);
+  }, []);
 
-  const clearFacts = useCallback(() => setSavedFacts([]), []);
+  const removeFact = useCallback(async (id: string) => {
+    setSavedFacts((prev) => prev.filter((f) => f.id !== id));
+    const { error } = await supabase.from("saved_fun_facts").delete().eq("id", id);
+    if (error) console.error("Failed to delete fun fact:", error);
+  }, []);
+
+  const clearFacts = useCallback(async () => {
+    const ids = savedFacts.map((f) => f.id);
+    setSavedFacts([]);
+    if (ids.length > 0) {
+      const { error } = await supabase.from("saved_fun_facts").delete().in("id", ids);
+      if (error) console.error("Failed to clear fun facts:", error);
+    }
+  }, [savedFacts]);
 
   const generateFunFact = useCallback(async (topic: string, context?: string, interests?: string[]) => {
     setIsGenerating(true);

@@ -45,6 +45,8 @@ export interface GenerateOptions {
   sourceFile?: File;
   /** Page range to constrain image extraction (1-indexed, inclusive) */
   chapterPageRange?: { start: number; end: number };
+  /** Adaptive "focus areas" derived from the student's past performance (see useStudyWeakSpots). */
+  focusAreas?: string;
 }
 
 export function useNoteGeneration() {
@@ -249,6 +251,10 @@ export function useNoteGeneration() {
         noteFormat: opts.noteFormat || "auto",
         energyMode: opts.energyMode || "full",
       };
+
+      if (typeof opts.focusAreas === "string" && opts.focusAreas.trim()) {
+        payload.focusAreas = opts.focusAreas;
+      }
 
       // Add encoded images to payload for vision processing
       if (encodedImages.length > 0) {

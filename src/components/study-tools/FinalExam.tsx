@@ -43,9 +43,11 @@ interface FinalExamProps {
   data: string;
   timerMinutes?: number;
   onStarQuestion?: (q: string) => void;
+  /** Source note id — tags answers so adaptive generation can find weak spots. */
+  noteId?: string;
 }
 
-export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalExamProps) {
+export default function FinalExam({ data, timerMinutes, onStarQuestion, noteId }: FinalExamProps) {
   const { track } = useTelemetry();
   const { markComplete } = useToolEngagement("final_exam");
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
@@ -91,6 +93,10 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
   const q = questions[current];
   const isRevealed = revealed.has(current) || submitted;
 
+  // When the current question was first shown — used to measure answer time.
+  const questionShownAtRef = useRef<number>(Date.now());
+  useEffect(() => { questionShownAtRef.current = Date.now(); }, [current]);
+
   const setAnswer = (val: any) => {
     if (submitted) return;
     setAnswers((p) => ({ ...p, [current]: val }));
@@ -98,7 +104,14 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
 
   const handleReveal = () => {
     const correct = isCorrect(current);
-    track("final_exam_answer", { questionIndex: current, correct, topic: q.question });
+    track("final_exam_answer", {
+      questionIndex: current,
+      correct,
+      topic: q.question,
+      question: q.question,
+      note_id: noteId,
+      answer_ms: Date.now() - questionShownAtRef.current,
+    });
     setRevealed((p) => new Set(p).add(current));
   };
 
@@ -122,7 +135,7 @@ export default function FinalExam({ data, timerMinutes, onStarQuestion }: FinalE
     const total = questions.filter((q) => q.type !== "essay").length;
     const finalScore = questions.reduce((acc, _, i) => acc + (isCorrect(i) === true ? 1 : 0), 0);
     const percent = total ? Math.round((finalScore / total) * 100) : 0;
-    track("final_exam_complete", { score: finalScore, total, percent });
+    track("final_exam_complete", { score: finalScore, total, percent, note_id: noteId });
     markComplete();
   };
 

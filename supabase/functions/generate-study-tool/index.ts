@@ -121,7 +121,7 @@ serve(async (req) => {
     const user = await getAuthUser(req);
     if (!user) return unauthorizedResponse(corsHeaders);
 
-    const { tool, notesHtml, conversationHistory, profilePrompt } = await req.json();
+    const { tool, notesHtml, conversationHistory, profilePrompt, focusAreas } = await req.json();
 
     if (!tool || !TOOL_PROMPTS[tool]) {
       return new Response(
@@ -142,6 +142,10 @@ serve(async (req) => {
     let systemPrompt = TOOL_PROMPTS[tool];
     if (profilePrompt && typeof profilePrompt === "string") {
       systemPrompt += "\n\n" + profilePrompt;
+    }
+    // Adaptive: bias the tool toward the topics this student struggled with before.
+    if (focusAreas && typeof focusAreas === "string" && focusAreas.trim()) {
+      systemPrompt += "\n\n" + focusAreas.trim();
     }
 
     const messages: { role: string; content: string }[] = [];

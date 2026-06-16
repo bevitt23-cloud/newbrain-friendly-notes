@@ -7,7 +7,7 @@ const TOOL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-stu
 export type StudyToolType = "flashcard" | "mindmap" | "flowchart" | "cloze" | "socratic" | "final-exam";
 
 export function useStudyToolGeneration() {
-  const generate = useCallback(async (tool: StudyToolType, notesHtml: string, profilePrompt?: string): Promise<string | null> => {
+  const generate = useCallback(async (tool: StudyToolType, notesHtml: string, profilePrompt?: string, focusAreas?: string): Promise<string | null> => {
     try {
       const session = await supabase.auth.getSession();
       const token = session.data?.session?.access_token;
@@ -18,7 +18,7 @@ export function useStudyToolGeneration() {
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           Authorization: `Bearer ${token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ tool, notesHtml, profilePrompt }),
+        body: JSON.stringify({ tool, notesHtml, profilePrompt, focusAreas }),
       });
 
       if (!resp.ok) {

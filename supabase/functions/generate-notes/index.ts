@@ -360,7 +360,7 @@ serve(async (req) => {
     if (!user) return unauthorizedResponse(corsHeaders);
 
     const body = await req.json();
-    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images, noteFormat, energyMode } = body;
+    const { textContent, youtubeUrl, websiteUrl, learningMode, extras, instructions, profilePrompt, age, chapterContext, images, noteFormat, energyMode, focusAreas } = body;
 
     const contentParts: any[] = [];
 
@@ -969,18 +969,18 @@ STRUCTURE RULES:
 
 FORMAT DECISION TREE (evaluate in order — stop at the first match):
 
-1. FLOW — Choose this if the source material is PRIMARILY a sequential process, procedure, lifecycle, algorithm, historical chronology with strict cause-effect ordering, surgical/medical protocol, recipe, tutorial, or anything where the order of steps is load-bearing (changing the order would break understanding). Signals: numbered steps in the source, words like "first/then/next/finally", "phase", "stage", "cycle", process diagrams, flowcharts.
+1. FLOW — Choose this ONLY if the source material is PRIMARILY a sequential process, procedure, lifecycle, algorithm, historical chronology with strict cause-effect ordering, surgical/medical protocol, recipe, or tutorial where the order of steps is load-bearing (changing the order would break understanding). Signals: numbered steps in the source, words like "first/then/next/finally", "phase", "stage", "cycle", process diagrams, flowcharts. If the order is incidental rather than load-bearing, this is NOT Flow.
 
-2. CORNELL NOTES — Choose this if the source is exam-prep, flashcard-style content, definition-heavy (glossaries, vocabulary, clinical terms), OR if the student is clearly studying for recall/memorization. Signals: lots of term-definition pairs, Q&A material, "key terms" sections, anatomy labels, medical/legal/foreign-language vocabulary, test review sheets.
+2. CONCEPT MAP — Choose this if the content is fundamentally about RELATIONSHIPS between abstract ideas rather than a linear story, a procedure, or a topic hierarchy. Signals: philosophy, economics concepts, ecosystem interactions, political science theories, literary themes, psychological frameworks where multiple concepts interconnect but have no strict order. The content "branches" rather than "flows".
 
-3. CONCEPT MAP — Choose this if the content is about RELATIONSHIPS between abstract ideas rather than a linear story or procedure. Signals: philosophy, economics concepts, ecosystem interactions, political science theories, literary themes, psychological frameworks where multiple concepts interconnect but have no strict order. The content "branches" rather than "flows".
+3. CORNELL NOTES — Choose this ONLY if the source is DOMINATED by discrete term→definition pairs: a glossary, vocabulary list, clinical/anatomical term bank, foreign-language word list, or Q&A flashcard set where most of the content is self-contained "term: definition" units. Do NOT choose Cornell merely because the material is study material, is exam-relevant, or contains some bold key terms — nearly everything uploaded here is study material, so that alone is never a reason. If key terms are explained inside flowing prose or organized under a topic hierarchy, that is Outline, not Cornell.
 
-4. OUTLINE — Default fallback. Choose this if none of the above match clearly: textbook chapter summaries, lecture notes covering many loosely-related topics, overview articles, general study material where the hierarchy of topics is the most useful organizing principle.
+4. OUTLINE — The default and most common choice. Choose this for any general study material where a hierarchy of topics is the most useful way to organize the content: textbook chapters, lecture notes, overview articles, mixed-topic summaries, and anything that does not clearly and strongly fit one of the three specialized formats above. When in doubt, choose Outline.
 
 EXECUTION:
 - Once you pick a format, apply that format's FULL rules block (structure, HTML tags, required elements) to every section of the output.
 - Record your choice in the verification comment at the end: <!-- verification: ...chosen_format: [outline|cornell|concept_map|flow], format_reason: "one sentence explaining why" -->
-- If you are genuinely torn between two formats (50/50), prefer in this priority: Flow > Cornell > Concept Map > Outline.
+- If you are genuinely torn (50/50) between Outline and a specialized format, choose Outline — only pick a specialized format when it is a clearly strong fit. Priority when torn: Outline > Flow > Concept Map > Cornell.
 
 The four format rule sets are:
 
@@ -1004,6 +1004,10 @@ ${NOTE_FORMAT_PROMPTS.flow}`;
 
     // 1. Process standard profile and age
     let profileStr = profilePrompt && typeof profilePrompt === "string" ? `\n\nUSER COGNITIVE PROFILE:\n${profilePrompt}` : "";
+    // Adaptive focus areas derived from the student's past performance on this material.
+    const focusAreasStr = focusAreas && typeof focusAreas === "string" && focusAreas.trim()
+      ? `\n\n${focusAreas.trim()}`
+      : "";
     const ageStr = age && typeof age === "number" ? `\n\nIMPORTANT: The learner is approximately ${age} years old. Adjust vocabulary, sentence complexity, and reading level accordingly. ${age < 10 ? "Use very simple language, short sentences, and concrete examples." : age < 13 ? "Use clear, straightforward language appropriate for a middle schooler." : age < 18 ? "Use age-appropriate language for a teenager." : ""}` : "";
 
     // 2. Hardcoded Strict Cognitive Modifiers
@@ -1330,7 +1334,7 @@ CRITICAL JSON GENERATION RULES (STRICT ENFORCEMENT):
 If you are asked to generate Mind Map or Flow Chart JSON, you will be heavily penalized if you violate these rules:
 1. You MUST write 3-5 complete sentences of factual study context for the "detailed_info" field of EVERY single node.
 2. NEVER leave "detailed_info" blank. NEVER use generic placeholders like "Details go here."
-3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}${energyStr}
+3. DO NOT wrap the JSON in markdown code fences (\`\`\`json). Output the raw JSON object directly inside the hidden div.${formatStr}${extrasStr}${instructionsStr}${profileStr}${ageStr}${energyStr}${focusAreasStr}
 
 FINAL REMINDER — MATH STEPS: If the source material contains ANY math, equations, or worked problems: show EVERY single intermediate step using the math-stepper format. Each step = ONE operation. Each explanation = teach the student what you did, why, and what to notice. NEVER skip, combine, or gloss over steps. The student must be able to follow from start to finish without needing to figure out any gap on their own.`;
 
